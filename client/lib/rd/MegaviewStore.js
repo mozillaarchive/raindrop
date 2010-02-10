@@ -50,13 +50,13 @@ function (require, rd, dojo, DeferredList, api) {
             "contact",
             "locationTag"
         ],
-    
+
         //A restriction that can be used on the schemaQueryType. Useful mainly for
         //"identityContact" schemaQueryType, that
         //limits the types of identities and associated contacts to that type.
         //Could also be used by extensions that add support for other schemaQueryTypes.
         subType: "",
-    
+
         constructor: function (/*Object?*/ args) {
             //constructs an instance. Acceptable properties on the args
             //argument are:
@@ -93,7 +93,7 @@ function (require, rd, dojo, DeferredList, api) {
             }
             return ret;
         },
-    
+
         hasAttribute: function (/*item*/ item, /*attribute-name-string*/ attribute) {
             //console.log("hasAttribute", item, attribute);
             return (attribute in item);

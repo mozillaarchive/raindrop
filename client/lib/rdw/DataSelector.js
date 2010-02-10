@@ -26,14 +26,25 @@
 "use strict";
 
 require.def("rdw/DataSelector",
-["require", "rd", "dojo", "dojo/DeferredList", "rdw/_Base", "rd/MegaviewStore"],
-function (require, rd, dojo, DeferredList, Base, MegaviewStore) {
+["require", "rd", "dojo", "dojo/DeferredList", "rdw/_Base", "i18n!rdw/nls/i18n", "rd/MegaviewStore", "rdw/GoComboBox"],
+function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore) {
 
     return dojo.declare("rdw.DataSelector", [Base], {
-        templateString: '<div class="rdwDataSelector dijitReset dijitInlineTable dijitLeft"><div dojoAttachPoint="selectorNode"></div></div>',
+        templateString: '<div class="rdwDataSelector dijitReset dijitInlineTable dijitLeft" dojoAttachEvent="onclick: onClick">' +
+                            '<div class="rdwDataSelectorUi" dojoAttachPoint="uiNode">' +
+                                '<div dojoAttachPoint="selectorNode"></div>' +
+                                '<div class="rdwDataSeletorResults">' +
+                                    '<ul dojoAttachPoint="typesNode"></ul>' +
+                                    '<div dojoAttachPoint="matchContainerNode"></div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>',
     
-        comboWidget: "dijit/form/ComboBox",
-    
+        typeItemTemplate: '<li data-type="${type}">${typeLabel}</li>',
+
+        comboWidget: "rdw/GoComboBox",
+        //comboWidget: "dijit/form/ComboBox",
+
         //type can have values of "identityContact", "contact", or "locationTag"
         //by default. Extensions can add other types by creating a typeLoaded function
         //on this widget.
@@ -71,7 +82,13 @@ function (require, rd, dojo, DeferredList, Base, MegaviewStore) {
             if (this.type !== "all") {
                 this.sources = [this.type];
             }
-    
+
+            //Create a fake widget that holds the uiNode.
+            this.fakeUiWidget = {
+                domNode: this.uiNode,
+                onChange: function() {}
+            };
+
             this.createWidget();
         },
 
@@ -84,11 +101,13 @@ function (require, rd, dojo, DeferredList, Base, MegaviewStore) {
             this.items.sort(function (a, b) {
                 return a.name > b.name ? 1 : -1;
             });
-    
+
             //Load the code for the widget then create and initialize it.
             require([this.comboWidget], dojo.hitch(this, function (Ctor) {
                 //Create the selector widget.
                 this.selectorInstance = new Ctor({
+                    matchContainerNode: this.matchContainerNode,
+                    parentWidget: this,
                     store: new MegaviewStore({
                         schemaQueryTypes: this.sources,
                         subType: this.subType
@@ -104,6 +123,86 @@ function (require, rd, dojo, DeferredList, Base, MegaviewStore) {
                 //Add to supporting widgets so widget destroys do the right thing.
                 this.addSupporting(this.selectorInstance);
             }));
+        },
+
+        /**
+         * Triggered by GoComboBox when its text element is focused.
+         */
+        onGoFocus: function(evt) {
+            this.expand();
+        },
+
+        /**
+         * Handles clicks that will trigger showing the larger div with all the
+         * choices.
+         * @param {Event} evt
+         */
+        onClick: function(evt) {
+            this.expand();
+        },
+
+        onOpen: function() {
+            this.expand();        
+        },
+
+        onClose: function() {
+            if (this.isExpanded) {
+                dojo.removeClass(this.domNode, "expanded");
+                this.isExpanded = false;
+            }
+        },
+
+        expand: function() {
+            if (!this.isExpanded) {
+                dojo.addClass(this.domNode, "expanded");
+                this.isExpanded = true;
+            }            
+        },
+
+        /**
+         * Called when there are results from the Data Store.
+         * Use the results to know what types/categories to show on the
+         * left side.
+         * @param {Array} results
+         */
+        onDataStoreResults: function(results) {
+            this.showTypeLabels(this.uniqueTypeLabels(results));
+        },
+
+        typeLabels: {
+            "contact": i18n.contactTypeLabel,
+            "locationTag": i18n.locationTagTypeLabel
+        },
+
+        /** Given an array of results, give back a list of unique types with their
+         * labels, suitable for UI display.
+         */
+        uniqueTypeLabels: function (results) {
+            var labels = [], i, item, unique = {}, type;
+            for (i = 0; (item = results[i]); i++) {
+                type = item.type;
+                if (!unique[type]) {
+                    labels.push({
+                        type: type,
+                        typeLabel: this.typeLabels[type] || type
+                    })
+                    unique[type] = true;
+                }
+            }
+
+            return labels;
+        },
+
+        showTypeLabels: function(labels) {
+            var i, label, html = "";
+
+            if (labels) {
+                for (i = 0; (label = labels[i]); i++) {
+                    html += rd.template(this.typeItemTemplate, label);
+                }
+            }
+
+            this.typesNode.innerHTML = html;
         },
 
         /**

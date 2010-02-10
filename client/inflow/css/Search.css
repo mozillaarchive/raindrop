@@ -71,3 +71,23 @@
   display: none;
 }
 
+/*
+.rdwDataSelector .rdwDataSelectorUi {
+    width: auto;
+    height: auto;
+    background-color: inherit;
+}
+
+.rdwDataSelectorUi {
+    width: 800px;
+    height: 500px;
+    background-color: red;
+}
+*/
+
+.rdwDataSelector.expanded {
+    position: absolute;
+    width: 800px;
+    height: 500px;
+    background-color: red;    
+}
