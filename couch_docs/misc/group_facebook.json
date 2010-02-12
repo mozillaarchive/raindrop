@@ -1,0 +1,9 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "Facebook messages",
+        "grouping_tags": ["facebook-message", "facebook-comment", "facebook-notification"]
+    }
+  },
+  "rd_key": ["display-group", "facebook"]
+}

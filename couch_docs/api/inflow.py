@@ -48,7 +48,7 @@ class API:
             except ValueError, why:
                 raise APIErrorResponse(400, "invalid json in request body: %s" % (why,))
             s = set(body_args)
-            both = set.union(set(supplied))
+            both = s.intersection(set(supplied))
             if both:
                 msg = "the following arguments appear in both the query string and post body: %s" \
                       % (",".join(both))
@@ -328,58 +328,46 @@ class ConversationAPI(API):
         return convos
 
     # Helper for most other end-points
-    def _query(self, req, **kw):
-        def_opts = {
+    def in_groups(self, req):
+        opts = {
             'reduce': False,
             'include_docs': True,
             'descending': True,
         }
-        opts = def_opts.copy()
-        opts.update(kw)
-
-        self.requires_get(req)
-        args = self.get_args(req, limit=30, skip=0, message_limit=None)
+        self.requires_get_or_post(req)
+        args = self.get_args(req, 'keys', limit=30, skip=0, message_limit=None)
         opts['limit'] = args['limit']
         opts['skip'] = args['skip']
         db = RDCouchDB(req)
 
-        result = db.megaview(**opts)
+        convo_summaries = []
+        for gk in args['keys']:
+            result = db.megaview(startkey=["rd.conv.summary", "grouping-timestamp", [gk, {}]],
+                                 endkey=["rd.conv.summary", "grouping-timestamp", [gk]],
+                                 **opts)
+            convo_summaries.extend(row['doc'] for row in result['rows'])
 
-        convo_summaries = [row['doc'] for row in result['rows']]
         convos = self._build_conversations(db, convo_summaries, args['message_limit'])
         # results are already sorted!
         return convos
 
     # The 'simpler' end-points based around self._query()
+    # XXX - these must die!
     def direct(self, req):
-        return self._query(req,
-                           startkey=["rd.conv.summary", "target-timestamp", ["direct", {}]],
-                           endkey=["rd.conv.summary", "target-timestamp", ["direct"]],
-                           )
+        req['body'] = json.dumps({'keys': [('display-group', 'inflow')]})
+        return self.in_groups(req)
 
     def group(self, req):
-        return self._query(req,
-                           startkey=["rd.conv.summary", "target-timestamp", ["group", {}]],
-                           endkey=["rd.conv.summary", "target-timestamp", ["group"]],
-                          )
+        req['body'] = json.dumps({'keys': [('display-group', 'inflow')]})
+        return self.in_groups(req)
 
     def broadcast(self, req):
-        return self._query(req,
-                           startkey=["rd.conv.summary", "target-timestamp", ["broadcast", {}]],
-                           endkey=["rd.conv.summary", "target-timestamp", ["broadcast"]],
-                           )
-
-    def impersonal(self, req):
-        return self._query(req,
-                           startkey=["rd.conv.summary", "target-timestamp", ["impersonal", {}]],
-                           endkey=["rd.conv.summary", "target-timestamp", ["impersonal"]],
-                           )
+        req['body'] = json.dumps({'keys': [('display-group', None)]})
+        return self.in_groups(req)
 
     def personal(self, req):
-        return self._query(req,
-                           startkey=["rd.conv.summary", "target-timestamp", ["personal", {}]],
-                           endkey=["rd.conv.summary", "target-timestamp", ["personal"]],
-                           )
+        req['body'] = json.dumps({'keys': [('display-group', 'inflow')]})
+        return self.in_groups(req)
 
     def twitter(self, req):
         opts = {
@@ -473,12 +461,32 @@ class MessageAPI(API):
                 schemas[doc['rd_schema_id']] = self._filter_user_fields(doc)
         return ret
 
+class GroupingAPI(API):
+    def summary(self, req):
+        opts = {}
+        self.requires_get(req)
+        db = RDCouchDB(req)
+        # first get the rd_key for all items with an 'info' schema.
+        keys = [['rd.core.content', 'schema_id', 'rd.grouping.info'],
+                ['rd.core.content', 'schema_id', 'rd.grouping.summary'],
+               ]
+        result = db.megaview(keys=keys, include_docs=True, reduce=False)
+        by_key = {}
+        for row in result['rows']:
+            rd_key = row['value']['rd_key']
+            bucket = by_key.setdefault(hashable_key(rd_key), {})
+            bucket.update(self._filter_user_fields(row['doc']))
+            bucket['rd_key'] = rd_key
+        return by_key.values()
+
+
 # A mapping of the 'classes' we expose.  Each value is a class instance, and
 # all 'public' methods (ie, those without leading underscores) on the instance
 # are able to be called.
 dispatch = {
     'conversations': ConversationAPI(),
     'message': MessageAPI(),
+    'grouping' : GroupingAPI(),
 }
 
 # The standard raindrop extension entry-point (which is responsible for
@@ -496,7 +504,7 @@ def handler(request):
         meth = getattr(inst, meth_name, None)
         # check it is callable etc.
         if not callable(meth) or meth_name.startswith('_'):
-            raise APIErrorResponse(400, "invalid API request endpoint function")
+            raise APIErrorResponse(400, "invalid inflow API request endpoint function")
         # phew - call it.
         resp = make_response(meth(request))
     except APIException, exc:

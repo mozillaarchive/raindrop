@@ -21,7 +21,7 @@
 # Contributor(s):
 #
 
-# Emit rd.msg.recip-target schemas for emails.
+# Emit rd.msg.grouping-tag schemas for emails.
 import re
 
 # TODO, try to secure these against impersonation. May need to check
@@ -46,9 +46,5 @@ def handler(schema):
         return
 
     if twitterType == "is_following":
-        type ='twitter'
-        items = {'type' : type,
-                 'timestamp': schema['timestamp'],
-                 'type-timestamp': [type, schema['timestamp']],
-                 }
-        emit_schema('rd.msg.notification', items)
+        items = {'tag': 'twitter-notification'}
+        emit_schema('rd.msg.grouping-tag', items)

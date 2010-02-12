@@ -1,0 +1,9 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "The inflow",
+        "grouping_tags": ["direct", "group"]
+    }
+  },
+  "rd_key": ["display-group", "inflow"]
+}

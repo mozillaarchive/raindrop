@@ -667,7 +667,10 @@ def handler(message):
             update_documents([list])
         else:
             logger.debug("CREATE LIST %s", list_id)
+            list_key = ["mailing-list", list_id]
             emit_schema('rd.mailing-list', list,
-                        rd_key=["mailing-list", list_id])
+                        rd_key=list_key)
+            # mailing lists also create a 'groupings' record
+            init_grouping_tag('mailing-list-' + list_id, list_key, list_id)
     else:
         logger.debug("LIST UNCHANGED")

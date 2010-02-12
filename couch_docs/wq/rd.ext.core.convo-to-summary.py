@@ -13,7 +13,7 @@ src_msg_schemas = [
     'rd.msg.archived',
     'rd.msg.deleted',
     'rd.msg.seen',
-    'rd.msg.recip-target',
+    'rd.msg.grouping-tag',
 ]
 
 def handler(doc):
@@ -46,6 +46,7 @@ def handler(doc):
     latest_by_recip_target = {}
     earliest_timestamp = latest_timestamp = None
     subject = None
+    groups_with_unread = set()
     for msg_info in all_msgs:
         if 'rd.msg.body' not in msg_info:
             continue
@@ -57,6 +58,11 @@ def handler(doc):
         good_msgs.append(msg_info)
         if 'rd.msg.seen' not in msg_info or not msg_info['rd.msg.seen']['seen']:
             unread.append(msg_info)
+            try:
+                grouping_tag = msg_info['rd.msg.grouping-tag']['tag']
+            except KeyError:
+                grouping_tag = None
+            groups_with_unread.add(grouping_tag)
         body_schema = msg_info['rd.msg.body']            
         for field in ["to", "cc"]:
             if field in body_schema:
@@ -79,25 +85,29 @@ def handler(doc):
         if latest_timestamp is None or \
            msg_info['rd.msg.body']['timestamp'] > latest_timestamp:
             latest_timestamp = msg_info['rd.msg.body']['timestamp']
-        if 'rd.msg.recip-target' in msg_info:
-            this_target = msg_info['rd.msg.recip-target']['target']
+        if 'rd.msg.grouping-tag' in msg_info:
+            this_group = msg_info['rd.msg.grouping-tag']['tag']
             this_ts = msg_info['rd.msg.body']['timestamp']
-            cur_latest = latest_by_recip_target.get(this_target, 0)
+            cur_latest = latest_by_recip_target.get(this_group, 0)
             if this_ts > cur_latest:
-                latest_by_recip_target[this_target] = this_ts
+                latest_by_recip_target[this_group] = this_ts
         #We want the subject from the first (topic) message
         #XXX This method doesn't guarantee the topic message but works better
         if earliest_timestamp and earliest_timestamp == msg_info['rd.msg.body']['timestamp']:
             subject = msg_info['rd.msg.body'].get('subject')
 
-    # a couple of 'pseudo' or 'combo' recip-targets.
-    if 'direct' in latest_by_recip_target or 'group' in latest_by_recip_target:
-        latest_by_recip_target['personal'] = \
-            max(latest_by_recip_target.get('direct',0), latest_by_recip_target.get('group', 0))
-
-    if 'broadcast' in latest_by_recip_target or 'notification' in latest_by_recip_target:
-        latest_by_recip_target['impersonal'] = \
-            max(latest_by_recip_target.get('broadcast', 0), latest_by_recip_target.get('notification', 0))
+    # build a map of grouping-tag to group ID
+    latest_by_grouping = {}
+    keys = [["rd.grouping.info", "grouping_tags", gt]
+            for gt in latest_by_recip_target]
+    result = open_view(keys=keys, reduce=False)
+    for row in result['rows']:
+        gtag = row['key'][-1]
+        gkey = row['value']['rd_key']
+        this_ts = latest_by_recip_target[gtag]
+        cur_latest = latest_by_grouping.get(hashable_key(gkey), 0)
+        if this_ts > cur_latest:
+            latest_by_grouping[hashable_key(gkey)] = this_ts
 
     # sort the messages and select the 3 most-recent.
     good_msgs.sort(key=lambda item: item['rd.msg.body']['timestamp'],
@@ -113,10 +123,11 @@ def handler(doc):
         'from_display': from_display,
         'earliest_timestamp': earliest_timestamp,
         'latest_timestamp': latest_timestamp,
-        'target-timestamp': [],
+        'grouping-timestamp': [],
+        'groups_with_unread': sorted(groups_with_unread),
     }
-    for target, timestamp in sorted(latest_by_recip_target.iteritems()):
-        item['target-timestamp'].append([target, timestamp])
+    for target, timestamp in sorted(latest_by_grouping.iteritems()):
+        item['grouping-timestamp'].append([target, timestamp])
     # our 'dependencies' are *all* messages, not just the "good" ones.
     deps = []
     for msg in all_msgs:

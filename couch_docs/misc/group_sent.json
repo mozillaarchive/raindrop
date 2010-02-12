@@ -1,0 +1,9 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "Sent Items",
+        "grouping_tags": ["from"]
+    }
+  },
+  "rd_key": ["display-group", "sent"]
+}

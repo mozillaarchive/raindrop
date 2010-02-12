@@ -21,7 +21,7 @@
 # Contributor(s):
 #
 
-# Emit rd.msg.recip-target schemas for emails.
+# Emit rd.msg.grouping-tag schemas for emails.
 
 def handler(src_doc):
     # We make our lives easier by using the rd.msg.body schema, but only
@@ -36,17 +36,17 @@ def handler(src_doc):
     # 'group'
     from_id = src_doc.get('from')
     if from_id:
-        # We must mark the identity's recip-target as a dependency - even
+        # We must mark the identity's msg-grouping-tag as a dependency - even
         # when it doesn't yet exist - it may be created later, at which time
         # we need to be re-executed.
         idty_rdkey = ['identity', from_id]
-        deps = [(idty_rdkey, 'rd.identity.recip-target')]
-        id_schema = open_schemas(deps)[0]
+        deps = [(idty_rdkey, 'rd.identity.msg-grouping-tag')]
+        id_schema = open_schemas(deps)[0] # will be None if it doesn't exist
     else:
         id_schema = None
         deps = None
     if id_schema:
-        val = id_schema['target']
+        val = id_schema['tag']
     elif src_doc.get('from') in my_identities:
         val = 'from'
     # only us on the 'to' line?  That is 'direct'...
@@ -60,10 +60,6 @@ def handler(src_doc):
                 break
         else:
             val = 'broadcast'
-    # XXX - should this be part of the model?  That a schema can nominate
-    # fields to be 'combined'?  Or is that just part of the schema defn?
-    items = {'target' : val,
-             'timestamp': src_doc['timestamp'],
-             'target-timestamp': [val, src_doc['timestamp']],
-             }
-    emit_schema('rd.msg.recip-target', items, deps=deps)
+    items = {'tag' : val,
+            }
+    emit_schema('rd.msg.grouping-tag', items, deps=deps)

@@ -21,7 +21,7 @@
 # Contributor(s):
 #
 
-# Emit rd.msg.recip-target schemas for emails.
+# Emit rd.msg.grouping-tag schemas for emails.
 import re
 
 # TODO, try to secure these against impersonation. May need to check
@@ -46,9 +46,13 @@ def handler(schema):
         return
 
     if facebookType.startswith('friend;'):
-        type ='facebook'
-        items = {'type' : type,
-                 'timestamp': schema['timestamp'],
-                 'type-timestamp': [type, schema['timestamp']],
-                 }
-        emit_schema('rd.msg.notification', items)
+        tag = 'facebook-notification'
+    elif facebookType.startswith('feed_comment;'):
+        tag = 'facebook-comment'
+    elif facebookType.startswith('msg;'):
+        tag = 'facebook-message'
+    else:
+        tag = None
+    if tag is not None:
+        items = {'tag' : tag}
+        emit_schema('rd.msg.grouping-tag', items)

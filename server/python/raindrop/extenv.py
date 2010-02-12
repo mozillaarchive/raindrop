@@ -147,10 +147,28 @@ def get_ext_env(doc_model, context, src_doc, ext):
                     __my_identities.append(iid)
         return __my_identities
 
+    def init_grouping_tag(tag, grouping_key, grouping_title):
+        # Tell the system that a new 'grouping tag' has sprung into life.  Used
+        # for things like mailing-lists which need to create new groupings
+        # at runtime.
+        # If the grouping-tag is already associated with a different rd.grouping
+        # schema, no action is taken.
+        key = ['rd.grouping.info', 'grouping_tags', tag]
+        result = threads.blockingCallFromThread(reactor,
+                        doc_model.open_view,
+                        key=key, reduce=False)
+        if result['rows']:
+            return # this grouping already exists.
+        # create a new 'info' schema.
+        items = {'title': grouping_title,
+                 'grouping_tags': [tag]}
+        emit_schema('rd.grouping.info', items, rd_key=grouping_key)
+
     new_globs = {}
     new_globs['emit_schema'] = emit_schema
     new_globs['emit_related_identities'] = emit_related_identities
     new_globs['find_and_emit_conversation'] = find_and_emit_conversation
+    new_globs['init_grouping_tag'] = init_grouping_tag
     new_globs['open_attachment'] = open_attachment
     new_globs['open_schema_attachment'] = open_schema_attachment
     new_globs['open_schemas'] = open_schemas
@@ -158,6 +176,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
     new_globs['open_view'] = open_view
     new_globs['update_documents'] = update_documents
     new_globs['get_my_identities'] = get_my_identities
+    new_globs['hashable_key'] = doc_model.hashable_key
     new_globs['logger'] = logging.getLogger('raindrop.ext.'+ext.id)
     return new_globs
 

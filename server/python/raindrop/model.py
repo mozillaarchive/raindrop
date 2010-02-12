@@ -61,12 +61,14 @@ megaview_schemas_expandable_values = {
     'rd.msg.body' : ['to', 'to_display', 'cc', 'cc_display'],
     'rd.account' : ['identities'],
     'rd.ext.api' : ['endpoints'],
-    'rd.conv.summary' : ['message_ids', 'recent_ids', 'identities', 'target-timestamp'],
+    'rd.conv.summary' : ['message_ids', 'recent_ids', 'identities', 'grouping-timestamp'],
+    'rd.grouping.info' : ['grouping_tags'],
 }
 # Ditto - info which should come from the schema-defn itself - a list of
 # schemas that don't need values emitted, just the keys etc.
 megaview_schemas_ignore_values = [
     'rd.imap.mailbox-cache',
+    'rd.grouping.summary',
 ]
 
 # Schema definitions which don't want an aggregate written; the individual

@@ -282,7 +282,7 @@ function (rd, dojo, api) {
         /**
          * @private
          *
-         * Gets or creates rd.identity.recip-target schema for a given identity ID.
+         * Gets or creates rd.identity.msg-grouping-tag schema for a given identity ID.
          * 
          * @param {dojo.Deferred} dfd The deferred that should be called
          * with the results.
@@ -297,11 +297,11 @@ function (rd, dojo, api) {
          * @param {String} [target] the target value to use, if wanting to set
          * the schema. Leave blank to get the any existing schema
          */
-        _recipTarget: function (dfd, args, id, sourceSchema, target) {
+        _msgGroupingTag: function (dfd, args, id, sourceSchema, target) {
             if (!target) {
                 //Just get the value.
                 api().megaview({
-                    key: ["rd.core.content", "key-schema_id", [["identity", id], "rd.identity.recip-target"]],
+                    key: ["rd.core.content", "key-schema_id", [["identity", id], "rd.identity.msg-grouping-tag"]],
                     reduce: false,
                     include_docs: true
                 })
@@ -320,13 +320,13 @@ function (rd, dojo, api) {
                 args = dojo.delegate(args);
                 args.target = null;
 
-                api().identityRecipTarget(args)
+                api().identityMsgGroupingTag(args)
                 .ok(function (schema) {
                     var newSchema = {
                         //TODO: make a better rd_key.
                         rd_key: ["identity", id],
-                        rd_schema_id: "rd.identity.recip-target",
-                        target: target
+                        rd_schema_id: "rd.identity.msg-grouping-tag",
+                        tag: target
                     };
 
                     if (schema && schema._rev) {
@@ -438,8 +438,8 @@ function (rd, dojo, api) {
         
         /**
          * @lends rd.api
-         * Gets or creates rd.identity.recip-target schema for a given identity ID.
-         * Returns the rd.identity.recip-target schema to the ok callbacks. If
+         * Gets or creates rd.identity.msg-grouping-tag schema for a given identity ID.
+         * Returns the rd.identity.msg-grouping-tag schema to the ok callbacks. If
          * target is passed in the args, then it is a set operation, otherwise
          * this call does a get for the any existing schema for the identity.
          *
@@ -450,11 +450,11 @@ function (rd, dojo, api) {
          * @param {String} [args.target] the value to use for the target field
          * in the UI. Example values, "broadcast", "direct".
          */
-        identityRecipTarget: function (args) {
+        identityMsgGroupingTag: function (args) {
             if (args && args.id) {
-                identity._recipTarget(this._deferred, args, args.id, args.sourceSchema, args.target);
+                identity._msgGroupingTag(this._deferred, args, args.id, args.sourceSchema, args.tag);
             } else {
-                this._deferred.errback(new Error("rd.api().identity.recipTarget " +
+                this._deferred.errback(new Error("rd.api().identity.msgGroupingTag " +
                                                  "requires an args.id argument."));
             }
             return this;

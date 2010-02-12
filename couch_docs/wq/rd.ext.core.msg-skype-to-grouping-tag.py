@@ -21,7 +21,7 @@
 # Contributor(s):
 #
 
-# Emit rd.msg.recip-target schemas for skype chats.
+# Emit rd.msg.grouping-tag schemas for skype chats.
 
 def handler(src_doc):
     # fetch the list of identities which mean 'me' - hopefully one is a
@@ -45,9 +45,5 @@ def handler(src_doc):
         # is a replicated message from someone else or something...
         val = None
     if val is not None:
-        timestamp = src_doc['skype_timestamp']
-        items = {'target' : val,
-                 'timestamp': timestamp,
-                 'target-timestamp': [val, timestamp],
-                 }
-        emit_schema('rd.msg.recip-target', items)
+        items = {'tag': val}
+        emit_schema('rd.msg.grouping-tag', items)

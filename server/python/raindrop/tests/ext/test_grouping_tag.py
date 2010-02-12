@@ -10,14 +10,14 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
 
-        # open all recip-target schemas - should be only 1
-        key = ["rd.core.content", "schema_id", "rd.msg.recip-target"]
+        # open all grouping-tag schemas - should be only 1
+        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
-        # Check that recip-target is 'direct'.
+        # Check that grouping-tag is 'direct'.
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['target'], 'direct')
+        self.failUnlessEqual(rows[0]['doc']['tag'], 'direct')
 
     @defer.inlineCallbacks
     def test_bulk_sender(self):
@@ -28,24 +28,24 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         rdkey = ['identity', ['email', 'raindrop_test_recip@mozillamessaging.com']]
         si = {
             'rd_key': rdkey,
-            'rd_schema_id': 'rd.identity.recip-target',
+            'rd_schema_id': 'rd.identity.msg-grouping-tag',
             'rd_ext_id': 'rd.testsuite',
             'items' : {
-                'target': 'broadcast',
+                'tag': 'broadcast',
             }
         }
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
 
-        # open all recip-target schemas - should be only 1
-        key = ["rd.core.content", "schema_id", "rd.msg.recip-target"]
+        # open all grouping-tag schemas - should be only 1
+        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
-        # Check the recip-target schema for the identity caused the message
+        # Check the grouping-tag schema for the identity caused the message
         # to be reported as 'broadcast'.
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['target'], 'broadcast')
+        self.failUnlessEqual(rows[0]['doc']['tag'], 'broadcast')
 
 
 class TestSimpleCorpusBacklog(TestSimpleCorpus):

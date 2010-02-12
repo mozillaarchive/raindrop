@@ -850,7 +850,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         impersonalRemoveFrom: function (identityId) {
             //Remove any widget that has their first message from this
             //identity ID.
-            var i, widget, msg, body, recipTarget, conversations = [];
+            var i, widget, msg, body, groupingTag, conversations = [];
             for (i = this._supportingWidgets.length - 1; (widget = this._supportingWidgets[i]); i--) {
                 msg = widget.msgs && widget.msgs[0];
                 //If no message in this widget, skip it.
@@ -863,10 +863,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     //Convert conversation to a broadcast.
                     //A bit of a hack, assumes a lot of knowledge of
                     //the data model here.
-                    recipTarget = msg.schemas["rd.msg.recip-target"];
-                    if (recipTarget) {
-                        recipTarget.target = "broadcast";
-                        recipTarget["target-timestamp"][0] = "broadcast";
+                    groupingTag = msg.schemas["rd.msg.grouping-tag"];
+                    if (groupingTag) {
+                        groupingTag.tag = "broadcast";
+                        groupingTag["target-timestamp"][0] = "broadcast";
                     }
                     //Store the convo for the topic, and remove the widget.
                     conversations.push(widget.conversation);                  

@@ -106,9 +106,9 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
          */
         canHandle: function (conversation) {
             var msg = conversation.messages[0],
-                target = msg.schemas["rd.msg.recip-target"],
+                target = msg.schemas["rd.msg.grouping-tag"],
                 body = msg.schemas["rd.msg.body"], from, to;
-            target = target && target.target;
+            target = target && target.tag;
     
             from = body.from;
             from = body.from || (body.rd_key[0] === "rss-entry" && body.rd_key[1]);
@@ -126,7 +126,7 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
             //If target is broadcast or notification and not associated (probably)
             //a direct prototype check, not on an instance), or if an instance that
             //already has a from that matches the conversation's from
-            return (target === "broadcast" || target === "notification") &&
+            return target === "broadcast" &&
                    (!this.from || (this.from[0] === from[0] && this.from[1] === from[1]));
         },
     

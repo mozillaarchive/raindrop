@@ -222,26 +222,15 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
         _ = yield self.ensure_pipeline_complete()
 
-        # load the rd.msg.notification document and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.notification"]
+        # load the rd.msg.grouping-tag document and compare the results.
+        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 
         # Make sure we got one result with type twitter
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['type'], "twitter");
-        rd_key = rows[0]['doc']['rd_key']
-
-        # Check that recip-target is notification.
-        key = ["rd.core.content", "key-schema_id", [rd_key, "rd.msg.recip-target"]]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
-
-        # Make sure we got one result with type twitter
-        rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['target'], "notification");
+        self.failUnlessEqual(rows[0]['doc']['tag'], "twitter-notification");
 
     @defer.inlineCallbacks
     def test_facebook_notification(self):
@@ -251,26 +240,17 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         self.failUnlessEqual(ndocs, 3) # failed to load any corpus docs???
         _ = yield self.ensure_pipeline_complete()
 
-        # load the rd.msg.notification document and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.notification"]
+        # load the rd.msg.grouping-tag documents and compare the results.
+        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 
-        # Make sure we got one result with type twitter
+        # Each of the test messages get a different 'tag'
         rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['type'], "facebook");
-        rd_key = rows[0]['doc']['rd_key']
-
-        # Check that recip-target is notification.
-        key = ["rd.core.content", "key-schema_id", [rd_key, "rd.msg.recip-target"]]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
-
-        # Make sure we got one result with type twitter
-        rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['target'], "notification");
+        self.failUnlessEqual(len(rows), 3)
+        got_tags = sorted(row['doc']['tag'] for row in rows)
+        expected = ['facebook-comment', 'facebook-message', 'facebook-notification']
+        self.failUnlessEqual(got_tags, expected)
 
 class TestSimpleCorpusBacklog(TestSimpleCorpus):
     use_incoming_processor = not TestSimpleCorpus.use_incoming_processor

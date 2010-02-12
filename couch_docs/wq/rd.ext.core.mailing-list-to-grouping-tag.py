@@ -19,14 +19,19 @@
 # the Initial Developer. All Rights Reserved.
 #
 # Contributor(s):
-#
+#   Bryan Clark
 
-def handler(schema):
-    type = 'notification'
-    timestamp = 0
-    if 'timestamp' in schema:
-        timestamp = schema['timestamp']
-    items = {'target' : type,
-             'target-timestamp': [type, timestamp],
-             }
-    emit_schema('rd.msg.recip-target', items)
+# This the extension version of handling mailing list message recipient targets
+# We look for the list-id header or the list-unsubscribe header to identify that
+# a message was sent from a mailing list using proper headers
+
+# Eventually we should be looking at mailing-list types to see if the from
+# address matches that such that we aren't relying on mailing lists always
+# sending the correct headers like a number of newsletters seem to do.  Gmail
+# for one only requires that the list-unsubscribe header be sent every so often
+# and this causes us to miss detecting that those newsletters are still part
+# of the same scheme
+
+def handler(msg):
+    items = {'tag': 'mailing-list-%s' % msg['list_id']}
+    emit_schema('rd.msg.grouping-tag', items)

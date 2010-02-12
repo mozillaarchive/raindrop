@@ -231,7 +231,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
             //If a person replies to a message you sent we don't want it to look like a
             //"from you" message as much as it is a direct reply/conversation
             //XXX this should probably know what the last message showing is
-            target = (this.msgs[this.msgs.length - 1].schemas['rd.msg.recip-target'] && this.msgs[this.msgs.length - 1].schemas['rd.msg.recip-target'].target) || "";
+            target = (this.msgs[this.msgs.length - 1].schemas['rd.msg.grouping-tag'] && this.msgs[this.msgs.length - 1].schemas['rd.msg.grouping-tag'].tag) || "";
             targetName = target && this.i18n["targetLabel-" + target];
             if (targetName && this.typeNode) {
                 rd.escapeHtml(targetName, this.typeNode, "only");

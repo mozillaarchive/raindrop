@@ -1,0 +1,10 @@
+{
+  "schemas" : {
+    "rd.ext.workqueue" : {
+        "source_schemas" : ["rd.conv.summary"],
+        "code" : "RDFILE: *.py",
+        "content_type" : "application/x-python",
+        "info": "Creates summaries for display grouping"
+    }
+  }
+}

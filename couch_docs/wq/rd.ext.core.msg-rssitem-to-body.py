@@ -57,11 +57,3 @@ def handler(doc):
         ret['timestamp'] = timestamp = doc['timestamp']
 
     emit_schema('rd.msg.body', ret)
-    # and also emit a recipient-target - it probably should be its own
-    # extension, but really it is too trivial to bother with...
-    rt = {
-        'target' : 'broadcast',
-        'timestamp': timestamp,
-        'target-timestamp': ['broadcast', timestamp],
-    }
-    emit_schema('rd.msg.recip-target', rt)

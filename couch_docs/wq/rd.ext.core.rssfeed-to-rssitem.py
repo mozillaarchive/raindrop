@@ -108,5 +108,10 @@ def handler(doc):
             items['channel'] = info_values
             items['timestamp'] = items['updated_parsed']
             emit_schema('rd.raw.rss-entry', items, rd_key=rd_key)
+            # and also emit a grouping-tag - it probably should be its own
+            # extension, but really it is too trivial to bother with...
+            gt = {'tag': "-".join(doc['rd_key'])}
+            emit_schema('rd.msg.grouping-tag', gt, rd_key=rd_key)
+
             num += 1
     logger.info('created %d rss items from %r', num, doc['_id'])

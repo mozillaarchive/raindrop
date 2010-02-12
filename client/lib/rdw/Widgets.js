@@ -189,12 +189,31 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
 
         /** Does the actual display of the home view. */
         _renderHome: function () {
+            // This needs to be re-factored so each widget knows what
+            // 'grouping' it works with and request just that group.
+            // For now, we simulate 'impersonal' using groupings - but we do
+            // it in the front end instead of the back-end to prevent
+            // timeouts.
             api({
-                url: 'inflow/conversations/impersonal',
-                limit: this.conversationLimit,
-                message_limit: this.messageLimit 
-            }).ok(this, function (conversations) {
-                this.impersonalAdd(conversations);
+                url: 'inflow/grouping/summary'
+            }).ok(this, function (summaries) {
+                for each (var summary in summaries) {
+                    // ignore 'inflow' and 'sent'
+                    if (summary.rd_key == ['display-group', 'inflow'] ||
+                        summary.rd_key == ['display-group', 'sent'])
+                        continue;
+                    if (!summary.num_unread)
+                        continue;
+                    // call the API for this grouping.
+                    api({
+                        url: 'inflow/conversations/in_groups',
+                        keys: [summary.rd_key],
+                        limit: this.conversationLimit,
+                        message_limit: this.messageLimit 
+                    }).ok(this, function (conversations) {
+                        this.impersonalAdd(conversations);
+                    });
+                }
                 //Update the state of widgets based on hashchange. Important for
                 //first load of this widget, to account for current page state.
                 this.onHashChange(onHashChange.value);

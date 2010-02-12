@@ -30,7 +30,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         # for target in ['from', 'direct', 'group', 'broadcast']: - XXX - fix me when a 'group' message exists!
         for target in ['from', 'direct', 'broadcast']:
             num = yield self.get_num_with_key(
-                        ["rd.msg.recip-target", "target", target])
+                        ["rd.msg.grouping-tag", "tag", target])
             self.failUnless(num, (target, num))
 
         # There is at least one message from and to our test identity, and
