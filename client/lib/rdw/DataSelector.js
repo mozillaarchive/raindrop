@@ -26,19 +26,12 @@
 "use strict";
 
 require.def("rdw/DataSelector",
-["require", "rd", "dojo", "dojo/DeferredList", "rdw/_Base", "i18n!rdw/nls/i18n", "rd/MegaviewStore", "rdw/GoComboBox"],
-function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore) {
+["require", "rd", "dojo", "dojo/DeferredList", "rdw/_Base", "i18n!rdw/nls/i18n", "rd/MegaviewStore", "rdw/GoComboBox",
+ "text!rdw/templates/DataSelector!html"],
+function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox, template) {
 
     return dojo.declare("rdw.DataSelector", [Base], {
-        templateString: '<div class="rdwDataSelector dijitReset dijitInlineTable dijitLeft" dojoAttachEvent="onclick: onClick">' +
-                            '<div class="rdwDataSelectorUi" dojoAttachPoint="uiNode">' +
-                                '<div dojoAttachPoint="selectorNode"></div>' +
-                                '<div class="rdwDataSeletorResults hbox hidden" dojoAttachPoint="resultsNode">' +
-                                    '<ul class="rdwDataSelectorTypes" dojoAttachPoint="typesNode"></ul>' +
-                                    '<div class="rdwDataSelectorMatches boxFlex" dojoAttachPoint="matchContainerNode"></div>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>',
+        templateString: template,
     
         typeItemTemplate: '<li data-type="${type}">${name}</li>',
 

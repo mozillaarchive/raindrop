@@ -71,10 +71,19 @@
   display: none;
 }
 
+
+.rdwDataSelector .rdwDataSelectorFilters h3,
+.rdwDataSelector .rdwDataSelectorTypes,
+.rdwDataSelector .rdwDataSelectorResults {
+    display: none;
+}
+
 .rdwDataSelector.expanded {
     position: absolute;
-    width: 800px;
-    height: 500px;
+    top: -25px;
+    left: -10px;
+    width: 725px;
+    height: 325px;
     -moz-box-shadow: 0 0 10px #888888;
     -webkit-box-shadow: 0 0 10px #888888;
     background-color: #fff;
@@ -82,40 +91,81 @@
     border-top: none;
 }
 
-.rdwDataSeletorResults {
+.rdwDataSelector.expanded .rdwDataSelectorFilters h3,
+.rdwDataSelector.expanded .rdwDataSelectorTypes,
+.rdwDataSelector.expanded .rdwDataSelectorResults {
+    display: block;
+}
+
+.rdwDataSelector.expanded .rdwDataSelectorUi {
     width: 100%;
+    height: 100%;
 }
 
-/* Do not want the hbox active when not expanded. */
-.rdwDataSelector .rdwDataSeletorResults.hbox {
-    display: none;
+.rdwDataSelector.expanded .rdwDataSelectorFilters {
+    width: 240px;
+    height: 100%;
+    padding-top: 14px;
+    border-right: 1px solid #CCCCCC;
 }
 
-/*When expanded use the normal hbox stuff. */
-.rdwDataSelector.expanded .rdwDataSeletorResults.hbox {
-    display: -webkit-box;
-    display: -moz-box;
-    display: box;
+.rdwDataSelector.expanded .dijitComboBox {
+    margin-left: 8px;
+}
+
+.rdwDataSelector.expanded .rdwDataSelectorFilters h3 {
+    margin: 10px;
+    font-size: 100%;
+}
+
+.rdwDataSelector.expanded .rdwDataSelectorResults {
+    height: 320px;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .rdwDataSelectorTypes {
-    width: 220px;
+    border-top: 1px solid #CCCCCC;
     list-style: none;
-    border-top: 1px solid gray;
-    border-right: 1px solid gray;
 }
 
 .rdwDataSelectorTypes li {
     height: 40px;
     line-height: 40px;
     padding: 0 0 0 10px;
-    border-bottom: 1px solid gray;
+    border-bottom: 1px solid #CCCCCC;
+}
+
+.rdwDataSelectorResults {
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.rdwDataSelectorResults h3 {
+    margin: 43px 0 10px 10px;
+    font-size: 100%;
 }
 
 .rdwDataSelectorMatches {
-    
+    padding: 10px;
+    border-top: 1px solid #CCCCCC;
+    -moz-column-count: 2;
+    -webkit-column-count: 2;
+    column-count: 2;
 }
 
 .rdwDataSelectorMatches ul {
     list-style: none;
 }
+
+.rdwDataSelectorMatches h4 {
+    font-weight: normal;
+}
+
+.rdwDataSelectorMatches .rdwGoMatchMenuRealOption.dijitMenuItem  {
+    border: 0 none transparent;
+    color: #FF5959;
+}
+
+
