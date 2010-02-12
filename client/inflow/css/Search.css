@@ -71,23 +71,51 @@
   display: none;
 }
 
-/*
-.rdwDataSelector .rdwDataSelectorUi {
-    width: auto;
-    height: auto;
-    background-color: inherit;
-}
-
-.rdwDataSelectorUi {
-    width: 800px;
-    height: 500px;
-    background-color: red;
-}
-*/
-
 .rdwDataSelector.expanded {
     position: absolute;
     width: 800px;
     height: 500px;
-    background-color: red;    
+    -moz-box-shadow: 0 0 10px #888888;
+    -webkit-box-shadow: 0 0 10px #888888;
+    background-color: #fff;
+    border: 1px solid #888;
+    border-top: none;
+}
+
+.rdwDataSeletorResults {
+    width: 100%;
+}
+
+/* Do not want the hbox active when not expanded. */
+.rdwDataSelector .rdwDataSeletorResults.hbox {
+    display: none;
+}
+
+/*When expanded use the normal hbox stuff. */
+.rdwDataSelector.expanded .rdwDataSeletorResults.hbox {
+    display: -webkit-box;
+    display: -moz-box;
+    display: box;
+}
+
+.rdwDataSelectorTypes {
+    width: 220px;
+    list-style: none;
+    border-top: 1px solid gray;
+    border-right: 1px solid gray;
+}
+
+.rdwDataSelectorTypes li {
+    height: 40px;
+    line-height: 40px;
+    padding: 0 0 0 10px;
+    border-bottom: 1px solid gray;
+}
+
+.rdwDataSelectorMatches {
+    
+}
+
+.rdwDataSelectorMatches ul {
+    list-style: none;
 }

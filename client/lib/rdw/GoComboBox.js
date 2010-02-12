@@ -67,10 +67,13 @@ function    (rd,   dojo,   GoMatchMenu,       dijit) {
         },
 
         _openResultList: function(results, dataObject) {
-            this.parentWidget.onOpen();            
-            this.parentWidget.onDataStoreResults(results);
+            var parent = this.parentWidget;
+            parent.onOpen();
+            results = parent.sortResultsByType(results);
+            parent.onDataStoreResults(results);
 
-            return this.inherited("_openResultList", arguments);
+            return dijit.form.ComboBoxMixin.prototype._openResultList.apply(this, [results, dataObject]);
+            //return this.inherited("_openResultList", [results, dataObject]);
         },
 
         _onKeyPress: function(evt) {

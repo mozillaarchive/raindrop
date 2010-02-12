@@ -33,14 +33,14 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore) {
         templateString: '<div class="rdwDataSelector dijitReset dijitInlineTable dijitLeft" dojoAttachEvent="onclick: onClick">' +
                             '<div class="rdwDataSelectorUi" dojoAttachPoint="uiNode">' +
                                 '<div dojoAttachPoint="selectorNode"></div>' +
-                                '<div class="rdwDataSeletorResults">' +
-                                    '<ul dojoAttachPoint="typesNode"></ul>' +
-                                    '<div dojoAttachPoint="matchContainerNode"></div>' +
+                                '<div class="rdwDataSeletorResults hbox hidden" dojoAttachPoint="resultsNode">' +
+                                    '<ul class="rdwDataSelectorTypes" dojoAttachPoint="typesNode"></ul>' +
+                                    '<div class="rdwDataSelectorMatches boxFlex" dojoAttachPoint="matchContainerNode"></div>' +
                                 '</div>' +
                             '</div>' +
                         '</div>',
     
-        typeItemTemplate: '<li data-type="${type}">${typeLabel}</li>',
+        typeItemTemplate: '<li data-type="${type}">${name}</li>',
 
         comboWidget: "rdw/GoComboBox",
         //comboWidget: "dijit/form/ComboBox",
@@ -166,7 +166,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore) {
          * @param {Array} results
          */
         onDataStoreResults: function(results) {
-            this.showTypeLabels(this.uniqueTypeLabels(results));
+            this.showTypeLabels(results);
         },
 
         typeLabels: {
@@ -174,19 +174,23 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore) {
             "locationTag": i18n.locationTagTypeLabel
         },
 
-        /** Given an array of results, give back a list of unique types with their
-         * labels, suitable for UI display.
+        /** Given an array of MegaviewStore results, give back a list of unique types with their
+         * labels, with items under that label, suitable for UI display.
          */
-        uniqueTypeLabels: function (results) {
-            var labels = [], i, item, unique = {}, type;
+        sortResultsByType: function (results) {
+            var labels = [], i, item, unique = {}, type, typeObj;
             for (i = 0; (item = results[i]); i++) {
                 type = item.type;
+                typeObj = unique[type];
                 if (!unique[type]) {
                     labels.push({
                         type: type,
-                        typeLabel: this.typeLabels[type] || type
+                        name: this.typeLabels[type] || type,
+                        items: [item]
                     })
-                    unique[type] = true;
+                    unique[type] = labels[labels.length - 1];
+                } else {
+                    typeObj.items.push(item);
                 }
             }
 
