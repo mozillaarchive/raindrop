@@ -61,9 +61,9 @@ class TestConvoSimple(APITestCase):
         return self.test_identities_mine(iids)
 
     @defer.inlineCallbacks
-    def test_direct(self):
+    def test_direct(self, endpoint="inflow/conversations/direct"):
         known_msgs = self.get_known_msgs_to_identities()
-        result = yield self.call_api("inflow/conversations/direct")
+        result = yield self.call_api(endpoint)
         seen = set()
         for convo in result:
             self.sanity_check_convo(convo)
@@ -75,6 +75,10 @@ class TestConvoSimple(APITestCase):
         self.failUnlessEqual(seen.intersection(known_msgs), known_msgs)
         unknown_msgs = self.get_known_msgs_not_from_identities()
         self.failUnlessEqual(seen.intersection(unknown_msgs), set())
+
+    @defer.inlineCallbacks
+    def test_personal(self):
+        _ = yield self.test_direct("inflow/conversations/personal")
 
     @defer.inlineCallbacks
     def test_twitter(self):
