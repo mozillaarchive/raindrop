@@ -60,6 +60,9 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         //the person docs from the couch have loaded.
         initialValue: "",
 
+        /** Keyboard shortcut to expand the UI */
+        keyboardShortcut: "/",
+
         /** Dijit lifecycle method executed before template evaluated */
         postMixInProperties: function () {
             this.inherited("postMixInProperties", arguments);
@@ -82,6 +85,12 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
                 onChange: function() {}
             };
 
+
+            //Bind document-wide events that handle opening and closing of the
+            //expanded UI.
+            this.connect(document.documentElement, "onkeypress", "onDocKeyPress");
+            this.connect(document.documentElement, "onclick", "onDocClick");
+            
             this.createWidget();
         },
 
@@ -119,6 +128,40 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         },
 
         /**
+         * Global keypress handler, used to know when to expand the UI.
+         * @param {Event} evt
+         */
+        onDocKeyPress: function(evt) {
+            if (evt.charOrCode === this.keyboardShortcut && !this.isExpanded) {
+                this.expand(true);
+            }
+        },
+
+        /**
+         * Global click handler, used to know if user clicks outside the
+         * expanded box then the UI should be collapsed. Only do this work
+         * if the UI is expanded.
+         * @param {Event} evt
+         */
+        onDocClick: function(evt) {
+            if (this.isExpanded) {
+                //If click is not within the widget close it.
+                var isOutside = true, node = evt.target;
+                while (node.parentNode) {
+                    if (node.id === this.id) {
+                        isOutside = false;
+                        break;
+                    }
+                    node = node.parentNode;
+                }
+
+                if (isOutside) {
+                    this.onClose();
+                }
+            }
+        },
+
+        /**
          * Triggered by GoComboBox when its text element is focused.
          */
         onGoFocus: function(evt) {
@@ -145,11 +188,26 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
             }
         },
 
-        expand: function() {
+        /**
+         * Expands the UI.
+         * @param {Boolean} shouldFocus if true, then the focus will be placed
+         * in the combo box widget, if it is instantiated.
+         */
+        expand: function(shouldFocus) {
             if (!this.isExpanded) {
                 dojo.addClass(this.domNode, "expanded");
                 this.isExpanded = true;
-            }            
+            }
+            
+            //Focus in the text area, if desired
+            if (shouldFocus && this.selectorInstance) {
+                this.selectorInstance.focus();
+            }
+            
+            //Trigger an "all" query if there are no results.
+            if (this.selectorInstance && !this.selectorInstance.textbox.value) {
+                this.selectorInstance._startSearchAll();
+            }
         },
 
         /**

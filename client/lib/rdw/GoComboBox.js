@@ -80,9 +80,9 @@ function    (rd,   dojo,   GoMatchMenu,       dijit) {
             var key = evt.charOrCode, keys = dojo.keys;
 
             if (key === keys.ESCAPE || key === keys.ENTER) {
-                this._reallyClose = true;
-            } else {
-                this._reallyClose = false;
+                //Close down the expanded UI.
+                dojo.style(this.matchContainerNode, "display", "none");
+                this.parentWidget.onClose();
             }
             return this.inherited("_onKeyPress", arguments);
         },
@@ -99,10 +99,6 @@ function    (rd,   dojo,   GoMatchMenu,       dijit) {
                 //dijit.popup is not used, that work is done here.
                 this._popupWidget._blurOptionNode();
                 this._popupWidget.onClose();
-                if (this._reallyClose) {
-                    dojo.style(this.matchContainerNode, "display", "none");
-                    this.parentWidget.onClose();
-                }
                 //End Raindrop change
                 this._arrowIdle();
                 this._isShowingNow=false;
