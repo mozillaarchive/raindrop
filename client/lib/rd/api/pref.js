@@ -51,7 +51,7 @@ require.def("rd/api/pref",
 
     dojo._mixin(pref, {
         _key: function (prefId) {
-            return ['rd.core.content', 'key-schema_id', [["pref", prefId], "rd.pref"]];
+            return ['key-schema_id', [["pref", prefId], "rd.pref"]];
         },
 
         get: function (dfd, args, prefId) {

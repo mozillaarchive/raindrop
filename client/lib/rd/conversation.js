@@ -48,8 +48,8 @@ function (rd, dojo, api) {
         //location ID, then pulls the conversations associated with those messages.
         //Conversation with the most recent message will be first.
         location: function (/*Array*/locationId, /*Number*/limit, /*Number*/skip, /*Function*/callback, /*Function*/errback) {
-            api().megaview({
-                key: ["rd.msg.location", "location", locationId],
+            api().view('msg_location', {
+                key: locationId,
                 reduce: false,
                 limit: limit,
                 skip: skip

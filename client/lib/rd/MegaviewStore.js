@@ -343,8 +343,7 @@ function (require, rd, dojo, DeferredList, api) {
             //console.log("contactQuery", query, count);
             var dfd = new dojo.Deferred(),
                 args = {
-                    startkey: ["rd.contact", "name", query],
-                    endkey: ["rd.contact", "name", query + "\u9999"],
+                    key: query,
                     reduce: false,
                     ioPublish: false
                 };
@@ -353,14 +352,11 @@ function (require, rd, dojo, DeferredList, api) {
                 args.limit = count;
             }
     
-            api().megaview(args)
+            api().view('contact_name', args)
             .ok(this, function (json) {
                 var items = [], i, row, name;
                 for (i = 0; (row = json.rows[i]); i++) {
-                    name = row.key[2];
-                    if (!name) {
-                        continue;
-                    }
+                    name = row.key;
                     items.push({
                         id: row.value.rd_key[1],
                         type: "contact",
@@ -379,29 +375,29 @@ function (require, rd, dojo, DeferredList, api) {
             //console.log("locationTagQuery", query, count);
             var dfd = new dojo.Deferred(),
                 args = {
-                    startkey: ["rd.msg.location", "location", [query]],
-                    endkey: ["rd.msg.location", "location", [query + "\u9999", {}]],
+                    key: query,
                     reduce: true,
                     group: true,
                     ioPublish: false
                 };
-    
+
+            console.log("XXXXXXX - check locationTagQuery:", query);    
             if (count && count !== Infinity) {
                 args.limit = count;
             }
     
-            api().megaview(args)
+            api().view('msg_location', args)
             .ok(this, function (json) {
                 var items = [], i, row, name;
                 for (i = 0; (row = json.rows[i]); i++) {
-                    name = row.key[2];
+                    name = row.key;
                     if (!name) {
                         continue;
                     }
                     items.push({
-                        id: row.key[2],
+                        id: row.key,
                         type: "locationTag",
-                        name: row.key[2]
+                        name: row.key
                     });
                 }
                 this._addItems(items);

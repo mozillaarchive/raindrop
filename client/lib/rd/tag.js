@@ -40,9 +40,7 @@ function (rd, dojo, api) {
          * object as an argument, but that error object is not strictly defined.
          */
         locations: function (callback, errback) {
-            this._fetchGroupedIds(
-                ["rd.msg.location", "location"],
-                ["rd.msg.location", "location", {}],
+            this._fetchGroupedIds('msg_location',
                 callback,
                 errback
             );
@@ -58,9 +56,7 @@ function (rd, dojo, api) {
          * object as an argument, but that error object is not strictly defined.
          */
         lists: function (callback, errback) {
-            this._fetchGroupedIds(
-                ['rd.mailing-list', 'id'],
-                ['rd.mailing-list', 'id', {}],
+            this._fetchGroupedIds('mailing_list_id',
                 callback,
                 errback
             );
@@ -81,16 +77,14 @@ function (rd, dojo, api) {
          *
          * @private
          */
-        _fetchGroupedIds: function (startKey, endKey, callback, errback) {
-            var api = api().megaview({
-                startkey: startKey,
-                endkey: endKey,
+        _fetchGroupedIds: function (vwname, callback, errback) {
+            var api = api().view(vwname, {
                 group: true
             })
             .ok(this, function (json) {
                 var list = [], i, row;
                 for (i = 0; (row = json.rows[i]); i++) {
-                    list.push(row.key[2]);
+                    list.push(row.key);
                 }
                 callback(list);
             });

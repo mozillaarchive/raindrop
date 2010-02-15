@@ -96,7 +96,7 @@ function (rd, dojo, api, identity) {
                         found.push(temp);
                     } else {
                         missing.push(id);
-                        keys.push(["rd.core.content", "key-schema_id", [["contact", id], "rd.contact"]]);
+                        keys.push(["key-schema_id", [["contact", id], "rd.contact"]]);
                     }
                 }
         

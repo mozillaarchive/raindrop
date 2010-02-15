@@ -29,7 +29,7 @@ require.def("rd/accountIds",
 [
     "rd",
     "rdCouch!megaview:" + JSON.stringify({
-        key: ["rd.core.content", "schema_id", "rd.account"],
+        key: ["schema_id", "rd.account"],
         reduce: false,
         include_docs: true
     })

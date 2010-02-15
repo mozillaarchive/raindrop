@@ -374,7 +374,7 @@ function (require, rd, dojo, dijit, Base, api, util, template) {
          */
         fetchManifest: function () {
             api().megaview({
-                key: ["rd.core.content", "key", ["ext", this.moduleName]],
+                key: ["key", ["ext", this.moduleName]],
                 include_docs: true,
                 reduce: false
             })

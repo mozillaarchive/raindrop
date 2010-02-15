@@ -118,7 +118,7 @@ function (rd, dojo, api) {
             this._idtyContactsDfd = new dojo.Deferred();
     
             api().megaview({
-                key: ["rd.core.content", "schema_id", "rd.identity.contacts"],
+                key: ["schema_id", "rd.identity.contacts"],
                 reduce: false,
                 include_docs: true
             })
@@ -179,7 +179,7 @@ function (rd, dojo, api) {
                             //The rd.identity record will not exist, create a fake one.
                             found.push(this._createFakeIdentity(id));
                         } else {
-                            keys.push(["rd.core.content", "key-schema_id", [["identity", id], "rd.identity"]]);
+                            keys.push(["key-schema_id", [["identity", id], "rd.identity"]]);
                             map[id.join(",")] = 0;
                         }
                     }
@@ -301,7 +301,7 @@ function (rd, dojo, api) {
             if (!flags) {
                 //Just get the value.
                 api().megaview({
-                    key: ["rd.core.content", "key-schema_id", [["identity", id], "rd.identity.sender-flags"]],
+                    key: ["key-schema_id", [["identity", id], "rd.identity.recip-target"]],
                     reduce: false,
                     include_docs: true
                 })

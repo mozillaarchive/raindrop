@@ -44,7 +44,7 @@ function (rd, dojo, api, identity) {
             //Generate proper key for megaview lookup.
             var keys = [], i, id;
             for (i = 0; (id = ids[i]); i++) {
-                keys.push(['rd.core.content', 'key', id]);
+                keys.push(['key', id]);
             }
 
             api().megaview({
@@ -160,8 +160,8 @@ function (rd, dojo, api, identity) {
             //Get the key for each item and build up a quick lookup that has all
             var fresh = {}, keys = [], i, id;
             for (i = 0; (id = ids[i]); i++) {
-                keys.push(["rd.core.content", "key-schema_id", [id.rd_key, "rd.msg.archived"]]);
-                keys.push(["rd.core.content", "key-schema_id", [id.rd_key, "rd.msg.deleted"]]);
+                keys.push(["key-schema_id", [id.rd_key, "rd.msg.archived"]]);
+                keys.push(["key-schema_id", [id.rd_key, "rd.msg.deleted"]]);
                 fresh[id.rd_key.join(",")] = true;
             }
     

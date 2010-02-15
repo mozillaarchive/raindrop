@@ -58,7 +58,6 @@ function (require,   dojo,   rd,   api,      Widget,          Templated, templat
             username: "",
             name: "",
             password: "",
-            rd_megaview_expandable: "identities",
             rd_schema_id: "rd.account"
         },
 
@@ -130,8 +129,8 @@ function (require,   dojo,   rd,   api,      Widget,          Templated, templat
                         //TODO: make this extensible.
                         //First see if there is an existing record
                         //and delete it.
-                        rd.api().megaview({
-                            key: ["rd.account", "proto", "smtp"],
+                        rd.api().view('acct_protocols', {
+                            key: "smtp",
                             reduce: false,
                             include_docs: true
                         })
@@ -169,9 +168,6 @@ function (require,   dojo,   rd,   api,      Widget,          Templated, templat
                     rd_key: [
                         "raindrop-account",
                         "account!smtp"
-                    ],
-                    rd_megaview_expandable: [
-                        "identities"
                     ],
                     rd_schema_id: "rd.account",
                     rd_source: null,

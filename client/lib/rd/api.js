@@ -347,6 +347,12 @@ function (rd, dojo, rdCouch) {
     
             return this;
         },
+
+        view: function (vwname, args) {
+            args = dojo.delegate(args);
+            args.url = this.dbPath(args) + "_design/raindrop!content!all/_view/" + vwname;
+            return this.xhr(args);
+        },
     
         megaview: function (args) {
             args = dojo.delegate(args);
@@ -479,9 +485,6 @@ function (rd, dojo, rdCouch) {
                 schema: null,
                 rd_source: item.rd_source || null
             };
-            if (item.rd_megaview_expandable) {
-                doc.rd_megaview_expandable = item.rd_megaview_expandable;
-            }
             var docUrl = this.dbPath(args) + doc._id;
             if (item._rev) {
                 docUrl += "?rev=" + item._rev;

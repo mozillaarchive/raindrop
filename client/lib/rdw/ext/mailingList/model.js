@@ -143,8 +143,8 @@ function (rd, dojo, api) {
             var doc = this._ids[listId],
                 dfd = new dojo.Deferred();
             if (doc === "needsUpdate" || force) {
-                api().megaview({
-                    key: ['rd.mailing-list', 'id', listId],
+                api().view('mailing_list_id', {
+                    key: listId,
                     reduce: false,
                     include_docs: true
                 })

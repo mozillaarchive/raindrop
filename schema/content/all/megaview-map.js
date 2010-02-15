@@ -21,12 +21,6 @@
  * Contributor(s):
  * */
 
-// A doc may have rd_megaview_ignore_doc set - this excludes the doc
-// completely from the megaview.
-// A doc may also have rd_megaview_ignore_values set - this writes the
-// 'rd.core.*' schemas (so the document IDs can still be located) but the
-// values aren't written.
-
 function(doc) {
   if (doc.rd_schema_id
     && !doc.rd_megaview_ignore_doc) {

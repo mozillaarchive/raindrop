@@ -42,8 +42,8 @@ require.modify("rd/conversation", "rdw/ext/mailingList/ext-rd/conversation",
                  * @param {Function} [errback]
                  */
                 mailingList: function (listId, limit, skip, callback, errback) {
-                    api().megaview({
-                        key: ["rd.msg.email.mailing-list", "list_id", listId],
+                    api().view(msg_by_mailinglist, {
+                        key: listId,
                         reduce: false,
                         limit: limit,
                         skip: skip
@@ -81,8 +81,7 @@ require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
                 mailingListQuery: function (query, count) {
                     var dfd = new dojo.Deferred(),
                         args = {
-                        startkey: ["rd.mailing-list", "id", query],
-                        endkey: ["rd.mailing-list", "id", query + "\u9999"],
+                        key: query,
                         reduce: false,
                         ioPublish: false
                     };
@@ -91,18 +90,18 @@ require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
                         args.limit = count;
                     }
     
-                    api().megaview(args)
+                    api().view('mailing_list_id', args)
                     .ok(this, function (json) {
                         var items = [], i, row, name;
                         for (i = 0; (row = json.rows[i]); i++) {
-                            name = row.key[2];
+                            name = row.key;
                             if (!name) {
                                 continue;
                             }
                             items.push({
                                 id: row.value.rd_key[1],
                                 type: "mailingList",
-                                name: row.key[2]
+                                name: name
                             });
                         }
                         this._addItems(items);

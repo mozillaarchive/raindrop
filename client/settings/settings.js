@@ -36,7 +36,7 @@ function (require,   dojo,   rd,   Account,            api) {
 
         //Fetch all accounts and create widgets, but only for the allowed types.
         api().megaview({
-            key: ["rd.core.content", "schema_id", "rd.account"],
+    key: ["schema_id", "rd.account"],
             reduce: false,
             include_docs: true
         })

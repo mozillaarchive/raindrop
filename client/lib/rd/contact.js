@@ -317,7 +317,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
                 // open all contacts - note this also includes contacts without
                 // associated identities...
                 api().megaview({
-                    key: ["rd.core.content", "schema_id", "rd.contact"],
+                    key: ["schema_id", "rd.contact"],
                     include_docs: true,
                     reduce: false
                 })
@@ -345,9 +345,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
     
         //Loads the contact-identity mapping.
         _loadIdtyMapping: function () {
-            api().megaview({
-                startkey: ["rd.identity.contacts", "contacts"],
-                endkey: ["rd.identity.contacts", "contacts", {}],
+            api().view('identities_by_contact', {
                 reduce: false
             })
             .ok(this, function (json) {
@@ -358,7 +356,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
                 } else {
                     for (var i = 0, row; (row = json.rows[i]); i++) {
                         // check we really have an identity record...
-                        this._mapIdtyToContact(row.value, row.key[2][0]);
+                        this._mapIdtyToContact(row.value.rd_key, row.id, row.key);
                     }
     
                     if (this._listStatus === "needFetch") {
@@ -375,16 +373,16 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
         },
     
         //Given a new identity, map it correctly to the contact in internal storage
-        _mapIdtyToContact: function (/*Object*/idtyMapDoc, /*String*/contactId) {
+        _mapIdtyToContact: function (/*Object*/idty_rdkey, idty_docid, /*String*/contactId) {
     
-            var rdkey = idtyMapDoc.rd_key,
+            var rdkey = idty_rd_key,
                 idid = rdkey[1],
                 idtyStringKey = idid.join("|"),
                 byContact, byIdty;
     
             //Hold onto the document ID for this identity map,
             //for use in updating/merging identity/contact relationships
-            this._idtyMapIds[idtyStringKey] = idtyMapDoc._id;
+            this._idtyMapIds[idtyStringKey] = idty_docid;
         
             //Store identities by contactId
             byContact = this._byContact[contactId];
@@ -519,7 +517,6 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
                 rd_key: identity.rd_key,
                 rd_schema_id: "rd.identity.contacts",
                 rd_source: [identity._id, identity._rev],
-                rd_megaview_expandable: ["contacts"],
                 items: {
                     contacts: [
                         [contactId, null]
@@ -532,7 +529,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
             .ok(this, function (doc) {
     
                 //Update the data store.
-                this._mapIdtyToContact(doc, contactId);
+                this._mapIdtyToContact(doc.rd_key, doc._id, contactId);
                 this._attachIdentity(identity);
     
                 callback();
