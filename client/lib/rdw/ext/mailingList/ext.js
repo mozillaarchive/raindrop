@@ -115,10 +115,9 @@ require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
     }
 );
 
-
 require.modify("rdw/DataSelector", "rdw/ext/mailingList/ext-rdw/DataSelector",
-    ["rd", "rdw/DataSelector"],
-    function (rd) {
+    ["rd", "i18n!rdw/ext/mailingList/nls/i18n", "rdw/DataSelector"],
+    function (rd, i18n) {
         //Allow DataSelector to use mailingList in the all selector, and to
         //handle mailingList selections.
         rd.applyExtension("rdw/ext/mailingList/ext", "rdw/DataSelector", {
@@ -126,7 +125,11 @@ require.modify("rdw/DataSelector", "rdw/ext/mailingList/ext-rdw/DataSelector",
                 allType: [
                     "mailingList"
                 ],
-    
+
+                typeLabels: {
+                    "mailingList": i18n.mailingListTypeLabel
+                },
+
                 /**
                  * Dispatch function when a mailingList is selected.
                  * @param {String} list

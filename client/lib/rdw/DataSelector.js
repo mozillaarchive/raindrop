@@ -22,7 +22,7 @@
  * */
 
 /*jslint plusplus: false, nomen: false */
-/*global require: false */
+/*global require: false, document: false */
 "use strict";
 
 require.def("rdw/DataSelector",
@@ -36,7 +36,6 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         typeItemTemplate: '<li data-type="${type}">${name}</li>',
 
         comboWidget: "rdw/GoComboBox",
-        //comboWidget: "dijit/form/ComboBox",
 
         //type can have values of "identityContact", "contact", or "locationTag"
         //by default. Extensions can add other types by creating a typeLoaded function
@@ -82,7 +81,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
             //Create a fake widget that holds the uiNode.
             this.fakeUiWidget = {
                 domNode: this.uiNode,
-                onChange: function() {}
+                onChange: function () {}
             };
 
 
@@ -131,7 +130,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * Global keypress handler, used to know when to expand the UI.
          * @param {Event} evt
          */
-        onDocKeyPress: function(evt) {
+        onDocKeyPress: function (evt) {
             if (evt.charOrCode === this.keyboardShortcut && !this.isExpanded) {
                 this.expand(true);
             }
@@ -143,7 +142,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * if the UI is expanded.
          * @param {Event} evt
          */
-        onDocClick: function(evt) {
+        onDocClick: function (evt) {
             if (this.isExpanded) {
                 //If click is not within the widget close it.
                 var isOutside = true, node = evt.target;
@@ -164,7 +163,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         /**
          * Triggered by GoComboBox when its text element is focused.
          */
-        onGoFocus: function(evt) {
+        onGoFocus: function (evt) {
             this.expand();
         },
 
@@ -173,15 +172,15 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * choices.
          * @param {Event} evt
          */
-        onClick: function(evt) {
+        onClick: function (evt) {
             this.expand();
         },
 
-        onOpen: function() {
+        onOpen: function () {
             this.expand();        
         },
 
-        onClose: function() {
+        onClose: function () {
             if (this.isExpanded) {
                 dojo.removeClass(this.domNode, "expanded");
                 this.isExpanded = false;
@@ -193,17 +192,17 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * @param {Boolean} shouldFocus if true, then the focus will be placed
          * in the combo box widget, if it is instantiated.
          */
-        expand: function(shouldFocus) {
+        expand: function (shouldFocus) {
             if (!this.isExpanded) {
                 dojo.addClass(this.domNode, "expanded");
                 this.isExpanded = true;
             }
-            
+
             //Focus in the text area, if desired
             if (shouldFocus && this.selectorInstance) {
                 this.selectorInstance.focus();
             }
-            
+
             //Trigger an "all" query if there are no results.
             if (this.selectorInstance && !this.selectorInstance.textbox.value) {
                 this.selectorInstance._startSearchAll();
@@ -216,7 +215,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * left side.
          * @param {Array} results
          */
-        onDataStoreResults: function(results) {
+        onDataStoreResults: function (results) {
             this.showTypeLabels(results);
         },
 
@@ -238,7 +237,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
                         type: type,
                         name: this.typeLabels[type] || type,
                         items: [item]
-                    })
+                    });
                     unique[type] = labels[labels.length - 1];
                 } else {
                     typeObj.items.push(item);
@@ -248,7 +247,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
             return labels;
         },
 
-        showTypeLabels: function(labels) {
+        showTypeLabels: function (labels) {
             var i, label, html = "";
 
             if (labels) {
