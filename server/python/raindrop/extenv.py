@@ -164,7 +164,9 @@ def get_ext_env(doc_model, context, src_doc, ext):
             result = threads.blockingCallFromThread(reactor,
                         doc_model.open_view,
                         viewId='acct_identities',
-                        reduce=False,
+                        reduce=True,
+                        group=True,
+                        group_level=1,
                         )
             for row in result['rows']:
                 iid = row['key']
@@ -330,7 +332,7 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
 
     # Find conversations associated with any and all of the messages;
     results = []
-    keys = [['rd.core.content', 'key-schema_id', [rdkey, 'rd.msg.conversation']]
+    keys = [['key-schema_id', [rdkey, 'rd.msg.conversation']]
             for rdkey in msg_keys]
     results = threads.blockingCallFromThread(reactor,
                     doc_model.open_view, keys=keys, include_docs=True, reduce=False)

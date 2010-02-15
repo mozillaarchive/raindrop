@@ -87,7 +87,7 @@ def handler(doc):
             continue
         rd_key = ['rss-entry', guid]
         entries_by_rdkey[tuple(rd_key)] = entry
-        keys.append(['rd.core.content', 'key-schema_id', [rd_key, 'rd.raw.rss-entry']])
+        keys.append(['key-schema_id', [rd_key, 'rd.raw.rss-entry']])
 
     # query for existing items
     existing_by_rdkey = {}

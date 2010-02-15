@@ -152,7 +152,7 @@ class TestCaseWithDB(TestCase):
             # config.
             got = yield db.openView(dbinfo['name'],
                                     'raindrop!content!all', 'megaview',
-                                    key=['rd.core.content', 'schema_id', 'rd.account'],
+                                    key=['schema_id', 'rd.account'],
                                     include_docs=True, reduce=False)
             wanted_ids = set(acct['id']
                              for acct in config.accounts.itervalues())

@@ -40,7 +40,7 @@ def handler(doc):
         msg_id = item['ENVELOPE'][-1]
         rdkey = get_rdkey_for_email(msg_id)
         rdkeys.append(rdkey)
-        keys.append(['rd.core.content', 'key-schema_id', [rdkey, 'rd.msg.seen']])
+        keys.append(['key-schema_id', [rdkey, 'rd.msg.seen']])
         imap_flags.append((rdkey, item['FLAGS']))
     result = open_view(keys=keys, reduce=False, include_docs=True)
 
@@ -53,7 +53,7 @@ def handler(doc):
     existing_rdkeys = set()
     keys = []
     for rdkey in rdkeys:
-        keys.append(['rd.core.content', 'key-schema_id', [rdkey, 'rd.msg.rfc822']])
+        keys.append(['key-schema_id', [rdkey, 'rd.msg.rfc822']])
     result = open_view(keys=keys, reduce=False)
     for row in result['rows']:
         existing_rdkeys.add(tuple(row['value']['rd_key']))

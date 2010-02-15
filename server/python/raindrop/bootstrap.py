@@ -396,8 +396,8 @@ def update_apps(whateva):
     replacements = {}
 
     keys = [
-        ["rd.core.content", "schema_id", "rd.ext.ui"],
-        ["rd.core.content", "schema_id", "rd.ext.uiext"],
+        ["schema_id", "rd.ext.ui"],
+        ["schema_id", "rd.ext.uiext"],
     ]
     results = yield dm.open_view(keys=keys, include_docs=True, reduce=False)
     all_rows = results['rows']

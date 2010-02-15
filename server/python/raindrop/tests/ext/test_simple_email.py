@@ -11,7 +11,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # There should be exactly one 'rd.msg.email' mail in our DB - check that.
-        key = ["rd.core.content", "schema_id", "rd.msg.email"]
+        key = ["schema_id", "rd.msg.email"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -33,7 +33,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # There should be exactly one 'rd.msg.body' mail in our DB - check that
-        key = ["rd.core.content", "schema_id", "rd.msg.body"]
+        key = ["schema_id", "rd.msg.body"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -66,13 +66,13 @@ class TestSimpleCorpus(TestCaseWithCorpus):
                      'raindrop_test_recip3@mozillamessaging.com']:
             rd_key = ['identity', ['email', addy]]
             sch_id = 'rd.identity.exists'
-            key = ["rd.core.content", "key-schema_id", [rd_key, sch_id]]
+            key = ["key-schema_id", [rd_key, sch_id]]
             result = yield self.doc_model.open_view(key=key, reduce=False,
                                                     include_docs=True)
             self.failUnlessEqual(len(result['rows']), 1, addy)
             # and the contact
             
-            key = ["rd.core.content", "key-schema_id", [rd_key, "rd.identity.contacts"]]
+            key = ["key-schema_id", [rd_key, "rd.identity.contacts"]]
             result = yield self.doc_model.open_view(key=key, reduce=False,
                                                     include_docs=True)
             self.failUnlessEqual(len(result['rows']), 1, addy)
@@ -85,7 +85,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the hyperlinks document and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.body.quoted"]
+        key = ["schema_id", "rd.msg.body.quoted"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         
@@ -103,7 +103,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the hyperlinks document and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.body.quoted.hyperlinks"]
+        key = ["schema_id", "rd.msg.body.quoted.hyperlinks"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         
@@ -223,7 +223,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag document and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
+        key = ["schema_id", "rd.msg.notification"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 
@@ -241,7 +241,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag documents and compare the results.
-        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
+        key = ["schema_id", "rd.msg.notification"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 

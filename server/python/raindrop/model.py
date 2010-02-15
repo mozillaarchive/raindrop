@@ -51,25 +51,6 @@ class DocumentSaveError(Exception):
 class DocumentOpenError(Exception):
     pass
 
-# A list of 'schemas' that want their values expanded by the megaview.
-# Intent is that this will come from metadata about the schema - ie, from
-# the couch doc that holds the schema definition.
-# For now it is hard-coded.
-megaview_schemas_expandable_values = {
-    'rd.tags' : ['tags'],
-    'rd.identity.contacts' : ['contacts'],
-    'rd.msg.body' : ['to', 'to_display', 'cc', 'cc_display'],
-    'rd.account' : ['identities'],
-    'rd.ext.api' : ['endpoints'],
-    'rd.conv.summary' : ['message_ids', 'recent_ids', 'identities', 'grouping-timestamp'],
-    'rd.grouping.info' : ['grouping_tags'],
-}
-# Ditto - info which should come from the schema-defn itself - a list of
-# schemas that don't need values emitted, just the keys etc.
-megaview_schemas_ignore_values = [
-    'rd.imap.mailbox-cache',
-    'rd.grouping.summary',
-]
 
 # Schema definitions which don't want an aggregate written; the individual
 # extensions schemas are emitted individually.
@@ -317,8 +298,7 @@ class DocumentModel(object):
             assert sitems.values()[0]['schema'] is None
             return # nothing to aggregate.
         if doc['rd_schema_id'] in megaview_schemas_no_aggr:
-            doc['rd_megaview_no_aggr'] = True
-            return # megaview will emit the individual schemas.
+            return # no aggregation requested
         eids = sorted(((n, self._extension_confidences.get(n, 0))
                         for n in sitems.iterkeys()),
                       key=lambda i: i[1])
@@ -512,18 +492,6 @@ class DocumentModel(object):
                 to_up.append(doc)
                 continue
             schema_id = doc['rd_schema_id']
-            try:
-                doc['rd_megaview_expandable'] = \
-                        megaview_schemas_expandable_values[schema_id]
-            except KeyError:
-                pass
-            if schema_id in megaview_schemas_ignore_values:
-                doc['rd_megaview_ignore_values'] = True
-            else:
-                try:
-                    del doc['rd_megaview_ignore_values']
-                except KeyError:
-                    pass
             if orig_doc_map[doc['_id']] == doc:
                 logger.debug("skipping update of doc %(_id)s - it is unchanged",
                              doc)

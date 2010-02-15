@@ -95,9 +95,9 @@ def show_info(result, parser, options):
     print fmt % info
     # ouch - this seems a painful way of fetching total unique keys?
     results = yield dm.open_view(
-                startkey=["rd.core.content", "key"],
-                endkey=["rd.core.content", "key", {}],
-                group_level=3)
+                startkey=["key"],
+                endkey=["key", {}],
+                group_level=2)
     print "  %d unique raindrop keys" % len(results['rows'])
 
     print "API groupings:"
@@ -120,9 +120,9 @@ def show_info(result, parser, options):
     
     print "Document counts by schema:"
     results = yield dm.open_view(
-                startkey=["rd.core.content", "schema_id"],
-                endkey=["rd.core.content", "schema_id", {}],
-                group_level=3)
+                startkey=["schema_id"],
+                endkey=["schema_id", {}],
+                group_level=2)
     infos = []
     for row in results['rows']:
         sch_id = row['key'][-1]
@@ -309,7 +309,7 @@ def delete_docs(result, parser, options):
         parser.error("You must specify one or more --schema")
     deferreds = []
     for st in options.schemas:
-        key = ['rd.core.content', 'schema_id', st]
+        key = ['schema_id', st]
         d = model.get_doc_model().open_view(key=key, reduce=False
                 ).addCallback(_got_docs, st
                 ).addCallback(_del_docs

@@ -32,7 +32,7 @@ def handler(doc):
 
     # query a view to find out what the folder and UID of the item is.
     rdkey = doc['rd_key']
-    key = ["rd.core.content", "key-schema_id", [rdkey, 'rd.msg.location']]
+    key = ["key-schema_id", [rdkey, 'rd.msg.location']]
     result = open_view(key=key, reduce=False, include_docs=True)
     # A single message may appear in multiple places...
     for row in result['rows']:

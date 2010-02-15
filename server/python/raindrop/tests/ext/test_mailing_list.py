@@ -91,8 +91,8 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         # Process one message from a mailing list.
         yield self.put_docs('mailing-list', 'simple-message', 1)
 
-        mail_key = ['rd.core.content', 'schema_id', 'rd.msg.email.mailing-list']
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        mail_key = ['schema_id', 'rd.msg.email.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
 
         # There should be one rd.msg.email.mailing-list document.
         doc = (yield self.get_docs(mail_key, expected=1))[0]
@@ -130,7 +130,7 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
 
         # There should only be one rd.msg.email.mailing-list document
         # with the key of the message we just processed.
-        message_key = ['rd.core.content', 'key-schema_id',
+        message_key = ['key-schema_id',
                 [['email', '40c05b9d93ba4695a30e72174c5c8126@example.com'],
                 'rd.msg.email.mailing-list']]
         doc = (yield self.get_docs(message_key, expected=1))[0]
@@ -214,7 +214,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
@@ -229,7 +229,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
@@ -244,7 +244,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-message-older', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
@@ -259,7 +259,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-message-newer', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
@@ -274,7 +274,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         # Process an unsubscribe confirmation.
         yield self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
 
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key, expected=1))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
@@ -295,7 +295,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         # Process the unsubscribe notification.
         yield self.put_docs('mailing-list', 'mailman-unsub-note', 1)
 
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key, expected=1))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
@@ -313,7 +313,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         doc['status'] = "unsubscribe-pending"
         _ = yield self.doc_model.db.updateDocuments([doc])
@@ -322,7 +322,7 @@ class TestMailman(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'mailman-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
-        message_key = ['rd.core.content', 'schema_id', 'rd.msg.outgoing.simple']
+        message_key = ['schema_id', 'rd.msg.outgoing.simple']
         doc = (yield self.get_docs(message_key, expected=1))[0]
 
         # The outgoing message should have the expected properties/values.
@@ -355,7 +355,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
@@ -370,7 +370,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
@@ -385,7 +385,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
@@ -400,7 +400,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
@@ -415,7 +415,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         # Process an unsubscribe confirmation.
         yield self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
 
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         yield self.get_docs(list_key, expected=1)
 
     # The mailing list is in the "unsubscribe-pending" state, and Raindrop
@@ -431,7 +431,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         doc['status'] = "unsubscribe-pending"
         _ = yield self.doc_model.db.updateDocuments([doc])
@@ -440,7 +440,7 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
-        message_key = ['rd.core.content', 'schema_id', 'rd.msg.outgoing.simple']
+        message_key = ['schema_id', 'rd.msg.outgoing.simple']
         doc = (yield self.get_docs(message_key, expected=1))[0]
 
         # The outgoing message should have the expected properties/values.
@@ -473,7 +473,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
@@ -488,7 +488,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
@@ -503,7 +503,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # The list status should be "unsubscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
@@ -518,7 +518,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
 
         # The list status should be "subscribed".
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
@@ -534,7 +534,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer',
                             1)
 
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         yield self.get_docs(list_key, expected=1)
 
     # The mailing list is in the "unsubscribe-pending" state, and Raindrop
@@ -550,7 +550,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
-        list_key = ['rd.core.content', 'schema_id', 'rd.mailing-list']
+        list_key = ['schema_id', 'rd.mailing-list']
         doc = (yield self.get_docs(list_key))[0]
         doc['status'] = "unsubscribe-pending"
         _ = yield self.doc_model.db.updateDocuments([doc])
@@ -559,7 +559,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
-        message_key = ['rd.core.content', 'schema_id', 'rd.msg.outgoing.simple']
+        message_key = ['schema_id', 'rd.msg.outgoing.simple']
         doc = (yield self.get_docs(message_key, expected=1))[0]
 
         # The outgoing message should have the expected properties/values.

@@ -188,7 +188,7 @@ class TestConvoSimple(APITestCaseWithCorpus):
     def test_by_id(self):
         known_msgs = self.get_known_msgs_to_identities()
         # find the conv IDs
-        keys = [['rd.core.content', 'key-schema_id', [mid, 'rd.msg.conversation']]
+        keys = [['key-schema_id', [mid, 'rd.msg.conversation']]
                 for mid in known_msgs]
         result = yield self.doc_model.open_view(keys=keys, reduce=False,
                                                 include_docs=True)

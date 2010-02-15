@@ -39,7 +39,7 @@ def handler(doc):
 
     # if we already have a twitter.raw schema for the user just skip it
     # XXX - later we should check the items are accurate...
-    key = ['rd.core.content', 'key-schema_id', [doc['rd_key'], 'rd.identity.twitter']]
+    key = ['key-schema_id', [doc['rd_key'], 'rd.identity.twitter']]
     results = open_view(key=key, reduce=False)
     if results['rows']:
         logger.debug("already seen this twitter user - skipping")

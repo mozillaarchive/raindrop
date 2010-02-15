@@ -185,7 +185,7 @@ def _get_subscribed_identity(headers):
 def _get_list(list_id):
     logger.debug("GET LIST %s", list_id)
 
-    keys = [['rd.core.content', 'key-schema_id',
+    keys = [['key-schema_id',
              [['mailing-list', list_id], 'rd.mailing-list']]]
     result = open_view(keys=keys, reduce=False, include_docs=True)
     # Build a map of the keys we actually got back.

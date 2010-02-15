@@ -78,7 +78,7 @@ class Extension(object):
 def load_extensions(doc_model):
     extensions = {}
     # now try the DB - load everything with a rd.ext.workqueue schema
-    key = ["rd.core.content","schema_id", "rd.ext.workqueue"]
+    key = ["schema_id", "rd.ext.workqueue"]
     ret = yield doc_model.open_view(key=key, reduce=False, include_docs=True)
     assert ret['rows'], "no extensions!"
     for row in ret['rows']:
@@ -213,7 +213,7 @@ class Pipeline(object):
         # all mem...
         if self.options.exts:
             runners = yield self.get_queue_runners()
-            keys = [['rd.core.content', 'ext_id', r.queue_id] for r in runners]
+            keys = [['ext_id', e.id] for e in exts]
             result = yield self.doc_model.open_view(
                                 keys=keys, reduce=False)
             to_up = [{'_id': row['id'],
@@ -226,8 +226,8 @@ class Pipeline(object):
         else:
             result = yield self.doc_model.open_view(
                                 # skip NULL rows.
-                                startkey=['rd.core.content', 'source', ""],
-                                endkey=['rd.core.content', 'source', {}],
+                                startkey=['source', ""],
+                                endkey=['source', {}],
                                 reduce=False)
 
             to_up = [{'_id': row['id'],
@@ -274,7 +274,7 @@ class Pipeline(object):
         if not self.options.exts and not self.options.keys:
             # fetch all items with a null 'rd_source'
             result = yield dm.open_view(
-                            key=['rd.core.content', 'source', None],
+                            key=['source', None],
                             reduce=False)
             logger.info("reprocess found %d source documents",
                         len(result['rows']))
@@ -287,7 +287,7 @@ class Pipeline(object):
                     val = row['value']
                     yield row['id'], val['_rev'], None, None
 
-            keys = [['rd.core.content', 'key-source', [k, None]]
+            keys = [['key-source', [k, None]]
                     for k in self.options.keys]
             result = yield dm.open_view(keys=keys, reduce=False)
                 
@@ -307,10 +307,10 @@ class Pipeline(object):
                     keys = []
                     for k in self.options.keys:
                         for sch_id in qr.schema_ids:
-                            keys.append(['rd.core.content', 'key-schema_id', [k, sch_id]])
+                            keys.append(['key-schema_id', [k, sch_id]])
                 else:
                     # all rd_keys...
-                    keys=[['rd.core.content', 'schema_id', sch_id] for sch_id in qr.schema_ids]
+                    keys=[['schema_id', sch_id] for sch_id in ext.source_schemas]
                 result = yield dm.open_view(keys=keys,
                                             reduce=False)
                 logger.info("reprocessing %s - %d docs", qr.queue_id,
@@ -329,7 +329,7 @@ class Pipeline(object):
         # It does have the bad side-effect of re-running all extensions which
         # also ran against the source of the error - that can be fixed, but
         # later...
-        key = ["rd.core.content", "schema_id", "rd.core.error"]
+        key = ["schema_id", "rd.core.error"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         logger.info("found %d error records", len(result['rows']))
@@ -416,7 +416,8 @@ class DocsBySeqIteratorFactory(object):
                 except ValueError:
                     # not a raindrop document - ignore it.
                     continue
-                keys.append(["rd.core.content", "dep", [rd_key, schema_id]])
+                keys.append(["dep", [rd_key, schema_id]])
+
             results = yield doc_model.open_view(keys=keys, reduce=False)
             rows = results['rows']
             # Find all unique IDs.
@@ -610,7 +611,7 @@ class StatefulQueueManager(object):
         # first open our 'state' schema
         doc_model = self.doc_model
         rd_key = ['ext', qr.queue_id] # same rd used to save the extension source etc
-        key = ['rd.core.content', 'key-schema_id', [rd_key, 'rd.core.workqueue-state']]
+        key = ['key-schema_id', [rd_key, 'rd.core.workqueue-state']]
         result = yield doc_model.open_view(key=key, reduce=False, include_docs=True)
         rows = result['rows']
         assert len(rows) in (0,1), result
@@ -965,7 +966,7 @@ class ExtensionProcessor(object):
             is_provider = ext.category!=ext.EXTENDER
             # We need to find *all* items previously written by this extension
             # so we can manage updating/removal of the old items.
-            key = ['rd.core.content', 'ext_id-source', [ext_id, src_id]]
+            key = ['ext_id-source', [ext_id, src_id]]
             result = yield dm.open_view(key=key, reduce=False)
             rows = result['rows']
             if rows:

@@ -30,13 +30,13 @@ class TestIDPipeline(TestIDPipelineBase):
     @defer.inlineCallbacks
     def deferVerifyCounts(self, _, contact_count, identity_count):
         # First determine the contact ID.
-        key = ['rd.core.content', 'schema_id', 'rd.contact']
+        key = ['schema_id', 'rd.contact']
         result = yield get_doc_model().open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), contact_count, repr(result))
 
         # each identity should have got 2 schema instances.
-        keys = [['rd.core.content', 'schema_id', 'rd.identity.exists'],
-                ['rd.core.content', 'schema_id', 'rd.identity.contacts'],
+        keys = [['schema_id', 'rd.identity.exists'],
+                ['schema_id', 'rd.identity.contacts'],
                ]
 
         result = yield get_doc_model().open_view(keys=keys, reduce=False)
@@ -50,7 +50,7 @@ class TestIDPipeline(TestIDPipelineBase):
         def check_it(result):
             dm = get_doc_model()
             # First determine the contact ID.
-            key = ['rd.core.content', 'schema_id', 'rd.contact']
+            key = ['schema_id', 'rd.contact']
             result = yield dm.open_view(key=key, reduce=False, include_docs=True)
 
             rows = result['rows']
@@ -61,7 +61,7 @@ class TestIDPipeline(TestIDPipelineBase):
 
             # should be exact 2 rd.identity.contacts records, each pointing
             # at my contact.
-            key = ['rd.core.content', 'schema_id', 'rd.identity.contacts']
+            key = ['schema_id', 'rd.identity.contacts']
             result = yield dm.open_view(key=key, reduce=False, include_docs=True)
             rows = result['rows']
             self.failUnlessEqual(len(rows), 2, str(rows))
@@ -88,7 +88,7 @@ class TestIDPipeline(TestIDPipelineBase):
         @defer.inlineCallbacks
         def check_it(result):
             # First determine the contact ID.
-            key = ['rd.core.content', 'schema_id', 'rd.contact']
+            key = ['schema_id', 'rd.contact']
             result = yield get_doc_model().open_view(key=key, reduce=False,
                                              include_docs=True)
 
@@ -100,7 +100,7 @@ class TestIDPipeline(TestIDPipelineBase):
 
             # should be exact 3 rd.identity.contacts records, each pointing
             # at my contact.
-            key = ['rd.core.content', 'schema_id', 'rd.identity.contacts']
+            key = ['schema_id', 'rd.identity.contacts']
             result = yield get_doc_model().open_view(key=key,
                                              reduce=False,
                                              include_docs=True)
@@ -130,7 +130,7 @@ class TestIDPipeline(TestIDPipelineBase):
         @defer.inlineCallbacks
         def check_it(result):
             # First determine the 2 contact IDs.
-            key = ['rd.core.content', 'schema_id', 'rd.contact']
+            key = ['schema_id', 'rd.contact']
             result = yield get_doc_model().open_view(key=key, reduce=False,
                                              include_docs=True)
 
@@ -144,7 +144,7 @@ class TestIDPipeline(TestIDPipelineBase):
 
             # should be exact 3 rd.identity.contacts records, each pointing
             # at my contact.
-            key = ['rd.core.content', 'schema_id', 'rd.identity.contacts']
+            key = ['schema_id', 'rd.identity.contacts']
             result = yield get_doc_model().open_view(key=key, reduce=False,
                                                      include_docs=True)
 

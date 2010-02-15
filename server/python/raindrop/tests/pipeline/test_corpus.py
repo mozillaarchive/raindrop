@@ -24,11 +24,11 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         # now some sanity checks on the processing.
         # should be zero error records.
         num = yield self.get_num_with_key(
-                ["rd.core.content", "schema_id", "rd.core.error"])
+                ["schema_id", "rd.core.error"])
         self.failUnlessEqual(num, 0)
         # should be one rd.msg.body schema for every item in the corpus.
         num = yield self.get_num_with_key(
-                    ["rd.core.content", "schema_id", "rd.msg.body"])
+                    ["schema_id", "rd.msg.body"])
         self.failUnlessEqual(num, ndocs)
 
         # There is at least one message from and to our test identity, and
@@ -74,7 +74,7 @@ class TestMalformedCorpus(TestCaseWithCorpus):
         # now some sanity checks on the processing.
         # should be zero error records.
         num = yield self.get_num_with_key(
-                ["rd.core.content", "schema_id", "rd.core.error"])
+                ["schema_id", "rd.core.error"])
         self.failUnlessEqual(num, 0)
 
     @defer.inlineCallbacks

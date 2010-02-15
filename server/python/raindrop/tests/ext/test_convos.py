@@ -34,7 +34,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         msgid = ['email', 'd3d08a8a534c464881a95b75300e9011@something']
         body_schema = (yield self.doc_model.open_schemas([(msgid, 'rd.msg.body')]))[0]
         # should be one 'rd.convo.summary' doc in the DB.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -79,7 +79,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be one 'rd.convo.summary' doc in the DB.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -114,7 +114,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
                                      (msgid_reply, 'rd.msg.body'),
                                         ]))
         # should be exactly one convo referencing both messages.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -191,7 +191,7 @@ Hello
             _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 2 convos.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 2)
         # now the last message - one convo should vanish.
@@ -199,7 +199,7 @@ Hello
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 1 convo.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 1)
         conv_id = result['rows'][0]['value']['rd_key']
@@ -307,7 +307,7 @@ Content-Transfer-Encoding: 7bit
             _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 1 convo.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)

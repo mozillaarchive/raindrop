@@ -231,7 +231,7 @@ class TwitterProcessor(object):
             id = int(status.get("id"))
             rd_key = ['tweet', id]
             schema_id = 'rd.msg.tweet.raw'
-            keys.append(['rd.core.content', 'key-schema_id', [rd_key, schema_id]])
+            keys.append(['key-schema_id', [rd_key, schema_id]])
             this_items[id] = (status, rd_key, schema_id)
             this_users[status.get("user").get("screen_name")] = status.get("user")
             if status.get("retweeted_status", None) is not None:
@@ -243,7 +243,7 @@ class TwitterProcessor(object):
             id = int(dm.get("id"))
             rd_key = ['tweet-direct', id]
             schema_id = 'rd.msg.tweet-direct.raw'
-            keys.append(['rd.core.content', 'key-schema_id', [rd_key, schema_id]])
+            keys.append(['key-schema_id', [rd_key, schema_id]])
             this_items[id] = (dm, rd_key, schema_id)
             # sender gives us an entire user dictionary for the sender so lets
             # save that for later
@@ -277,7 +277,7 @@ class TwitterProcessor(object):
         # accurate.
         keys = []
         for sn in this_users.iterkeys():
-            keys.append(['rd.core.content', 'key-schema_id',
+            keys.append(['key-schema_id',
                          [["identity", ["twitter", sn]], 'rd.identity.twitter']])
         # execute a view process these users.
         results = yield self.doc_model.open_view(keys=keys, reduce=False,

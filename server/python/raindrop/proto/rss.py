@@ -89,7 +89,7 @@ class RSSAccount(base.AccountBase):
     @defer.inlineCallbacks
     def startSync(self, conductor, options):
         # Find all RSS documents.
-        key = ['rd.core.content', 'schema_id', 'rd.raw.rss']
+        key = ['schema_id', 'rd.raw.rss']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                  include_docs=True)
         rows = result['rows']

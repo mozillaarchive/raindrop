@@ -31,7 +31,7 @@ class ConversationAPI(API):
     def _filter_known_identities(self, db, idids):
         # Given a list/set of identity IDs, return those 'known' (ie, associated
         # with a contact.
-        result = db.megaview(key=["rd.core.content", "schema_id", "rd.identity.contacts"],
+        result = db.megaview(key=["schema_id", "rd.identity.contacts"],
                              reduce=False, include_docs=False)
         # Cycle through each document. The rd_key is the full identity ID, we just
         # need the second part of it. It has an array of contacts but each item
@@ -53,9 +53,9 @@ class ConversationAPI(API):
                 yield {}, {}
             return
         elif schemas == ['*']:
-            keys = [['rd.core.content', 'key', k] for k in msg_keys]
+            keys = ['key', k] for k in msg_keys]
         else:
-            keys = [['rd.core.content', 'key-schema_id', [k, sid]]
+            keys = ['key-schema_id', [k, sid]]
                     for k in msg_keys for sid in schemas]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
         message_results = {}
@@ -213,7 +213,7 @@ class ConversationAPI(API):
         conv_id = args["key"]
         log("conv_id: %s", conv_id)
         # get the document holding the convo summary.
-        key = ['rd.core.content', 'key-schema_id', [conv_id, 'rd.conv.summary']]
+        key = ['key-schema_id', [conv_id, 'rd.conv.summary']]
         result = db.megaview(key=key, reduce=False, include_docs=True)
         if not result['rows']:
             return None
@@ -235,7 +235,7 @@ class ConversationAPI(API):
         # XXX - note we could maybe avoid include_docs by using the
         # 'message_ids' field on the conv_summary doc - although that will not
         # list messages flaged as 'deleted' etc.
-        keys = [['rd.core.content', 'key-schema_id', [mid, 'rd.msg.conversation']]
+        keys = [['key-schema_id', [mid, 'rd.msg.conversation']]
                 for mid in msg_keys]
         result = db.megaview(keys=keys, reduce=False, include_docs=True)
         conv_ids = set()
@@ -243,7 +243,7 @@ class ConversationAPI(API):
             conv_ids.add(hashable_key(row['doc']['conversation_id']))
 
         # open the conv summary docs.
-        keys = [['rd.core.content', 'key-schema_id', [conv_id, 'rd.conv.summary']]
+        keys = [['key-schema_id', [conv_id, 'rd.conv.summary']]
                 for conv_id in conv_ids]
         result = db.megaview(keys=keys, reduce=False, include_docs=True)
         # now make the conversation objects.
@@ -272,20 +272,19 @@ class ConversationAPI(API):
         if ids is None:
             # special case - means "my identity".  Note this duplicates code
             # in raindrop/extenv.py's get_my_identities() function.
-            result = db.megaview(startkey=["rd.account", "identities"],
-                                 endkey=["rd.account", "identities", {}],
-                                 reduce=False)
+            result = db.view('raindrop!content!all/acct_identities',
+                             {'group': 'true', 'group_level': '1'})
             mine = set()
             for row in result['rows']:
-                iid = row['key'][2]
+                iid = row['key'][0]
                 mine.add(hashable_key(iid))
             ids = list(mine)
         return self._identities(db, ids, args)
 
     def _identities(self, db, idids, args):
-        keys = [["rd.conv.summary", "identities", idid] for idid in idids]
-        result = db.megaview(keys=keys, reduce=False, limit=args['limit'],
-                             skip=args['skip'])
+        # XXXX - fix me!
+        result = db.view('raindrop!content!all/conv_summary_by_identity',
+                         keys=idids, skip=args['skip'])
         conv_doc_ids = set(r['id'] for r in result['rows'])
         result = db.allDocs(keys=list(conv_doc_ids), include_docs=True)
         # filter out deleted etc.
@@ -387,8 +386,8 @@ class MessageAPI(API):
         # the message key
         msgkey = args['key']
         db = RDCouchDB(req)
-        startkey = ['rd.core.content', 'key', ['attach', [msgkey]]]
-        endkey = ['rd.core.content', 'key', ['attach', [msgkey, {}]]]
+        startkey = ['key', ['attach', [msgkey]]]
+        endkey = ['key', ['attach', [msgkey, {}]]]
         result = db.megaview(startkey=startkey, endkey=endkey,
                              limit=args['limit'], reduce=False,
                              include_docs=True)

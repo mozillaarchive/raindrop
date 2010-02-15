@@ -81,7 +81,7 @@ class TestConfidencesBase(APITestCaseWithCorpus):
         # We should see the conversation including the message we "modified"
         our_msg = ('email', '07316ced2329a69aa169f3b9c6467703@bitbucket.org')
         # make a megaview request to determine the convo ID with our message.
-        key = ['rd.core.content', 'key-schema_id', [our_msg, 'rd.msg.conversation']]
+        key = ['key-schema_id', [our_msg, 'rd.msg.conversation']]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         # should be exactly 1 record.

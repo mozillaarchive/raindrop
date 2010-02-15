@@ -411,8 +411,8 @@ class ImapProvider(object):
     # Fetch all state cache docs for all mailboxes in one go.
     # XXX - need key+schema here, but we don't use multiple yet.
     acct_id = self.account.details.get('id')
-    startkey = ['rd.core.content', 'key', ['imap-mailbox', [acct_id]]]
-    endkey = ['rd.core.content', 'key', ['imap-mailbox', [acct_id, {}]]]
+    startkey = ['key', ['imap-mailbox', [acct_id]]]
+    endkey = ['key', ['imap-mailbox', [acct_id, {}]]]
     results = yield self.doc_model.open_view(startkey=startkey,
                                              endkey=endkey, reduce=False,
                                              include_docs=True)
@@ -696,7 +696,7 @@ class ImapProvider(object):
       msg_infos[get_rdkey_for_email(msg_id)] = msg_info
 
     # Get all messages that already have this schema
-    keys = [['rd.core.content', 'key-schema_id', [k, 'rd.msg.rfc822']]
+    keys = [['key-schema_id', [k, 'rd.msg.rfc822']]
             for k in msg_infos.keys()]
     result = yield self.doc_model.open_view(keys=keys, reduce=False)
     seen = set([tuple(r['value']['rd_key']) for r in result['rows']])

@@ -142,7 +142,7 @@ class TwistySkype(object):
                     )
 
     def _cb_got_chats(self, chats, chat_desc, msg_desc):
-        keys = [['rd.core.content', 'key-schema_id',
+        keys = [['key-schema_id',
                  [self.get_rdkey_for_chat(c), 'rd.msg.skypechat.raw']]
                 for c in chats]
         return self.doc_model.open_view(keys=keys, reduce=False
@@ -194,7 +194,7 @@ class TwistySkype(object):
         # determine which we have seen (note that we obviously could just
         # fetch the *entire* chats+msgs view once - but we do it this way on
         # purpose to ensure we remain scalable...)
-        keys = [['rd.core.content', 'key-schema_id',
+        keys = [['key-schema_id',
                  [self.get_rdkey_for_msg(m), 'rd.msg.skypemsg.raw']]
                  for m in messages]
         return self.doc_model.open_view(keys=keys, reduce=False
