@@ -240,12 +240,10 @@ class SyncConductor(object):
 
   @defer.inlineCallbacks
   def _do_sync_outgoing(self):
-    keys = []
-    for ss in source_schemas:
-      keys.append([ss, 'outgoing_state', 'outgoing'])
-
+    keys = [[ss, 'outgoing'] for ss in source_schemas]
+    result = yield self.doc_model.open_view(viewId='outgoing_by_schema',
+                                            keys=keys)
     dl = []
-    result = yield self.doc_model.open_view(keys=keys, reduce=False)
     for row in result['rows']:
       logger.info("found outgoing document %(id)r", row)
       try:

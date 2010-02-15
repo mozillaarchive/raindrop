@@ -163,12 +163,11 @@ def get_ext_env(doc_model, context, src_doc, ext):
         if not _my_identities:
             result = threads.blockingCallFromThread(reactor,
                         doc_model.open_view,
-                        startkey=["rd.account", "identities"],
-                        endkey=["rd.account", "identities", {}],
+                        viewId='acct_identities',
                         reduce=False,
                         )
             for row in result['rows']:
-                iid = row['key'][2]
+                iid = row['key']
                 # can't use a set - identity_ids are lists!
                 if iid not in _my_identities:
                     _my_identities.append(iid)
@@ -379,10 +378,9 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
                    'items': {'conversation_id': conv_id}}
     # find all existing items in all convos to merge, and update every message
     # in those convos to point at this one.
-    keys = [['rd.msg.conversation', 'conversation_id', cid]
-            for cid in convos_to_merge]
     results = threads.blockingCallFromThread(reactor,
-                    doc_model.open_view, keys=keys, reduce=False)
+                    doc_model.open_view, viewId="msg_conversation_id",
+                    keys=list(convos_to_merge))
     for row in results['rows']:
         yield {'rd_key': row['value']['rd_key'],
                'rd_schema_id': 'rd.msg.conversation',

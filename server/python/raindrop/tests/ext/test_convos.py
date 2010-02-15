@@ -5,21 +5,11 @@ from twisted.internet import defer, reactor
 from raindrop.tests import TestCaseWithCorpus, TestCaseWithTestDB
 
 class ConvoTestMixin:
-    @defer.inlineCallbacks
-    def get_docs(self, key, expected=None):
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
-        rows = result['rows']
-        if expected is not None:
-            self.failUnlessEqual(len(rows), expected,
-                                 'num rows for key ' + repr(key))
-        docs = [row['doc'] for row in rows]
-        defer.returnValue(docs)
 
     @defer.inlineCallbacks
     def get_messages_in_convo(self, cid):
-        key = ["rd.msg.conversation", "conversation_id", cid]
-        result = yield self.doc_model.open_view(key=key, reduce=False)
+        result = yield self.doc_model.open_view(viewId="msg_conversation_id",
+                                                key=cid)
         defer.returnValue([row['value']['rd_key'] for row in result['rows']])
     
     @defer.inlineCallbacks

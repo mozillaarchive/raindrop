@@ -42,8 +42,7 @@ def build_summaries(to_summarize):
 def build_summary(conv_id):
     logger.debug('rebuilding conversation %r', conv_id)
     # query to determine all messages in this convo.
-    result = open_view(key=['rd.msg.conversation', 'conversation_id', conv_id],
-                       reduce=False)
+    result = open_view(viewId="msg_conversation_id", key=conv_id)
     # the list of items we want.
     wanted = []
     for row in result['rows']:

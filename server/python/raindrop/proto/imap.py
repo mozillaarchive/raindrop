@@ -647,21 +647,16 @@ class ImapProvider(object):
     # fetch all things in couch which (a) are currently tagged with this
     # location and (b) was tagged by this mapi account.  We do (a) via the
     # key param, and filter (b) here...
-    key = ['rd.msg.location', 'location', folder_path]
-    existing = yield self.doc_model.open_view(key=key, reduce=False,
-                                              include_docs=True)
+    key = [['imap', acct_id], folder_path]
+    existing = yield self.doc_model.open_view(viewId='msg_location_by_source',
+                                              key=key)
     scouch = set()
     to_nuke = []
     for row in existing['rows']:
-      doc = row['doc']
-      if doc.get('source') != ['imap', acct_id]:
-        # Something in this location, but it was put there by other than
-        # this IMAP account - ignore it.
-        continue
-      rdkey = tuple(doc['rd_key'])
+      rdkey = tuple(row['value']['rd_key'])
       if rdkey not in current:
-        to_nuke.append({'_id': doc['_id'],
-                        '_rev': doc['_rev'],
+        to_nuke.append({'_id': row['_id'],
+                        '_rev': row['value']['_rev'],
                         '_deleted': True,
                         'rd_ext_id': ext_id,
                         })

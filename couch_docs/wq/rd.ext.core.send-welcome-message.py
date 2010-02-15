@@ -3,8 +3,7 @@ def handler(doc):
     if doc['num_syncs'] != 1:
         return
     
-    key = ['rd.account', 'proto', 'smtp']
-    result = open_view(key=key, reduce=False, include_docs=True)
+    result = open_view(viewId='acct_protocols', key='smtp', include_docs=True)
     rows = result['rows']
     if not rows:
         logger.warn("can't find an smtp account from which to send welcome email")
