@@ -351,11 +351,9 @@ def get_api_handler(cfg, req):
 
     # Load the schemas which declare they implement this end-point
     apiid = req['path'][2:4] # the 'app' name and the 'class' name.
-    log("APP ID: %r", apiid)
     path = "/%s/_design/raindrop!content!all/_view/api_endpoints" % dbname
     options = {'key': json.dumps(apiid), 'include_docs': 'true',
     }
-    log("OPTS: %r", options)
     uri = path + "?" + urlencode(options)
 
     c = httplib.HTTPConnection(cfg['host'], cfg['port'])
