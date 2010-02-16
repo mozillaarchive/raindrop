@@ -86,7 +86,7 @@
 }
 
 .rdwMessage.reply .rdwAttachments .attachScroll > div {
-    width: 398px;
+  width: 398px;
 }
 
 .rdwExtTwitterMessage .rdwAttachments .attachScroll > div {
@@ -94,22 +94,26 @@
 }
 
 .rdwAttachments .attachAction {
-    position: absolute;
-    top: 7px;
-    right: -7px;
+  position: absolute;
+  top: 7px;
+  right: -7px;
 }
 
 .rdwAttachments .attachAction button[disabled] {
-    color: #bbb;
-    background-image: none;
-    background-color: #f2f2f2;
-    border-color: #e6e6e6;
+  color: #bbb;
+  background-image: none;
+  background-color: #f2f2f2;
+  border-color: #e6e6e6;
 }
 
 .rdwAttachments .attachAction button[disabled]:hover {
-    color: #bbb;
-    background-image: none;
-    background-color: #f2f2f2;
-    border-color: #e6e6e6;
-    border-right: 1px solid #e6e6e6;
+  color: #bbb;
+  background-image: none;
+  background-color: #f2f2f2;
+  border-color: #e6e6e6;
+  border-right: 1px solid #e6e6e6;
+}
+
+.rdwAttachments .description {
+  max-height: 48px;
 }
