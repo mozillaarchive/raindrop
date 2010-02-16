@@ -26,36 +26,31 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Group",
-["rd", "dojo", "rdw/conversation/GenericGroup", "rdw/fx/wiper"],
-function (rd, dojo, GenericGroup, wiper) {
+["rd", "dojo", "rdw/GenericGroup", "rdw/Message"],
+function (rd, dojo, GenericGroup) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
      */
-    return dojo.declare("rdw.ext.twitter.Group", [GenericGroup, wiper], {
-        templateString: '<div class="WidgetBox rdwExtTwitterGroup rdwExtAccountGroup" dojoAttachPoint="headNode">' +
-                        '    <div class="WidgetHeader hbox">' +
-                        '       <a href="#rd:twitter" dojoAttachPoint="nameNode" class="title start boxFlex">Twitter</a>' +
-                        '       <span class="actions">' +
-                        '            <button class="wipeToggle" dojoAttachPoint="headNode" dojoAttachEvent="onclick: toggleWiper"></button>' +
-                        '       </span>' +
-                        '    </div>' +
-                        '    <div class="WidgetBody" dojoAttachPoint="bodyNode">' +
-                        '        <div class="tweetList" dojoAttachPoint="containerNode"></div>' +
-                        '    </div>' +
-                        '</div>',
-
+    return dojo.declare("rdw.ext.twitter.Group", [GenericGroup], {
         /**
          * The relative importance of this group widget. 0 is most important.
          */
         groupSort: 1,
 
+        /** Extra classes to add to the top level node */
+        extraClass: "rdwExtTwitterGroup rdwExtAccountGroup",
+
+        /** Module used to display messages */
+        messageCtorName: "rdw/Message",
+
         /**
-         * Widget lifecycle method, called after template is in the DOM.
+         * Djit lifecycle method, before template is created/injected in the DOM.
          */
-        postCreate: function () {
-            this.inherited("postCreate", arguments);
-            this.wiperInit("closed");
+        postMixInProperties: function () {
+            this.inherited("postMixInProperties", arguments);
+            this.title = "Twitter";
+            this.groupHref = "#rd:twitter";
         },
 
         /**

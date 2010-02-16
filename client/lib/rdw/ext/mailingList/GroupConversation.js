@@ -25,26 +25,28 @@
 /*global require: false */
 "use strict";
 
-require.def("rdw/ext/mailingList/GroupMessage",
-["rd", "dojo", "rdw/Message", "text!rdw/ext/mailingList/GroupMessage!html"],
-function (rd, dojo, Message, template) {
+require.def("rdw/ext/mailingList/GroupConversation",
+["rd", "dojo", "rdw/_Base", "text!rdw/ext/mailingList/GroupConversation!html"],
+function (rd, dojo, Base, template) {
 
-    return dojo.declare("rdw.ext.mailingList.GroupMessage", [Message], {
+    return dojo.declare("rdw.ext.mailingList.GroupConversation", [Base], {
         templateString: template,
+
+        /** Passed in property, the conversation API object */
+        conversation: null,
 
         postMixInProperties: function () {
             this.inherited("postMixInProperties", arguments);
-            this.convoFromDisplay = this.msg.convoFromDisplay.join(", ");
-            this.unreadDisplay = "";
-            if (this.msg.convoUnreadCount && this.msg.convoUnreadCount > 1) {
-                this.unreadDisplay = rd.template(this.i18n.newCount, {
-                    count: this.msg.convoUnreadCount
-                });
-            } else {
-                // in the future we should add a friendly date as there is only one new
-                // message that has arrived in this conversation
-            }
 
+            this.expandLink = "rd:conversation:" + dojo.toJson(this.conversation.id);
+            this.subject = this.conversation.subject || "";
+            this.from = this.conversation.from_display.join(", ");
+            this.unread = "";
+            if (this.conversation.unread) {
+                this.unread = rd.template(this.i18n.newCount, {
+                    count: this.conversation.unread
+                });
+            }
         }
     });
 });

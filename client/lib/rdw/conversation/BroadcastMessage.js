@@ -24,10 +24,10 @@
 /*global require: false */
 "use strict";
 
-require.def("rdw/conversation/GenericGroupMessage",
-["dojo", "rdw/Message", "text!rdw/conversation/templates/GenericGroupMessage!html"],
+require.def("rdw/conversation/BroadcastMessage",
+["dojo", "rdw/Message", "text!rdw/conversation/templates/BroadcastMessage!html"],
 function (dojo, Message, template) {
-    return dojo.declare("rdw.conversation.GenericGroupMessage", [Message], {
+    return dojo.declare("rdw.conversation.BroadcastMessage", [Message], {
         templateString: template
     });
 });

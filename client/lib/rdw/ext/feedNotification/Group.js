@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/feedNotification/Group",
-["rd", "dojo", "rdw/conversation/GenericGroup"],
+["rd", "dojo", "rdw/GenericGroup"],
 function (rd, dojo, GenericGroup) {
 
     return dojo.declare("rdw/ext/feedNotification/Group", [GenericGroup], {

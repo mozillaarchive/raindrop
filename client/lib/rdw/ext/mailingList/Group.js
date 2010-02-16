@@ -26,42 +26,30 @@
 "use strict";
 
 require.def("rdw/ext/mailingList/Group",
-["rd", "dojo", "rdw/conversation/GenericGroup", "rdw/fx/wiper"],
-function (rd, dojo, GenericGroup, wiper) {
+["rd", "dojo", "rdw/GenericGroup", "rdw/ext/mailingList/GroupConversation"],
+function (rd, dojo, GenericGroup) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
      */
-    return dojo.declare("rdw.ext.mailingList.Group", [GenericGroup, wiper], {
-        templateString: '<div class="WidgetBox rdwConversationMailingList">' +
-                        '      <div class="WidgetHeader hbox">' +
-                        '         <a href="${summaryHref}" dojoAttachPoint="nameNode" class="title boxFlex">${summary.title}</a>' +
-                        '         <span class="actions">' +
-                        '              <button class="wipeToggle" dojoAttachPoint="headNode" dojoAttachEvent="onclick: toggleWiper"></button>' +
-                        '         </span>' +
-                        '      </div>' +
-                        '     <div class="mailingList" dojoAttachPoint="containerNode,bodyNode"></div>' +
-                        ' </div>',
-
+    return dojo.declare("rdw.ext.mailingList.Group", [GenericGroup], {
         /**
          * The relative importance of this group widget. 0 is most important.
          */
         groupSort: 4,
+
+        /** Extra classes to add to the top level node */
+        extraClass: "rdwConversationMailingList",
+
+        /** Module used to display conversations */
+        conversationCtorName: "rdw/ext/mailingList/GroupConversation",
 
         /**
          * Djit lifecycle method, before template is created/injected in the DOM.
          */
         postMixInProperties: function () {
             this.inherited("postMixInProperties", arguments);
-            this.summaryHref = "#rd:mailingList:" + encodeURIComponent(this.summary.rd_key[1]);
-        },
-    
-        /**
-         * Widget lifecycle method, called after template is in the DOM.
-         */
-        postCreate: function () {
-            this.inherited("postCreate", arguments);
-            this.wiperInit("closed");
+            this.groupHref = "#rd:mailingList:" + encodeURIComponent(this.summary.rd_key[1]);
         },
 
         /**

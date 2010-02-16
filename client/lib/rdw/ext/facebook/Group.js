@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/facebook/Group",
-["rd", "dojo", "rdw/conversation/GenericGroup"],
+["rd", "dojo", "rdw/GenericGroup"],
 function (rd, dojo, GenericGroup) {
 
     return dojo.declare("rdw.ext.facebook.Group", [GenericGroup], {
@@ -47,7 +47,7 @@ function (rd, dojo, GenericGroup) {
 
         postCreate: function () {
             this.inherited("postCreate", arguments);
-            dojo.removeClass(this.domNode, "rdwConversationGenericGroup");
+            dojo.removeClass(this.domNode, "rdwGenericGroup");
             dojo.addClass(this.domNode, "rdwExtAccountGroup rdwExtFacebookGroup");
         }
     });

@@ -27,7 +27,7 @@
 
 require.def("rdw/Widgets",
 ["rd", "dojo", "dojox", "rdw/_Base", "rd/onHashChange", "rd/api", "rd/api/message",
- "rdw/conversation/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
+ "rdw/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
 function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, SummaryGroup, fx, fxScroll) {
 
     //Reassign fxScroll to be the real function, that module does something non-standard.
@@ -40,7 +40,7 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
         summaryModules: [],
     
         //Widget used for default group widgets, when no other group is applicable.
-        summaryCtorName: "rdw/conversation/GenericGroup",
+        summaryCtorName: "rdw/GenericGroup",
 
         //Widget used for the summary group widget, the first one in the widget list.
         summaryGroupCtorName: "rdw/SummaryGroup",
