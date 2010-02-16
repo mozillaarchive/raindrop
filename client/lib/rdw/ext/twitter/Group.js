@@ -26,19 +26,17 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Group",
-["rd", "dojo", "rdw/Conversation", "rdw/fx/wiper"],
-function (rd, dojo, Conversation, wiper) {
+["rd", "dojo", "rdw/conversation/GenericGroup", "rdw/fx/wiper"],
+function (rd, dojo, GenericGroup, wiper) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
      */
-    return dojo.declare("rdw.ext.twitter.Group", [Conversation, wiper], {
+    return dojo.declare("rdw.ext.twitter.Group", [GenericGroup, wiper], {
         templateString: '<div class="WidgetBox rdwExtTwitterGroup rdwExtAccountGroup" dojoAttachPoint="headNode">' +
                         '    <div class="WidgetHeader hbox">' +
                         '       <a href="#rd:twitter" dojoAttachPoint="nameNode" class="title start boxFlex">Twitter</a>' +
                         '       <span class="actions">' +
-                        '            <span class="action broadcastCount" dojoAttachPoint="broadcastCountNode"></span>' +
-                        '            <span class="action noteCount" dojoAttachPoint="noteCountNode"></span>' +
                         '            <button class="wipeToggle" dojoAttachPoint="headNode" dojoAttachEvent="onclick: toggleWiper"></button>' +
                         '       </span>' +
                         '    </div>' +
@@ -53,111 +51,21 @@ function (rd, dojo, Conversation, wiper) {
         groupSort: 1,
 
         /**
-         * Do not want attachments to show up in this view so set the attachment
-         * ctor name for Message instances to null.
-         */
-        messageCtorArgs: {
-            attachmentWidget: null
-        },
-
-        /**
-         * The limit of tweets to use.
-         */
-        unreadReplyLimit: 2,
-    
-        /**
-         * Do not format messages greater than the first one as replies
-         */
-        replyStyle: "",
-    
-        /**
-         * sorting to use for messages. Unlike rdw.Conversation, the twitter timeline
-         * should show most recent tweet first. This method should not use
-         * the "this" variable.
-         */
-        msgSort: function (a, b) {
-            return a.schemas["rd.msg.body"].timestamp < b.schemas["rd.msg.body"].timestamp;
-        },
-    
-        /**
-         * storage for notification messages. An array.
-         */
-        noteMsgs: null,
-    
-        /**
-         * Widget lifecycle method, called before template is generated.
-         */
-        postMixInProperties: function () {
-            this.inherited("postMixInProperties", arguments);
-            this.noteMsgs = [];
-        },
-    
-        /**
          * Widget lifecycle method, called after template is in the DOM.
          */
         postCreate: function () {
             this.inherited("postCreate", arguments);
             this.wiperInit("closed");
         },
-    
-        /**
-         * Determines if the widget can support this conversation.
-         *
-         * @param conversation {object} the conversation API object.
-         */
-        canHandle: function (conversation) {
-            var msg = conversation.messages[0],
-                keyType = msg.schemas["rd.msg.body"] && msg.schemas["rd.msg.body"].rd_key[0],
-                notification = msg.schemas["rd.msg.notification"],
-                notifyType = notification && notification.type;
-
-            return keyType === "tweet" || notifyType === "twitter";
-        },
 
         /**
-         * Adds a message to this group.
+         * Determines if the widget can support this summary.
          *
-         * @param conversation {object} the conversation for this widget.
+         * @param summary {object} the group summary API object
          */
-        addConversation: function (conversation) {
-            if (conversation) {
-                this.conversation = conversation;
-            }
-    
-            var msg = this.conversation.messages[0], messages;
-            if (msg.schemas["rd.msg.notification"]) {
-                this.noteMsgs.push(msg);
-            } else {
-                //A regular broadcast message. Pull the messages out of the conversation.
-                messages = conversation.messages;
-                if (messages && messages.length) {
-                    this.msgs.push.apply(this.msgs, conversation.messages);
-                }
-            }
-    
-            if (this._displayed) {
-                this.display();
-            }
-        },
-    
-        /**
-         * Extends base class implementation of display to do subclass-specific rendering.
-         */
-        display: function () {
-            this.inherited("display", arguments);
-    
-            //Update the notification and broadcast counts.
-            this._updateCount(this.noteCountNode, this.noteMsgs.length);
-            this._updateCount(this.broadcastCountNode, this.msgs.length);
-        },
-    
-        _updateCount: function (node, count) {
-            if (count) {
-                node.innerHTML = count;
-                node.style.display = "";
-            } else {
-                node.style.display = "none";
-            }
+        canHandleGroup: function (summary) {
+            var key = summary.rd_key;
+            return key[0] === "display-group" && key[1] === "twitter";
         }
     });
 });

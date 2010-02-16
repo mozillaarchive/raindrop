@@ -36,22 +36,15 @@ function (rd, dojo, GenericGroup) {
         groupSort: 1,
     
         /**
-         * Determines if message is supported.
+         * Determines if the widget can support this summary.
          *
-         * @param conversation {object} the conversation API object.
+         * @param summary {object} the group summary API object
          */
-        canHandle: function (conversation) {
-            var msg = conversation.messages[0],
-                notification = msg.schemas["rd.msg.notification"];
-    
-            return notification && notification.type === "facebook";
+        canHandleGroup: function (summary) {
+            var key = summary.rd_key;
+            return key[0] == "display-group" && key[1] === "facebook";
         },
-        
-        postMixInProperties: function () {
-            this.inherited("postMixInProperties", arguments);
-            this.groupTitle = "Facebook Notifications";
-        },
-    
+
         postCreate: function () {
             this.inherited("postCreate", arguments);
             dojo.removeClass(this.domNode, "rdwConversationGenericGroup");

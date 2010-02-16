@@ -61,7 +61,10 @@ var djConfig, require;
     dojoPrefix = prefix + "../dojo/";
 
     djConfig = {
-        parseOnLoad: false
+        parseOnLoad: false,
+        //Does nothing with RequireJS, but allows dojo.Deferred calls to
+        //throw their errors.
+        debugAtAllCosts: true
     };
 
     require = {

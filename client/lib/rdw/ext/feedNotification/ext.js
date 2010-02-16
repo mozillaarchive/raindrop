@@ -32,7 +32,7 @@ function (rd, Widgets, Group) {
     //Modify rdw.Widgets to allow showing mailing lists.
     rd.applyExtension("rdw/ext/feedNotification/ext", "rdw/Widgets", {
         addToPrototype: {
-            convoModules: [
+            summaryModules: [
                 "rdw/ext/feedNotification/Group"
             ]
         }

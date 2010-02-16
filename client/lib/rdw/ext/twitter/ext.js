@@ -136,21 +136,9 @@ require.modify("rdw/Widgets", "rdw/ext/twitter/ext-rdw/Widgets",
     function (rd, dijit) {
         rd.applyExtension("rdw/ext/twitter/ext", "rdw/Widgets", {
             addToPrototype: {
-                convoModules: [
+                summaryModules: [
                     "rdw/ext/twitter/Group"
                 ]
-            },
-        
-            after: {
-                onHashChange: function (value) {
-                    //Hide the twitter group widgets when viewing the twitter stream,
-                    //otherwise make sure they are visible.
-                    var widgets = dijit.registry.byClass("rdw.ext.twitter.Group"),
-                        display = value === "rd:twitter" ? "none" : "";
-                    widgets.forEach(function (widget) {
-                        widget.domNode.style.display = display;
-                    });
-                }
             }
         });
     }
