@@ -45,7 +45,7 @@ function (rd, dojo, Conversation, Message, template) {
          *
          * @param conversation {object} the conversation API object.
          */
-        canHandleGroup: function (conversation) {
+        canHandle: function (conversation) {
             var msg = conversation.messages[0];
             return !this.conversation && conversation.message_ids[0][0] === "tweet";
         }
