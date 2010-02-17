@@ -278,6 +278,9 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         },
 
         addTypeFilter: function (type) {
+            //First remove any previous filter
+            this.removeTypeFilter();
+
             //Grab all the nodes match nodes and only show the one that
             //matches the selected type.
             dojo.query("[data-type]", this.domNode)
