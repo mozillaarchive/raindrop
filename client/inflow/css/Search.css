@@ -167,6 +167,7 @@
 
 .rdwDataSelectorMatches h4 {
   font-weight: normal;
+  padding: 3.5px;
 }
 
 .rdwDataSelectorMatches .rdwGoMatchMenuRealOption.dijitMenuItem  {
