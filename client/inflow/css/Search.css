@@ -122,7 +122,7 @@
   overflow: hidden;
 }
 
-.rdwDataSelector .unselected {
+.rdwDataSelectorMatches .unselected {
     display: none;
 }
 
@@ -138,6 +138,14 @@
   border-bottom: 1px solid #e6e6e6;
   background-color: #fafafa;
   cursor: pointer;
+}
+
+.rdwDataSelectorTypes li > button {
+    display: none;
+}
+
+.rdwDataSelectorTypes li.selected > button {
+    display: inline;
 }
 
 .rdwDataSelectorResults {
@@ -174,15 +182,6 @@
   font-weight: normal;
   padding: 3.5px;
 }
-
-.rdwDataSelectorMatches h4 > a {
-    display: none;
-}
-
-.rdwDataSelectorMatches .selected h4 > a {
-    display: inline;
-}
-
 
 .rdwDataSelectorMatches .rdwGoMatchMenuRealOption.dijitMenuItem  {
   border: 0 none transparent;

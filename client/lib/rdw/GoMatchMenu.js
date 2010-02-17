@@ -61,9 +61,6 @@ function    (rd,   dojo,   dijit, ComboBox, i18n) {
                 );
             }
 
-            //Add remove filter option
-            dojo.place('<a href="#remove-type-filter">' + i18n.removeFilter + '</a>', headerNode);
-
             if (matches.length) {
                 listNode = dojo.create('ul');
             }

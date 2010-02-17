@@ -33,7 +33,7 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
     return dojo.declare("rdw.DataSelector", [Base], {
         templateString: template,
     
-        typeItemTemplate: '<li data-type="${type}">${name}</li>',
+        typeItemTemplate: '<li data-type="${type}">${name} <button name="remove-type-filter">' + i18n.removeFilter + '</button></li>',
 
         comboWidget: "rdw/GoComboBox",
 
@@ -104,26 +104,18 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
 
         /**
          * Handles clicks to the types on the left side, to filter the results
-         * by type.
+         * by type, and to also remove the filter.
          * @param {Event} evt
          */
         onTypeClick: function (evt) {
-            var type = evt.target.getAttribute("data-type");
-            if (type) {
-                this.addTypeFilter(type);
-                dojo.stopEvent(evt);
-            }
-        },
+            var name = evt.target.name,
+                type = evt.target.getAttribute("data-type");
 
-        /**
-         * Handles some clicks from the match area, mainly to catch the remove filter
-         * clicks
-         * @param {Event} evt
-         */
-        onMatchClick: function (evt) {
-            var href = evt.target.href;
-            if (href && href.indexOf("#remove-type-filter") !== -1) {
+            if (name && name.indexOf("remove-type-filter") !== -1) {
                 this.removeTypeFilter();
+                dojo.stopEvent(evt);
+            } else if (type) {
+                this.addTypeFilter(type);
                 dojo.stopEvent(evt);
             }
         },
