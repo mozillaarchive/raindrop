@@ -123,6 +123,10 @@
     overflow: hidden;
 }
 
+.rdwDataSelector .unselected {
+    display: none;
+}
+
 .rdwDataSelectorTypes {
     border-top: 1px solid #CCCCCC;
     list-style: none;
@@ -133,6 +137,7 @@
     line-height: 40px;
     padding: 0 0 0 10px;
     border-bottom: 1px solid #CCCCCC;
+    cursor: pointer;
 }
 
 .rdwDataSelectorResults {
@@ -164,6 +169,15 @@
 .rdwDataSelectorMatches h4 {
     font-weight: normal;
 }
+
+.rdwDataSelectorMatches h4 > a {
+    display: none;
+}
+
+.rdwDataSelectorMatches .selected h4 > a {
+    display: inline;
+}
+
 
 .rdwDataSelectorMatches .rdwGoMatchMenuRealOption.dijitMenuItem  {
     border: 0 none transparent;

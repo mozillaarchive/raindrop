@@ -3,11 +3,11 @@
         <div class="rdwDataSelectorFilters">
             <div dojoAttachPoint="selectorNode"></div>
             <h3>Filter results by:</h3>
-            <ul class="rdwDataSelectorTypes" dojoAttachPoint="typesNode"></ul>
+            <ul class="rdwDataSelectorTypes" dojoAttachPoint="typesNode" dojoAttachEvent="onclick: onTypeClick"></ul>
         </div>
         <div class="rdwDataSelectorResults boxFlex">
             <h3>Your top content:</h3>
-            <div class="rdwDataSelectorMatches" dojoAttachPoint="matchContainerNode"></div>
+            <div class="rdwDataSelectorMatches" dojoAttachPoint="matchContainerNode" dojoAttachEvent="onclick: onMatchClick"></div>
         </div>
     </div>
 </div>

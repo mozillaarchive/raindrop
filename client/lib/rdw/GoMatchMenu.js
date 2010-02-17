@@ -26,8 +26,8 @@
 "use strict";
 
 require.def("rdw/GoMatchMenu",
-           ["rd", "dojo", "dijit", "dijit/form/ComboBox"],
-function    (rd,   dojo,   dijit) {
+           ["rd", "dojo", "dijit", "dijit/form/ComboBox", "i18n!rdw/nls/i18n"],
+function    (rd,   dojo,   dijit, ComboBox, i18n) {
 
     /**
      * An overrides of dijit.form._ComboBoxMenu, with lots of copy/pasting of
@@ -40,25 +40,29 @@ function    (rd,   dojo,   dijit) {
                             "<li class='dijitMenuItem dijitMenuNextButton' style='display: none' dojoAttachPoint='nextButton' waiRole='option'></li>" +
                         "</ul>",
 
-        _createOption: function(/*Object*/ item, labelFunc){
+        _createOption: function (/*Object*/ item, labelFunc) {
             // summary:
             //        Creates an option to appear on the popup menu subclassed by
             //        `dijit.form.FilteringSelect`.
 
             var labelObject = labelFunc(item),
-                menuitem = dojo.doc.createElement("li"),
+                menuitem = dojo.create("li", {
+                    "data-type": item.type
+                }),
                 headerNode = dojo.create('h4', null, menuitem),
                 matches = item.items, matchNode, listNode,
                 i, match, html = '', id;
-
             
             if (labelObject.html) {
-                headerNode.innerHTML = labelObject.label;
+                headerNode.innerHTML += labelObject.label;
             } else {
                 headerNode.appendChild(
                     dojo.doc.createTextNode(labelObject.label)
                 );
             }
+
+            //Add remove filter option
+            dojo.place('<a href="#remove-type-filter">' + i18n.removeFilter + '</a>', headerNode);
 
             if (matches.length) {
                 listNode = dojo.create('ul');
@@ -83,15 +87,15 @@ function    (rd,   dojo,   dijit) {
             }
 
             // #3250: in blank options, assign a normal height
-            if (menuitem.innerHTML == "") {
+            if (menuitem.innerHTML === "") {
                 menuitem.innerHTML = "&nbsp;";
             }
 
             return menuitem;
         },
 
-        createOptions: function(results, dataObject, labelFunc) {
-            dojo.forEach(results, function(typedItem, i) {
+        createOptions: function (results, dataObject, labelFunc) {
+            dojo.forEach(results, function (typedItem, i) {
                 var menuitem = this._createOption(typedItem, labelFunc);
                 menuitem.className = "dijitReset";
                 dojo.attr(menuitem, "id", this.id + i);
@@ -101,11 +105,11 @@ function    (rd,   dojo,   dijit) {
             return this.domNode.childNodes;
         },
 
-        _getRealOptions: function() {
+        _getRealOptions: function () {
             return dojo.query('.rdwGoMatchMenuRealOption', this.domNode);
         },
 
-        _highlightNextOption: function(){
+        _highlightNextOption: function () {
             // summary:
             //         Highlight the item just below the current selection.
             //         If nothing selected, highlight first option.
@@ -114,9 +118,9 @@ function    (rd,   dojo,   dijit) {
             // the highlighted option sometimes becomes detached from the menu!
             // test to see if the option has a parent to see if this is the case.
             var nodes = this._getRealOptions(), index;
-            if(!this.getHighlightedOption()){
+            if (!this.getHighlightedOption()) {
                 this._focusOptionNode(nodes[0]);
-            }else{
+            } else {
                 index = nodes.indexOf(this._highlighted_option) + 1;
                 if (index > nodes.length - 1) {
                     index = 0;
@@ -127,14 +131,14 @@ function    (rd,   dojo,   dijit) {
             dijit.scrollIntoView(this._highlighted_option);
         },
 
-        highlightFirstOption: function(){
+        highlightFirstOption: function () {
             // summary:
             //         Highlight the first real item in the list (not Previous Choices).
             this._focusOptionNode(this._getRealOptions()[0]);            
             dijit.scrollIntoView(this._highlighted_option);
         },
 
-        highlightLastOption: function(){
+        highlightLastOption: function () {
             // summary:
             //         Highlight the last real item in the list (not More Choices).
             
@@ -143,16 +147,16 @@ function    (rd,   dojo,   dijit) {
             dijit.scrollIntoView(this._highlighted_option);
         },
 
-        _highlightPrevOption: function(){
+        _highlightPrevOption: function () {
             // summary:
             //         Highlight the item just above the current selection.
             //         If nothing selected, highlight last option (if
             //         you select Previous and try to keep scrolling up the list).
             var nodes = this._getRealOptions(), index;
 
-            if(!this.getHighlightedOption()){
+            if (!this.getHighlightedOption()) {
                 this._focusOptionNode(nodes[nodes.length - 1]);
-            }else{
+            } else {
                 index = nodes.indexOf(this._highlighted_option) - 1;
                 if (index < 0) {
                     index = nodes.length - 1;
@@ -162,27 +166,34 @@ function    (rd,   dojo,   dijit) {
             dijit.scrollIntoView(this._highlighted_option);
         },
 
-        _onMouseOver: function(/*Event*/ evt){
-            if(evt.target === this.domNode){ return; }
-            var tgt = evt.target;
-            if(!(tgt == this.previousButton || tgt == this.nextButton)){
+        _onMouseUp: function(/*Event*/ evt){
+            if(evt.target === this.domNode || !this._highlighted_option){
+                return;
+            }else if(evt.target == this.previousButton){
+                this.onPage(-1);
+            }else if(evt.target == this.nextButton){
+                this.onPage(1);
+            }else{
+                var tgt = evt.target;
                 // while the clicked node is inside the div
-                while(!tgt.item && tgt !== this.domNode){
+                while(tgt && !tgt.item){
                     // recurse to the top
                     tgt = tgt.parentNode;
                 }
-            }
-            if (tgt && tgt.item) {
-                this._focusOptionNode(tgt);
+                if (tgt) {
+                    this._setValueAttr({ target: tgt }, true);
+                }
             }
         },
 
-        _onMouseOver: function(/*Event*/ evt){
-            if(evt.target === this.domNode){ return; }
+        _onMouseOver: function (/*Event*/ evt) {
+            if (evt.target === this.domNode) {
+                return;
+            }
             var tgt = evt.target;
-            if(!(tgt == this.previousButton || tgt == this.nextButton)){
+            if (!(tgt === this.previousButton || tgt === this.nextButton)) {
                 // while the clicked node is inside the div
-                while(!tgt.item && tgt !== this.domNode){
+                while (!tgt.item && tgt !== this.domNode) {
                     // recurse to the top
                     tgt = tgt.parentNode;
                 }
@@ -191,7 +202,5 @@ function    (rd,   dojo,   dijit) {
                 this._focusOptionNode(tgt);
             }
         }
-
-
     });
 });

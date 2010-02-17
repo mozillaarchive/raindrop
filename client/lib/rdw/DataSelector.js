@@ -94,6 +94,41 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
         },
 
         /**
+         * Handles clicks that will trigger showing the larger div with all the
+         * choices.
+         * @param {Event} evt
+         */
+        onClick: function (evt) {
+            this.expand();
+        },
+
+        /**
+         * Handles clicks to the types on the left side, to filter the results
+         * by type.
+         * @param {Event} evt
+         */
+        onTypeClick: function (evt) {
+            var type = evt.target.getAttribute("data-type");
+            if (type) {
+                this.addTypeFilter(type);
+                dojo.stopEvent(evt);
+            }
+        },
+
+        /**
+         * Handles some clicks from the match area, mainly to catch the remove filter
+         * clicks
+         * @param {Event} evt
+         */
+        onMatchClick: function (evt) {
+            var href = evt.target.href;
+            if (href && href.indexOf("#remove-type-filter") !== -1) {
+                this.removeTypeFilter();
+                dojo.stopEvent(evt);
+            }
+        },
+
+        /**
          * creates the widget that will use the data in this.items. Each object
          * entry in items should have an "id" and a "name" property.
          */
@@ -164,15 +199,6 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
          * Triggered by GoComboBox when its text element is focused.
          */
         onGoFocus: function (evt) {
-            this.expand();
-        },
-
-        /**
-         * Handles clicks that will trigger showing the larger div with all the
-         * choices.
-         * @param {Event} evt
-         */
-        onClick: function (evt) {
             this.expand();
         },
 
@@ -257,6 +283,23 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
             }
 
             this.typesNode.innerHTML = html;
+        },
+
+        addTypeFilter: function (type) {
+            //Grab all the nodes match nodes and only show the one that
+            //matches the selected type.
+            dojo.query("[data-type]", this.domNode)
+                .forEach(function (node) {
+                    dojo.addClass(node, (node.getAttribute("data-type") === type ? "selected" : "unselected"));
+                });
+            
+            this.selectedType = type;
+        },
+
+        removeTypeFilter: function () {
+            dojo.query(".unselected", this.domNode).removeClass("unselected");
+            dojo.query(".selected", this.domNode).removeClass("selected");
+            this.selectedType = null;
         },
 
         /**
