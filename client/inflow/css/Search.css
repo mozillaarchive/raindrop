@@ -126,6 +126,14 @@
     display: none;
 }
 
+.rdwDataSelector .rdwDataSelectorFilters .selected {
+  /*background-image: url("../i/new/rd_search_selected.png");
+  background-position: right center;
+  background-repeat: no-repeat;*/
+  font-weight: bold;
+  background-color: #f2f2f2;
+}
+
 .rdwDataSelectorTypes {
   border-top: 1px solid #e6e6e6;
   list-style: none;
@@ -141,11 +149,15 @@
 }
 
 .rdwDataSelectorTypes li > button {
-    display: none;
+  display: none;
 }
 
 .rdwDataSelectorTypes li.selected > button {
-    display: inline;
+  display: inline;
+  float: right;
+  top: 11px;
+  right: 11px;
+  position: relative;
 }
 
 .rdwDataSelectorResults {
@@ -164,7 +176,7 @@
 }
 
 .rdwDataSelectorMatches {
-  padding: 10px;
+  padding: 9px 10px 10px 10px;
   height: 235px;
   border-top: 1px solid #e6e6e6;
   overflow-x: hidden;
