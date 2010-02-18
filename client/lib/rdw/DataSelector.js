@@ -310,12 +310,14 @@ function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox
     
             //Dispatch to idSelected method on this instance.
             this[item.type + "Selected"](item.id);
-    
+
             this.onDataSelected({
                 type: item.type,
                 id: item.id,
                 value: item.name
             });
+
+            this.onClose();
         },
 
         /**
