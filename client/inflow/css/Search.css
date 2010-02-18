@@ -118,8 +118,9 @@
 }
 
 .rdwDataSelector.expanded .rdwDataSelectorResults {
-  height: 320px;
-  overflow: hidden;
+  height: 330px;
+  width: 484px;
+  overflow: auto;
 }
 
 .rdwDataSelectorMatches .unselected {
@@ -177,7 +178,6 @@
 
 .rdwDataSelectorMatches {
   padding: 9px 10px 10px 10px;
-  height: 235px;
   border-top: 1px solid #e6e6e6;
   overflow-x: hidden;
   overflow-y: auto;
