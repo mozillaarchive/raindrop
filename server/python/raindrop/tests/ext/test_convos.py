@@ -1,9 +1,8 @@
 from twisted.internet import defer, reactor
 
-from raindrop.tests import TestCaseWithCorpus
+from raindrop.tests import TestCaseWithCorpus, TestCaseWithTestDB
 
-
-class TestSimpleCorpus(TestCaseWithCorpus):
+class ConvoTestMixin:
     @defer.inlineCallbacks
     def get_docs(self, key, expected=None):
         result = yield self.doc_model.open_view(key=key, reduce=False,
@@ -28,6 +27,9 @@ class TestSimpleCorpus(TestCaseWithCorpus):
             self.failUnlessEqual(len(items), expected)
         _ = yield self.doc_model.create_schema_items(items)
         _ = yield self.ensure_pipeline_complete()
+
+
+class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
 
     @defer.inlineCallbacks
     def test_convo_single(self):
@@ -149,53 +151,47 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         msgs = yield self.get_messages_in_convo(doc_sum['rd_key'])
         self.failUnlessEqual(sorted(msgs), sorted([msgid_reply, msgid]))
 
+
+# the following tests don't use the corpos, they just introduce a few
+# 'simple' messages manually.
+class TestConvCombine(TestCaseWithTestDB, ConvoTestMixin):
+
+    msg_template = """\
+Delivered-To: raindrop_test_user@mozillamessaging.com
+From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
+To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
+Date: Sat, 21 Jul 2009 12:13:14 -0000
+Message-Id: %(mid)s
+References: %(refs)s
+
+Hello
+"""
+
+    def get_message_schema_item(self, msgid, refs):
+        args = {'mid': '<'+msgid+'>',
+                'refs': ' '.join(['<'+ref+'>' for ref in refs])}
+        src = self.msg_template % args
+        si = {'rd_key': ['email', msgid],
+              'rd_schema_id': 'rd.msg.rfc822',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {},
+              'attachments' : {
+                    'rfc822': {
+                        'data': src
+                    }
+              }
+        }
+        return si
+
     @defer.inlineCallbacks
     def test_convo_combine(self):
         # in this test we introduce 2 docs with no references to each other
         # (so end up with 2 convos), then introduce a 3rd with a reference
         # to both originals - we should result in a single conversation.
-        _ = yield self.init_corpus('hand-rolled')
-        msg1 = """\
-Delivered-To: raindrop_test_user@mozillamessaging.com
-From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
-To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
-Date: Sat, 21 Jul 2009 12:13:14 -0000
-Message-Id: <1234@something>
-
-Hello
-"""
-        msg2 = """\
-Delivered-To: raindrop_test_user@mozillamessaging.com
-From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
-To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
-Date: Sat, 21 Jul 2009 12:13:14 -0000
-Message-Id: <5678@something>
-
-Hello again
-"""
-        # this one has the 2 references.
-        msg3 = """\
-Delivered-To: raindrop_test_user@mozillamessaging.com
-From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
-To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
-Date: Sat, 21 Jul 2009 12:13:14 -0000
-Message-Id: <90@something>
-References: <1234@something> <5678@something> 
-
-Hello again again
-"""
-        for (src, msgid) in [(msg1, "1234@something"), (msg2, "5678@something")]:
-            si = {'rd_key': ['email', msgid],
-                  'rd_schema_id': 'rd.msg.rfc822',
-                  'rd_source' : None,
-                  'rd_ext_id': 'rd.testsuite',
-                  'items': {},
-                  'attachments' : {
-                        'rfc822': {
-                            'data': src
-                        }
-                  }
-                  }
+        base_msg_ids = ["1234@something", "5678@something"]
+        for msgid in base_msg_ids:
+            si = self.get_message_schema_item(msgid, [])
             _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 2 convos.
@@ -203,20 +199,10 @@ Hello again again
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 2)
         # now the last message - one convo should vanish.
-        si = {'rd_key': ['email', "90@something"],
-              'rd_schema_id': 'rd.msg.rfc822',
-              'rd_source' : None,
-              'rd_ext_id': 'rd.testsuite',
-              'items': {},
-              'attachments' : {
-                    'rfc822': {
-                        'data': msg3
-                    }
-              }
-              }
+        si = self.get_message_schema_item("90@something", base_msg_ids)
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
-        # should be 1 convos.
+        # should be 1 convo.
         key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 1)
@@ -229,11 +215,40 @@ Hello again again
         self.failUnlessEqual(sorted(msg_ids), sorted(mine))
 
     @defer.inlineCallbacks
+    def test_convo_combine_lots(self):
+        # much like the above test, but with more than 1 'extra' conversation
+        # which needs to be merged.
+        base_msg_ids = ["12@something", "34@something", '56@something']
+        for msgid in base_msg_ids:
+            si = self.get_message_schema_item(msgid, [])
+            _ = yield self.doc_model.create_schema_items([si])
+        _ = yield self.ensure_pipeline_complete()
+        # should be 3 convos.
+        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        result = yield self.doc_model.open_view(key=key, reduce=False)
+        self.failUnlessEqual(len(result['rows']), 3)
+        # now the last message - two convos should vanish.
+        si = self.get_message_schema_item("78@something", base_msg_ids)
+        _ = yield self.doc_model.create_schema_items([si])
+        _ = yield self.ensure_pipeline_complete()
+        # should be 1 convo.
+        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        result = yield self.doc_model.open_view(key=key, reduce=False)
+        self.failUnlessEqual(len(result['rows']), 1)
+        conv_id = result['rows'][0]['value']['rd_key']
+        # with all 4 messages.
+        msg_ids = yield self.get_messages_in_convo(conv_id)
+        mine = [['email', '12@something'],
+                ['email', '34@something'],
+                ['email', '56@something'],
+                ['email', '78@something']]
+        self.failUnlessEqual(sorted(msg_ids), sorted(mine))
+
+    @defer.inlineCallbacks
     def test_convo_non_delivery(self):
         # in this test we introduce a "sent" message, and a
         # non-delivery-report for that message - they should appear in the
         # same convo.
-        _ = yield self.init_corpus('hand-rolled')
         msg1 = """\
 From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
 To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>

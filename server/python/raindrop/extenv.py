@@ -312,7 +312,7 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
     # find all existing items in all convos to merge, and update every message
     # in those convos to point at this one.
     keys = [['rd.msg.conversation', 'conversation_id', cid]
-            for cis in convos_to_merge]
+            for cid in convos_to_merge]
     results = threads.blockingCallFromThread(reactor,
                     doc_model.open_view, keys=keys, reduce=False)
     for row in results['rows']:
