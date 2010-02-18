@@ -99,6 +99,8 @@ class TestCase(unittest.TestCase):
         return unittest.TestCase.tearDown(self)
 
 class TestCaseWithDB(TestCase):
+    use_incoming_processor = True
+
     @defer.inlineCallbacks
     def tearDown(self):
         if self.pipeline is not None:
@@ -106,16 +108,17 @@ class TestCaseWithDB(TestCase):
         _ = yield TestCase.tearDown(self)
 
     def get_options(self):
-        return FakeOptions()
+        opts = FakeOptions()
+        opts.no_process = not self.use_incoming_processor
+        return opts
 
     @defer.inlineCallbacks
-    def ensure_pipeline_complete(self):
+    def ensure_pipeline_complete(self, n_expected_errors=0):
         # later we will support *both* backlog and incoming at the
         # same time, but currently the test suite done one or the other...
-        ip = self.pipeline.incoming_processor
-        if ip is None:
-            nerr = yield self.pipeline.start_backlog()
-        else:
+        if self.use_incoming_processor:
+            assert self.pipeline.incoming_processor is not None
+            ip = self.pipeline.incoming_processor 
             # We have an 'incoming processor' running.
             # we call this twice - first time it may be on the way out of the
             # loop while a few new ones are arriving.
@@ -123,7 +126,10 @@ class TestCaseWithDB(TestCase):
             _ = yield ip.ensure_done()
             # manually count the errors.
             nerr = sum([getattr(r.processor, 'num_errors', 0) for r in ip.runners])
-        defer.returnValue(nerr)
+        else:
+            assert self.pipeline.incoming_processor is None
+            nerr = yield self.pipeline.start_backlog()
+        self.failUnlessEqual(n_expected_errors, nerr)
 
     """A test case that is setup to work with a temp database"""
     def prepare_test_db(self, config):

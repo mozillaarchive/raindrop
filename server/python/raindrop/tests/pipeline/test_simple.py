@@ -10,12 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TestPipelineBase(TestCaseWithTestDB):
-    # If use_backlog_processor is true, then we disable the 'incoming
-    # processor' while loading the items, then use the 'backlog processor'
-    # to bring things up-to-date.
-    # If false, we just allow the incoming processor to run making the
-    # docs as it goes.
-    use_backlog_processor = True
+    use_incoming_processor = False
     extensions = None # default extensions for test.
     simple_extensions = [
             'rd.test.core.test_converter',
@@ -26,15 +21,14 @@ class TestPipelineBase(TestCaseWithTestDB):
     def get_options(self):
         ret = TestCaseWithTestDB.get_options(self)
         ret.exts = self.simple_extensions
-        ret.no_process = self.use_backlog_processor
         ret.protocols = ['test']
         return ret
 
     @defer.inlineCallbacks
-    def process_doc(self):
+    def process_doc(self, expected_errors=0):
         # populate our test DB with the raw message(s).
         _ = yield self.deferMakeAnotherTestMessage(None)
-        _ = yield self.ensure_pipeline_complete()
+        _ = yield self.ensure_pipeline_complete(expected_errors)
 
     def get_last_by_seq(self, n=1):
         def extract_rows(result):
@@ -107,7 +101,7 @@ class TestPipeline(TestPipelineBase):
                 )
 
 class TestPipelineSync(TestPipeline):
-    use_backlog_processor = False
+    use_incoming_processor = not TestPipelineBase.use_incoming_processor
 
 class TestErrors(TestPipelineBase):
     extensions = ['rd.test.core.test_converter']
@@ -129,8 +123,9 @@ class TestErrors(TestPipelineBase):
             types = set([row['doc']['rd_schema_id'] for row in lasts])
             self.failUnlessEqual(types, expected)
 
-        # open the test document to get its ID and _rev.
-        return self.process_doc(
+        # open the test document to get its ID and _rev, and indicate how many
+        # errors we expect.
+        return self.process_doc(1
                 ).addCallback(lambda whateva: self.get_last_by_seq(2)
                 ).addCallback(check_target_last
                 )
@@ -168,10 +163,10 @@ class TestErrors(TestPipelineBase):
             self.failUnlessEqual(got, expected)
 
         test_proto.set_test_options(next_convert_fails=True)
-        return self.process_doc(
+        return self.process_doc(1
                 ).addCallback(lambda whateva: self.get_last_by_seq(2)
                 ).addCallback(check_last_doc
                 )
 
 class TestErrorsSync(TestErrors):
-    use_backlog_processor = False
+    use_incoming_processor = not TestPipelineBase.use_incoming_processor

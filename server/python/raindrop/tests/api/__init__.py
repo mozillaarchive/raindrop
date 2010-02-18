@@ -13,8 +13,7 @@ class APITestCase(TestCaseWithCorpus):
         _ = yield TestCaseWithCorpus.setUp(self)
         ndocs = yield self.load_corpus('hand-rolled')
         self.failUnless(ndocs, "failed to load any corpus docs")
-        nerr = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(nerr, 0)
+        _ = yield self.ensure_pipeline_complete()
         # and reset our API so it reloads anything
         _ = yield self.call_api("_reset")
 

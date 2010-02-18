@@ -52,8 +52,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
     def test_async(self):
         ndocs = yield self.load_corpus("hand-rolled")
         self.failUnless(ndocs, "failed to load any corpus docs")
-        nerr = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(nerr, 0)
+        _ = yield self.ensure_pipeline_complete()
         _ = yield self.check_all_worked(ndocs)
 
 # Test that given our collection of malformed messages, none of the extensions
@@ -81,6 +80,5 @@ class TestMalformedCorpus(TestCaseWithCorpus):
     def test_async(self):
         ndocs = yield self.load_corpus("malformed")
         self.failUnless(ndocs, "failed to load any corpus docs")
-        nerr = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(nerr, 0)
+        _ = yield self.ensure_pipeline_complete()
         _ = yield self.check_all_worked(ndocs)
