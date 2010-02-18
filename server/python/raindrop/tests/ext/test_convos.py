@@ -130,7 +130,9 @@ class TestSimpleCorpus(TestCaseWithCorpus):
             'latest_timestamp': max(body_orig['timestamp'], body_reply['timestamp']),
             'unread_ids': [msgid_reply, msgid],
             'message_ids': [msgid_reply, msgid],
-            'subject': 'Re', # our test reply has a simple subject!
+            # The first message in the conv is used for the subject - and
+            # that message has no subject in our corpus
+            'subject': None,
             'target-timestamp': [['direct', body_reply['timestamp']],
                                  ['from', body_orig['timestamp']],
                                  ['personal', body_reply['timestamp']],
