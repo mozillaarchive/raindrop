@@ -61,6 +61,13 @@ class Extension(object):
     # "complete", so extensions which depend on it aren't run and the field
     # values don't appear in the megaview.
     EXTENDER = "extender"
+    # A 'summarizer' creates 'summary' record; this means they will emit
+    # 'dependencies' and should one day get some special 'batching' treatment
+    # to avoid them doing unnecessary work.
+    SUMMARIZER = "summarizer"
+
+    ALL_CATEGORIES = (SMART, PROVIDER, EXTENDER, SUMMARIZER)
+
     def __init__(self, id, doc, handler, globs):
         self.id = id
         self.doc = doc
@@ -76,6 +83,10 @@ class Extension(object):
         self.running = False # for reentrancy testing...
         # the category - for now we have a default, but later should not!
         self.category = doc.get('category', self.PROVIDER)
+        if self.category not in self.ALL_CATEGORIES:
+            logger.error("extension %r has invalid category %r (must be one of %s)",
+                         id, self.category, self.ALL_CATEGORIES)
+
 
 @defer.inlineCallbacks
 def load_extensions(doc_model):
@@ -427,7 +438,11 @@ class DocsBySeqIteratorFactory(object):
             for row in self.rows:
                 src_id = row['id']
                 all_ids.add(src_id)
-                _, enc_rd_key, schema_id = doc_model.split_doc_id(src_id)
+                try:
+                    _, enc_rd_key, schema_id = doc_model.split_doc_id(src_id)
+                except ValueError:
+                    # not a raindrop document - ignore it.
+                    continue
                 rd_key = decode_rdkey(enc_rd_key)
                 keys.append(["rd.core.content", "dep", [rd_key, schema_id]])
             results = yield doc_model.open_view(keys=keys, reduce=False)
@@ -628,7 +643,7 @@ class StatefulQueueManager(object):
                 nfailed += 1
                 continue
             cs = qlook.current_seq
-            this = cs, qlook.queue_id
+            this = (cs or 0), qlook.queue_id
             if this < lowest:
                 lowest = this
             if this > highest:
@@ -735,9 +750,18 @@ class StatefulQueueManager(object):
     @defer.inlineCallbacks
     def _run_queue(self, q, qstate, num_to_process=2000):
         start_seq = qstate.schema_item['items']['seq']
+        # There is quite a performance penalty involved in getting the
+        # dependencies for extensions which don't need them...
+        try:
+            include_deps = q.processor.ext.category == Extension.SUMMARIZER
+        except AttributeError:
+            # hacky - not an 'extension' based queue (ie, the outgoing one)
+            include_deps = False
+            
         iterfact = DocsBySeqIteratorFactory()
         more = yield iterfact.initialize(self.doc_model, start_seq,
-                                         num_to_process, self.stop_seq)
+                                         num_to_process, self.stop_seq,
+                                         include_deps=include_deps)
         if not more:
             # queue is done (at the end)
             defer.returnValue(True)
@@ -893,8 +917,8 @@ class ExtensionProcessor(object):
 
     def _get_ext_env(self, context, src_doc):
         # Each ext has a single 'globals' which is updated before it is run;
-        # therefore it is critical we don't accidently run 2 extensions at
-        # once.
+        # therefore it is critical we don't accidently run the same extension
+        # more than once concurrently
         if self.ext.running:
             raise RuntimeError, "%r is already running" % self.ext.id
         self.ext.running = True
@@ -925,8 +949,8 @@ class ExtensionProcessor(object):
             # re-running.  Such extensions are unlikely to be able to be
             # correctly overridden, but that is life.
             pass
-        elif ext.category in [ext.PROVIDER, ext.EXTENDER]:
-            is_provider = ext.category==ext.PROVIDER
+        elif ext.category in [ext.PROVIDER, ext.EXTENDER, ext.SUMMARIZER]:
+            is_provider = ext.category!=ext.EXTENDER
             # We need to find *all* items previously written by this extension
             # so we can manage updating/removal of the old items.
             key = ['rd.core.content', 'ext_id-source', [ext_id, src_id]]
@@ -975,8 +999,8 @@ class ExtensionProcessor(object):
                              ' %(rd_ext_id)r for key %(rd_key)r', v)
                 docs_previous[prev_key] = v
         else:
-            raise ValueError("extension %r has invalid category %r" %
-                             (ext_id, ext.category))
+            raise RuntimeError("don't know what to do with category of extension %r: %r" %
+                               (ext_id, ext.category))
 
         # Get the source-doc and process it.
         src_doc = (yield dm.open_documents_by_id([src_id]))[0]

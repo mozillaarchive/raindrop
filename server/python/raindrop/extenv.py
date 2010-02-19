@@ -49,7 +49,15 @@ def get_ext_env(doc_model, context, src_doc, ext):
         else:
             ni['rd_key'] = rd_key
         if deps is not None:
+            if ext.category != ext.SUMMARIZER:
+                raise ValueError("extension %r is not a 'summarizer' so can "
+                                 "not emit dependencies.", ext.id)
             ni['rd_deps'] = deps
+        else:
+            if ext.category == ext.SUMMARIZER:
+                logger.warn("Extension %r is a 'summarizer' that does not "
+                            "emit dependencies.  Performance of this "
+                            "extension will suffer.", ext.id)
         ni['rd_source'] = [src_doc['_id'], src_doc['_rev']]
         if attachments is not None:
             ni['attachments'] = attachments
@@ -277,6 +285,10 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
     all_conv_keys = set()
     existing = {}
     for row in results['rows']:
+        # ack - I've seen None here - it means couchdb saw an error opening
+        # the doc - which should never happen - if the doc was deleted, it
+        # wouldn't be in the view!
+        assert row['doc'] is not None, row
         cid = doc_model.hashable_key(row['doc']['conversation_id'])
         existing[doc_model.hashable_key(row['value']['rd_key'])] = cid
         all_conv_keys.add(cid)
