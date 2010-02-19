@@ -44,8 +44,7 @@ if 'RAINDROP_LOG_LEVELS' in os.environ:
             try:
                 level = int(level)
             except ValueError:
-                init_errors.append(
-                    "Invalid log-level '%s' ignored" % (val,))
+                logging.getLogger().warn("Invalid log-level '%s' ignored" % (val,))
                 continue
         l = logging.getLogger(name)
         l.setLevel(level)
