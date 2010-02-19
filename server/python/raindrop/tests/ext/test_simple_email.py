@@ -271,3 +271,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
         self.failUnlessEqual(rows[0]['doc']['target'], "notification");
+
+class TestSimpleCorpusBacklog(TestSimpleCorpus):
+    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor

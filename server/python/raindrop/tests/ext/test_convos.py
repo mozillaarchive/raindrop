@@ -151,6 +151,8 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         msgs = yield self.get_messages_in_convo(doc_sum['rd_key'])
         self.failUnlessEqual(sorted(msgs), sorted([msgid_reply, msgid]))
 
+class TestSimpleCorpusBacklog(TestSimpleCorpus):
+    use_incoming_processor = False
 
 # the following tests don't use the corpos, they just introduce a few
 # 'simple' messages manually.
@@ -319,3 +321,6 @@ Content-Transfer-Encoding: 7bit
         doc = result['rows'][0]['doc']
         self.failUnlessEqual(sorted(doc['message_ids']),
                              sorted([['email', mid1], ['email', mid2]]))
+
+class TestConvCombineBacklog(TestConvCombine):
+    use_incoming_processor = False
