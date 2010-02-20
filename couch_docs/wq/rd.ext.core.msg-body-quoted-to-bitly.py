@@ -35,7 +35,7 @@ def handler(doc):
     bitlys = []
     links = doc['links']
     for link in links:
-        if link['domain'] in ["bit.ly", "bitly.com", "j.mp"]:
+        if link['domain'] in ["bit.ly", "bitly.com", "j.mp", "nyti.ms"]:
             match = bitly_path_regex.search(link['path'])
             if match and match.group(1):
                 bitlys.append( (link['url'], match.group(1)) )
