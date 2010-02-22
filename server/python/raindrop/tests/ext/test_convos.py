@@ -55,14 +55,14 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'message_ids': [msgid],
             'unread_ids': [msgid],
             'subject': None, # our test messages have no subject!
-            'grouping-timestamp': [[['display-group', 'sent'], body_schema['timestamp']]],
+            'grouping-timestamp': [[['display-group', 'inflow'], body_schema['timestamp']]],
             'identities': [['email', 'raindrop_test_recip2@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip3@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip@mozillamessaging.com'],
                            ['email', 'raindrop_test_user@mozillamessaging.com'],
                             ],
             'from_display': ['Raindrop Test User'],
-            'groups_with_unread': ['from'],
+            'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
 
@@ -102,7 +102,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'unread_ids': [],
             'identities': [],
             'from_display': [],
-            'groups_with_unread': [],
+            'unread_grouping_tags': [],
             'grouping-timestamp': [],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
@@ -139,7 +139,6 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'subject': None,
             'grouping-timestamp': [
                                   [['display-group', 'inflow'], body_reply['timestamp']],
-                                  [['display-group', 'sent'], body_orig['timestamp']],
                                 ],
             'identities': [['email', 'raindrop_test_recip2@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip3@mozillamessaging.com'],
@@ -147,7 +146,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
                            ['email', 'raindrop_test_user@mozillamessaging.com'],
                             ],
             'from_display': ['Raindrop Test Recipient', 'Raindrop Test User'],
-            'groups_with_unread': ['direct', 'from'],
+            'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
         # check messages in the convo.

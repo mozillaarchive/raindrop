@@ -466,17 +466,20 @@ class GroupingAPI(API):
         opts = {}
         self.requires_get(req)
         db = RDCouchDB(req)
-        # first get the rd_key for all items with an 'info' schema.
-        keys = [['rd.core.content', 'schema_id', 'rd.grouping.info'],
-                ['rd.core.content', 'schema_id', 'rd.grouping.summary'],
-               ]
-        result = db.megaview(keys=keys, include_docs=True, reduce=False)
+        # Note there might be lots of .info groups, but only a small number
+        # of them with 'summary'
+        key = ['rd.core.content', 'schema_id', 'rd.grouping.summary']
+        result = db.megaview(key=key, include_docs=True, reduce=False)
         by_key = {}
+        keys = []
         for row in result['rows']:
             rd_key = row['value']['rd_key']
-            bucket = by_key.setdefault(hashable_key(rd_key), {})
-            bucket.update(self._filter_user_fields(row['doc']))
-            bucket['rd_key'] = rd_key
+            by_key[hashable_key(rd_key)] = row['doc']
+            keys.append(['rd.core.content', 'key-schema_id', [rd_key, 'rd.grouping.info']])
+        result = db.megaview(keys=keys, include_docs=True, reduce=False)
+        for row in result['rows']:
+            rd_key = row['value']['rd_key']
+            by_key[hashable_key(rd_key)].update(row['doc'])
         return by_key.values()
 
 

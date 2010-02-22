@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 __my_identities = []
 
+class InternalNoDepsSentinal: pass
+
 def get_ext_env(doc_model, context, src_doc, ext):
     # Hack together an environment for the extension to run in
     # (specifically, provide the emit_schema etc globals)
@@ -48,7 +50,9 @@ def get_ext_env(doc_model, context, src_doc, ext):
             ni['rd_key'] = src_doc['rd_key']
         else:
             ni['rd_key'] = rd_key
-        if deps is not None:
+        if deps is InternalNoDepsSentinal:
+            pass
+        elif deps is not None:
             if ext.category != ext.SUMMARIZER:
                 raise ValueError("extension %r is not a 'summarizer' so can "
                                  "not emit dependencies.", ext.id)
@@ -159,10 +163,13 @@ def get_ext_env(doc_model, context, src_doc, ext):
                         key=key, reduce=False)
         if result['rows']:
             return # this grouping already exists.
-        # create a new 'info' schema.
+        # create a new 'info' schema marked as 'dynamic' so it can be deleted
+        # when no items exist in it.
         items = {'title': grouping_title,
+                 'dynamic': True,
                  'grouping_tags': [tag]}
-        emit_schema('rd.grouping.info', items, rd_key=grouping_key)
+        emit_schema('rd.grouping.info', items, rd_key=grouping_key,
+                    deps=InternalNoDepsSentinal)
 
     new_globs = {}
     new_globs['emit_schema'] = emit_schema

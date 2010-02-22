@@ -860,6 +860,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
 
                 body = msg.schemas["rd.msg.body"];
                 if (body.from[0] === identityId[0] && body.from[1] === identityId[1]) {
+                    /* XXX - this should be unnecessary??
                     //Convert conversation to a broadcast.
                     //A bit of a hack, assumes a lot of knowledge of
                     //the data model here.
@@ -868,6 +869,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                         groupingTag.tag = "broadcast";
                         groupingTag["target-timestamp"][0] = "broadcast";
                     }
+                    ***/
                     //Store the convo for the topic, and remove the widget.
                     conversations.push(widget.conversation);                  
                     this.removeSupporting(widget);

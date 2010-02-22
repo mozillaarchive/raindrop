@@ -3,6 +3,8 @@ import itertools
 def update_group(group_key, grouping_tags):
     # query every conversation with those grouping tags to get the unread
     # ids.
+    logger.debug('building summary for grouping %r with tags %s', group_key,
+                 grouping_tags)
     results = open_view('raindrop!content!all', 'conv-groupings-with-unread',
                         keys=grouping_tags)
     for gt, conv_rows in itertools.groupby(results['rows'], lambda row: row['key']):
@@ -30,7 +32,7 @@ def update_default_group():
 
 def handler(doc):
     need_default = False
-    for gt in doc['groups_with_unread']:
+    for gt in doc['unread_grouping_tags']:
         # find the 'display-group's with those tags
         key = ['rd.grouping.info', 'grouping_tags', gt]
         result = open_view(key=key, include_docs=True, reduce=False)

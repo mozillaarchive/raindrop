@@ -97,11 +97,6 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
 
         /** Does the actual display of the group widgets. */
         _renderGroups: function () {
-            // This needs to be re-factored so each widget knows what
-            // 'grouping' it works with and request just that group.
-            // For now, we simulate 'impersonal' using groupings - but we do
-            // it in the front end instead of the back-end to prevent
-            // timeouts.
             api({
                 url: 'inflow/grouping/summary'
             }).ok(this, function (summaries) {

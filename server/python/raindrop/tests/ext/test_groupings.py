@@ -48,8 +48,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
 
     @defer.inlineCallbacks
     def test_groups_ungrouped(self):
-        # We know the group-tag 'broadcast' doesn't appear in any groupings.
-        # so arrange for such a message.
         _ = yield self.init_corpus('hand-rolled')
         msg = """\
 Delivered-To: raindrop_test_user@mozillamessaging.com
@@ -72,9 +70,12 @@ Hello everyone
               }
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
-        # should also be exactly 1 'grouping summary' for the default group
-        rd_key = ['display-group', None]
+        # should also be exactly 1 'grouping summary' for this unknown sender
+        rd_key = ['identity', ['email', 'someone@somewhere.com']]
         docs = yield self.doc_model.open_schemas([(rd_key, 'rd.grouping.summary')])
         doc = docs[0]
         self.failUnless(doc, 'no summary group')
         self.failUnlessEqual(doc['num_unread'], 1)
+
+class TestSimpleCorpusBacklog(TestSimpleCorpus):
+    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor

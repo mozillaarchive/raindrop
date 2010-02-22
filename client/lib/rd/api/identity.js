@@ -282,7 +282,7 @@ function (rd, dojo, api) {
         /**
          * @private
          *
-         * Gets or creates rd.identity.msg-grouping-tag schema for a given identity ID.
+         * Gets or creates rd.identity.sender-flags schema for a given identity ID.
          * 
          * @param {dojo.Deferred} dfd The deferred that should be called
          * with the results.
@@ -294,14 +294,14 @@ function (rd, dojo, api) {
          * @param {Object} sourceSchema the schema that is the basis for this request.
          * Must be something with an _id and _rev properties.
          * 
-         * @param {String} [target] the target value to use, if wanting to set
+         * @param {String} [flags] the flags value to use, if wanting to set
          * the schema. Leave blank to get the any existing schema
          */
-        _msgGroupingTag: function (dfd, args, id, sourceSchema, target) {
-            if (!target) {
+        _senderFlags: function (dfd, args, id, sourceSchema, flags) {
+            if (!flags) {
                 //Just get the value.
                 api().megaview({
-                    key: ["rd.core.content", "key-schema_id", [["identity", id], "rd.identity.msg-grouping-tag"]],
+                    key: ["rd.core.content", "key-schema_id", [["identity", id], "rd.identity.sender-flags"]],
                     reduce: false,
                     include_docs: true
                 })
@@ -318,16 +318,17 @@ function (rd, dojo, api) {
 
                 //First get the value, so we use the right _rev and such.
                 args = dojo.delegate(args);
-                args.target = null;
+                args.flags = null;
 
-                api().identityMsgGroupingTag(args)
+                api().identitySenderFlags(args)
                 .ok(function (schema) {
                     var newSchema = {
-                        //TODO: make a better rd_key.
                         rd_key: ["identity", id],
-                        rd_schema_id: "rd.identity.msg-grouping-tag",
-                        tag: target
+                        rd_schema_id: "rd.identity.sender-flags"
                     };
+                    for (var flagname in flags) {
+                        newSchema[flagname] = flags[flagname];
+                    }
 
                     if (schema && schema._rev) {
                         newSchema._rev = schema._rev;
@@ -438,23 +439,24 @@ function (rd, dojo, api) {
         
         /**
          * @lends rd.api
-         * Gets or creates rd.identity.msg-grouping-tag schema for a given identity ID.
-         * Returns the rd.identity.msg-grouping-tag schema to the ok callbacks. If
-         * target is passed in the args, then it is a set operation, otherwise
-         * this call does a get for the any existing schema for the identity.
+         * Gets or creates 'sender flags' for a given identity ID.
+         * Returns the rd.identity.sender-flags schema to the ok callbacks. If
+         * flags are passed in the args, then it is a set operation, otherwise
+         * this call does a get for the any existing flags schema for the
+         * identity.
          *
          * @param {Object} args options for the couchdb calls
          * @param {Array} args.id the identity ID to use.
          * @param {Object} args.sourceSchema the schema that is the basis for this request.
          * Must be something with an _id and _rev properties. Required for set calls.
-         * @param {String} [args.target] the value to use for the target field
-         * in the UI. Example values, "broadcast", "direct".
+         * @param {Object} [args.flags] the new flags.
+         * Example: {bulk: true}
          */
-        identityMsgGroupingTag: function (args) {
+        identitySenderFlags: function (args) {
             if (args && args.id) {
-                identity._msgGroupingTag(this._deferred, args, args.id, args.sourceSchema, args.tag);
+                identity._senderFlags(this._deferred, args, args.id, args.sourceSchema, args.flags);
             } else {
-                this._deferred.errback(new Error("rd.api().identity.msgGroupingTag " +
+                this._deferred.errback(new Error("rd.api().identity.senderFlags " +
                                                  "requires an args.id argument."));
             }
             return this;

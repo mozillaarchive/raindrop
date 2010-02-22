@@ -18,6 +18,7 @@ src_msg_schemas = [
 
 def handler(doc):
     conv_id = doc['conversation_id']
+    logger.debug('rebuilding conversation %r', conv_id)
     # query to determine all messages in this convo.
     result = open_view(key=['rd.msg.conversation', 'conversation_id', conv_id],
                        reduce=False)
@@ -108,6 +109,7 @@ def handler(doc):
         cur_latest = latest_by_grouping.get(hashable_key(gkey), 0)
         if this_ts > cur_latest:
             latest_by_grouping[hashable_key(gkey)] = this_ts
+        logger.debug('grouping-tag %r appears in grouping %r', gtag, gkey)
 
     # sort the messages and select the 3 most-recent.
     good_msgs.sort(key=lambda item: item['rd.msg.body']['timestamp'],
@@ -124,7 +126,7 @@ def handler(doc):
         'earliest_timestamp': earliest_timestamp,
         'latest_timestamp': latest_timestamp,
         'grouping-timestamp': [],
-        'groups_with_unread': sorted(groups_with_unread),
+        'unread_grouping_tags': sorted(groups_with_unread),
     }
     for target, timestamp in sorted(latest_by_grouping.iteritems()):
         item['grouping-timestamp'].append([target, timestamp])
