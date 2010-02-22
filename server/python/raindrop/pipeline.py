@@ -51,6 +51,7 @@ def decode_rdkey(encoded_key):
     json_str = base64.decodestring(b64part)
     return [prefix, json.loads(json_str)]
 
+
 class Extension(object):
     SMART = "smart" # a "smart" extension - handles dependencies etc itself.
     # a 'provider' of schema items; a schema is "complete" once a single
@@ -134,7 +135,6 @@ class Pipeline(object):
         self.options = options
         self.runner = None
         self.incoming_processor = None
-        self.current_extension_confidences = {}
 
     @defer.inlineCallbacks
     def initialize(self):
@@ -171,8 +171,13 @@ class Pipeline(object):
             spec_exts = self.options.exts
         ret = set()
         ret_names = set()
+        confidences = {}
         extensions = yield load_extensions(self.doc_model)
         for ext_id, ext in extensions.items():
+            # record the confidence of all extensions, even if not all are
+            # being used, so the 'aggregation' still works as expected.
+            if ext.confidence is not None:
+                confidences[ext.id] = ext.confidence
             if spec_exts is None:
                 ret.add(ext)
             else:
@@ -184,11 +189,7 @@ class Pipeline(object):
             if missing:
                 logger.error("The following extensions are unknown: %s",
                              missing)
-        for ext in ret:
-            if ext.confidence is not None:
-                self.current_extension_confidences[ext.id] = ext.confidence
-        self.doc_model.set_extension_confidences(
-                                        self.current_extension_confidences)
+        self.doc_model.set_extension_confidences(confidences)
         defer.returnValue(ret)
 
     @defer.inlineCallbacks
@@ -408,9 +409,8 @@ class DocsBySeqIteratorFactory(object):
     """Reponsible for creating iterators based on a _changes view"""
     def __init__(self):
         self.stopping = False
-        # XXX - current_seq is inaccurate if you make multiple iterators!
-        self.current_seq = None
         self.rows = None
+        self.last_seq = None
 
     @defer.inlineCallbacks
     def initialize(self, doc_model, start_seq, limit=2000, stop_seq=None,
@@ -427,6 +427,7 @@ class DocsBySeqIteratorFactory(object):
         if not self.rows:
             defer.returnValue(False) # nothing to do.
 
+        self.last_seq = self.rows[-1]['key']
         self.dep_rows = []
         if include_deps:
             # find any documents which declare they depend on the documents
@@ -440,10 +441,10 @@ class DocsBySeqIteratorFactory(object):
                 all_ids.add(src_id)
                 try:
                     _, enc_rd_key, schema_id = doc_model.split_doc_id(src_id)
+                    rd_key = decode_rdkey(enc_rd_key)
                 except ValueError:
                     # not a raindrop document - ignore it.
                     continue
-                rd_key = decode_rdkey(enc_rd_key)
                 keys.append(["rd.core.content", "dep", [rd_key, schema_id]])
             results = yield doc_model.open_view(keys=keys, reduce=False)
             rows = results['rows']
@@ -464,12 +465,11 @@ class DocsBySeqIteratorFactory(object):
             mutter = lambda *args: None # might be useful one day for debugging...
             # Find the next row this queue can use.
             for row in self.rows:
-                # XXX - current_seq will be whatever the last iterator consumed.
-                seq = self.current_seq = row['key']
+                seq = row['key']
                 if self.stop_seq is not None and seq >= self.stop_seq:
                     return
                 if self.stopping:
-                    break
+                    return
                 # is it a "real" document?
                 if 'error' in row:
                     # This is usually a simple 'not found' error; it doesn't
@@ -484,6 +484,8 @@ class DocsBySeqIteratorFactory(object):
                 yield src_id, src_rev, None, seq
 
             # and the 'dep' rows.
+            # This is a little evil - we should arrange to 'interleave'
+            # the deps and use the sequence of the 'parent'.
             for src_id in self.dep_rows:
                 yield src_id, None, None, None
 
@@ -567,7 +569,7 @@ class IncomingItemProcessor(object):
                 for runner in self.runners:
                     ds.append(runner.process_queue(iter.make_iter()))
                 _ = yield defer.DeferredList(ds)                    
-                self.current_seq = iter.current_seq
+                self.current_seq = iter.last_seq
             took = time.clock() - start
             logger.debug("incoming queue complete at seq %d (%0.2f secs)",
                          self.current_seq, took)
@@ -666,7 +668,7 @@ class StatefulQueueManager(object):
         else:
             logger.debug('queue %r reports it is complete at seq %s, done=%s',
                          q.queue_id, q.current_seq, result)
-            assert result in (True, False), repr(result)
+            assert result is True or result is False, repr(result)
         # First check for any other queues which are no longer running
         # but have a sequence less than ours.
         still_going = False
@@ -734,6 +736,7 @@ class StatefulQueueManager(object):
 
     @defer.inlineCallbacks
     def _save_queue_state(self, state, current_seq, num_created):
+        assert current_seq is not None
         si = state.schema_item
         seq = si['items']['seq'] = current_seq
         # We can chew 1000 'nothing to do' docs quickly next time...
@@ -763,6 +766,8 @@ class StatefulQueueManager(object):
                                          num_to_process, self.stop_seq,
                                          include_deps=include_deps)
         if not more:
+            logger.debug('queue %r is at the end of _changes (stop_seq=%s)',
+                         q.queue_id, self.stop_seq)
             # queue is done (at the end)
             defer.returnValue(True)
 
@@ -776,9 +781,7 @@ class StatefulQueueManager(object):
         finally:
             del self.queue_iters[q.queue_id]
 
-        # note we trust the iterators current_seq more then the q - the
-        # q reflects the last *processed* rather than last seen...
-        _ = yield self._save_queue_state(qstate, iterfact.current_seq, num_created)
+        _ = yield self._save_queue_state(qstate, q.current_seq, num_created)
         defer.returnValue(False)
 
     @defer.inlineCallbacks
@@ -839,7 +842,8 @@ class ProcessingQueueRunner(object):
         conflict_sources = {} # key is src_id, value is created doc id.
         # process until we run out.
         for src_id, src_rev, schema_id, seq in src_gen:
-            self.current_seq = seq
+            if seq is not None: # 'dependency' rows have no seq...
+                self.current_seq = seq
             if schema_id is None:
                 try:
                     _, _, schema_id = doc_model.split_doc_id(src_id)
