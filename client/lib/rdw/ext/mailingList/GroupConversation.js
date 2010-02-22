@@ -39,8 +39,8 @@ function (rd, dojo, Base, template) {
             this.inherited("postMixInProperties", arguments);
 
             this.expandLink = "rd:conversation:" + dojo.toJson(this.conversation.id);
-            this.subject = this.conversation.subject || "";
-            this.from = this.conversation.from_display.join(", ");
+            this.subject = rd.escapeHtml(this.conversation.subject || "");
+            this.from = rd.escapeHtml(this.conversation.from_display.join(", "));
             this.unread = "";
             if (this.conversation.unread) {
                 this.unread = rd.template(this.i18n.newCount, {

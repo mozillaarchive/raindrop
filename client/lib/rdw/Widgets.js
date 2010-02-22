@@ -50,6 +50,7 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
             this.subscribe("rd/onHashChange", "onHashChange");
+            this.subscribe("rd-impersonal-add", "impersonalAdd");
 
             this._groups = [];
 
@@ -62,11 +63,11 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
                         this.groupWidgets.push(mod);
                     }
                     this.destroyAllSupporting();
-                    this._renderGroups();
+                    this.getData();
                 })));
             } else {
                 this.destroyAllSupporting();
-                this._renderGroups();
+                this.getData();
             }
         },
 
@@ -95,74 +96,128 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
             this.inherited("destroy", arguments);
         },
 
-        /** Does the actual display of the group widgets. */
-        _renderGroups: function () {
-            api({
-                url: 'inflow/grouping/summary'
-            }).ok(this, function (summaries) {
-                if (summaries && summaries.length) {
-                    var i, summary, Handler, widget, frag, zIndex,
-                    SummaryWidgetCtor, group, key;
+        /**
+         * Adds another summary based on the conversations passed. Called as a result of the
+         * rd-impersonal-add topic. Synthesizes a "rd.grouping.info" schema based
+         * on the passed in conversations and redraws the group summary widgets.
+         * 
+         * @param {Array} conversations
+         */
+        impersonalAdd: function (conversations) {
+            //The home view groups messages by type. So, for each message in each conversation,
+            //figure out where to put it.
+            if (conversations && conversations.length) {
+                //Create an rd.group.info schema. Choose the first conversation's
+                //first message as the basis.
+                var i, unread = [], convo,
+                    body = conversations[0].messages[0].schemas["rd.msg.body"],
+                    summary = {
+                        rd_key: [['identity'], body.from],
+                        rd_schema_id: 'rd.grouping.info',
+                        // is grouping_tags necessary for the front-end?
+                        grouping_tags: ['identity-' + body.from.join('-')],
+                        title: body.from_display
+                    };
 
-                    //Weed out items that are not useful to this widget.
-                    for (i = 0; (summary = summaries[i]); i++) {
-                        key = summary.rd_key;
-                        // ignore 'inflow' and 'sent' and things with no unread count.
-                        if ((key[0] == 'display-group' && (key[1] === 'inflow' || key[1] === 'sent')) ||
-                            !summary.num_unread) {
-                            continue;
-                        }
-
-                        //Create new group for each summary.
-                        Handler = this._getGroup(summary);
-                        if (Handler) {
-                            widget = new Handler({
-                                summary: summary
-                            }, dojo.create("div"));
-                            widget._isGroup = true;
-                            this._groups.push(widget);
-                            this.addSupporting(widget);
-                        } else {
-                            widget = this.createDefaultGroup(summary);
-                            this._groups.push(widget);
-                            this.addSupporting(widget);
-                        }
+                //Figure out how many unread messages there are.
+                for (i = 0; (convo = conversations[i]); i++) {
+                    if (convo.unread) {
+                        unread.push(convo);
                     }
                 }
 
-                this._groups.sort(function (a, b) {
-                    var aSort = "groupSort" in a ? a.groupSort : 100,
-                            bSort = "groupSort" in b ? b.groupSort : 100;
-                    return aSort > bSort ? 1 : -1;
-                });
-
-                frag = dojo.doc.createDocumentFragment();
-                zIndex = this._groups.length;
-
-                //Create summary group widget and add it first to the fragment.
-                if (!this.summaryWidget) {
-                    SummaryWidgetCtor = require(this.summaryGroupCtorName);
-                    this.summaryWidget = new SummaryWidgetCtor();
-                    //Want summary widget to be the highest, add + 1 since group work
-                    //below uses i starting at 0.
-                    this.addSupporting(this.summaryWidget);
-                    this.summaryWidget.placeAt(frag);
+                //Only worry about rendering if we have unread conversations to show.
+                if (unread.length) {
+                    //Add the conversations to the schema. This is not part
+                    //of the formal schema definition, just helps out to pass
+                    //it with the schema.
+                    summary.conversations = unread;
+                    summary.num_unread = unread.length;
+                    this.render([summary]);
                 }
-    
-                //Add all the widgets to the DOM and ask them to display.
-                this.summaryWidget.domNode.style.zIndex = zIndex + 1;
-                for (i = 0; (group = this._groups[i]); i++) {
-                    group.domNode.style.zIndex = zIndex - i;
-                    group.placeAt(frag);
-                }
-    
-                //Inject nodes all at once for best performance.
-                this.domNode.appendChild(frag);
+            }
+        },
 
-                //Update the state of widgets based on hashchange. Important for
-                //first load of this widget, to account for current page state.
-                this.onHashChange(onHashChange.value);
+        /**
+         * Does the API call to get data, then calls rendering.
+         */
+        getData: function () {
+            return api({
+                url: 'inflow/grouping/summary'
+            }).ok(this, "render");
+        },
+
+        /**
+         * Does the actual display of the group widgets. It can be called multiple
+         * times, but it does not remove older summaries that have been rendered.
+         * The idea is to additively add new summaries, as when a "move to bulk"
+         * action occurs.
+         * 
+         * @param {Array} summaries the array of "rd.grouping.info" schema summaries.
+         */
+        render: function (summaries) {
+            if (summaries && summaries.length) {
+                var i, summary, Handler, widget, frag, zIndex,
+                SummaryWidgetCtor, group, key;
+
+                //Weed out items that are not useful to this widget.
+                for (i = 0; (summary = summaries[i]); i++) {
+                    key = summary.rd_key;
+                    // ignore 'inflow' and 'sent' and things with no unread count.
+                    if ((key[0] === 'display-group' && (key[1] === 'inflow' || key[1] === 'sent')) ||
+                        !summary.num_unread) {
+                        continue;
+                    }
+
+                    //Create new group for each summary.
+                    Handler = this._getGroup(summary);
+                    if (Handler) {
+                        widget = new Handler({
+                            summary: summary
+                        }, dojo.create("div"));
+                        widget._isGroup = true;
+                        this._groups.push(widget);
+                        this.addSupporting(widget);
+                    } else {
+                        widget = this.createDefaultGroup(summary);
+                        this._groups.push(widget);
+                        this.addSupporting(widget);
+                    }
+                }
+            }
+
+            this._groups.sort(function (a, b) {
+                var aSort = "groupSort" in a ? a.groupSort : 100,
+                        bSort = "groupSort" in b ? b.groupSort : 100;
+                return aSort > bSort ? 1 : -1;
             });
+
+            frag = dojo.doc.createDocumentFragment();
+            zIndex = this._groups.length;
+
+            //Create summary group widget and add it first to the fragment.
+            if (!this.summaryWidget) {
+                SummaryWidgetCtor = require(this.summaryGroupCtorName);
+                this.summaryWidget = new SummaryWidgetCtor();
+                //Want summary widget to be the highest, add + 1 since group work
+                //below uses i starting at 0.
+                this.addSupporting(this.summaryWidget);
+                this.summaryWidget.placeAt(frag);
+            }
+
+            //Add all the widgets to the DOM and ask them to display.
+            this.summaryWidget.domNode.style.zIndex = zIndex + 1;
+            for (i = 0; (group = this._groups[i]); i++) {
+                group.domNode.style.zIndex = zIndex - i;
+                group.placeAt(frag);
+            }
+
+            //Inject nodes all at once for best performance.
+            this.domNode.appendChild(frag);
+
+            //Update the state of widgets based on hashchange. Important for
+            //first load of this widget, to account for current page state.
+            this.onHashChange(onHashChange.value);
         },
 
         /**

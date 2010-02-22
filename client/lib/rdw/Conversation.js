@@ -156,32 +156,6 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                         flags: flags
                     })
                     .ok(this, function () {
-                        // XXX - markh - what needs to happen here is something like
-                        // "tell all widgets that the specified identity-id needs to
-                        // be moved into its own grouping widget" - so:
-                        // * create new grouping widget for a grouping key of
-                        //   the sender's rd_key and a title of the sender's
-                        //   name (ie, pretend an rd.grouping.info schema exists
-                        //   with the rd_key of the identity; that grouping info
-                        //   will be created for real when the back-end processes)
-                        // * Change this notification to accept the new group
-                        //   widget (or its ID, or whatever) along with the
-                        //   identity ID.
-                        // * The handler of the notification 'removes' all
-                        //   such convos from its list and passes them to the
-                        //   new grouping widget (ie, they 'move' the convo
-                        //   directly.)
-                        var pseudo_summary = {
-                            rd_key: [['identity'], bodySchema.from],
-                            rd_schema_id: 'rd.grouping.info',
-                            // is grouping_tags necessary for the front-end?
-                            grouping_tags: ['identity-' + bodySchema.from.join('-')],
-                            title: bodySchema.from_display
-                        };
-                        // pseudo_summary should now be roughly what Widgets.js
-                        // uses to build the group widget list...
-                        console.log("need to make new widget for grouping-info", pseudo_summary);
-
                         //Notify UI listeners that there is a new impersonal
                         //schema.
                         rd.pub("rd-impersonal-remove-from", bodySchema.from);
@@ -199,7 +173,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 }
             }
         },
-    
+
         /**
          * Adds a message to this group.
          *

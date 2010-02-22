@@ -77,6 +77,13 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
         postCreate: function () {
             this.inherited("postCreate", arguments);
             this.wiperInit("closed");
+
+            //If the summary already has its conversations, then set up the
+            //state of the widget to have them already rendered.
+            var conversations = this.summary.conversations;
+            if (conversations && conversations.length) {
+                this.renderConvos(conversations);
+            }
         },
 
         /**
@@ -110,44 +117,56 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
                     limit: this.conversationLimit,
                     message_limit: this.messageLimit 
                 }).ok(this, function (conversations) {
-                    var Ctor = require(this.conversationCtorName),
-                        i, conversation, widget, args,
-                        frag = dojo.doc.createDocumentFragment();
-
-                    if (conversations && conversations.length) {
-                        for (i = 0; (conversation = conversations[i]); i++) {
-                            //Construct the args, adding in optional values.
-                            args = {
-                                conversation: conversation
-                            };
-                            if (this.messageCtorName) {
-                                args.messageCtorName = this.messageCtorName;
-                            }
-                            if (this.messageCtorArgs) {
-                                args.messageCtorArgs = this.messageCtorArgs;
-                            }
-
-                            //Make a new widget and track it so it gets cleaned
-                            //up correctly.
-                            this.addSupporting(new Ctor(args, dojo.create("div", null, frag)));
-                        }
-                        this.containerNode.appendChild(frag);
-                    }
-
-                    this.convosAvailable = true;
-
-                    if (methodName) {
-                        //Use a timeout to allow the animation to be smooth,
-                        //since we just injected some HTML into the DOM.
-                        setTimeout(dojo.hitch(this, function () {
-                            this[methodName]();
-                        }), 15);
-                    }
+                    this.renderConvos(conversations, methodName);
                 });
             } else {
                 if (methodName) {
                     this[methodName]();
                 }
+            }
+        },
+
+        /**
+         * Renders the set of conversations., and takes an optional name of
+         * a function to call on this instance when done.
+         *
+         * @param {Array} conversations the conversation API objects.
+         * @param {String} [methodName] the method name to call on this object
+         * when done.
+         */
+        renderConvos: function (conversations, methodName) {
+            var Ctor = require(this.conversationCtorName),
+                i, conversation, widget, args,
+                frag = dojo.doc.createDocumentFragment();
+
+            if (conversations && conversations.length) {
+                for (i = 0; (conversation = conversations[i]) && (i < this.conversationLimit); i++) {
+                    //Construct the args, adding in optional values.
+                    args = {
+                        conversation: conversation
+                    };
+                    if (this.messageCtorName) {
+                        args.messageCtorName = this.messageCtorName;
+                    }
+                    if (this.messageCtorArgs) {
+                        args.messageCtorArgs = this.messageCtorArgs;
+                    }
+
+                    //Make a new widget and track it so it gets cleaned
+                    //up correctly.
+                    this.addSupporting(new Ctor(args, dojo.create("div", null, frag)));
+                }
+                this.containerNode.appendChild(frag);
+            }
+
+            this.convosAvailable = true;
+
+            if (methodName) {
+                //Use a timeout to allow the animation to be smooth,
+                //since we just injected some HTML into the DOM.
+                setTimeout(dojo.hitch(this, function () {
+                    this[methodName]();
+                }), 15);
             }
         }
     });
