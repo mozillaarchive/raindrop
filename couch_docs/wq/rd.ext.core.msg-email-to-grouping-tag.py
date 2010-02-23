@@ -22,6 +22,44 @@
 #
 
 # Emit rd.msg.grouping-tag schemas for emails.
+
+# Here are our "rules".  In the following table:
+# 'you', 'bulk' and 'other' are all email addresses.
+# * 'you' is any one of your identities.
+# * 'bulk' and 'other' are different addresses, but 'bulk' will eventually
+# be flagged as a bulk sender, while 'other' is just a normal address.
+#
+# The first column is when raindrop first starts - the 'bulk' address has not
+# yet been marked as a bulk sender.  IOW, 'bulk' and 'other' are treated the
+# same.
+# The second column is what happens after the user has specified 'bulk' as
+# a bulk sender (other is still a 'normal' address.)
+#
+#Scenario                       no bulk flag          bulk flag
+#-----------------------        --------              ----------
+#From: you; to: bulk            you/inflow            bulk 
+#From: you; to: other           you/inflow            you/inflow
+#
+#From: other; to: bulk          [bulk or other]       bulk
+#From: other; to: you           you/inflow            you/inflow
+#From: other; to: bulk, you     you/inflow            you/inflow
+#
+#From: bulk ; to: other         [bulk or other]       bulk 
+#From: bulk ; to: you           you                   bulk 
+#From: bulk ; to: other, you    you/inflow            bulk
+#
+#From: other; to: <none>        other                 other
+#From: bulk ; to: <none>        bulk                  bulk
+
+# (note - [bul or other] means either of the 2 addresses could be selected;
+#  they are both treated the same as neither has the 'bulk' flag yet)
+
+# which all reduces to:
+# if sender has the bulk flag, they get it.
+# if I'm personally addressed, inflow gets it.
+# if any recipient has the bulk flag, they get it
+# the sender gets it.
+
 def get_recips(doc):
     fr = doc.get('from')
     if fr:
@@ -37,44 +75,40 @@ def handler(src_doc):
     if src_doc['rd_key'][0] != 'email':
         return
 
+    all_recips = list(get_recips(src_doc)) # element 0 is 'from'...
     my_identities = get_my_identities()
-    to = src_doc.get('to', [])
-    # First check if any of the identities is marked as being 'broadcast' or
-    # 'group'
-    from_id = src_doc.get('from')
-    bulk_sender = False
-    deps = []
-    if from_id:
-        # We must mark the sender identity flags schema as a dependency - even
-        # when it doesn't yet exist - it may be created later, at which time
-        # we need to be re-executed.
-        idty_rdkey = ['identity', from_id]
-        deps = [(idty_rdkey, 'rd.identity.sender-flags')]
-        flags_schema = open_schemas(deps)[0] # will be None if it doesn't exist
-        if flags_schema is not None:
-            bulk_sender = flags_schema.get('bulk')
 
-    logger.debug('sender %s has bulk=%s', from_id, bulk_sender)
+    # get the 'bulk flags' for each recipient.  Each becomes a dependency -
+    # even when it doesn't yet exist - it may be created later, at which time
+    # we need to be re-executed.
+    deps = [(['identity', r[0]], 'rd.identity.sender-flags') for r in all_recips]
+    bulk_schemas = open_schemas(deps)
+    # list of booleans corresponding to each recipient (ie, elt 0 is 'from')
+    bulk_flags = [(sc or {}).get('bulk', False) for sc in bulk_schemas]
 
-    # see if we are personally addressed.
-    grouping_idid = grouping_title = None
-    if not bulk_sender:
-        for look_idid, look_name in get_recips(src_doc):
-            if look_idid in my_identities:
-                grouping_idid = look_idid
-                grouping_title = look_name
-                break
-    if grouping_idid is None:
-        # not found - create a grouping for the sender.
-        grouping_idid = src_doc.get('from')
-        grouping_title = src_doc.get('from_display')
-    if grouping_idid:
-        grouping_key = ['identity', grouping_idid]
-        tag = 'identity-' + '-'.join(grouping_idid)
-        init_grouping_tag(tag, grouping_key, grouping_title)
+    # if sender has the bulk flag, they get it.
+    if bulk_flags[0]:
+        idid, title = all_recips[0]
     else:
-        tag = 'no-sender'
+        # if I'm personally addressed, inflow gets it.
+        for rid, rtitle in all_recips[1:]:
+            if rid in my_identities:
+                idid = rid
+                title = rtitle
+                break
+        else:
+            # if any recipient has the bulk flag, they get it
+            for (rid, rtitle), flag in zip(all_recips[1:], bulk_flags[1:]):
+                if flag:
+                    idid = rid
+                    title = rtitle
+                    break
+            else:
+                # the sender gets it.
+                idid, title = all_recips[0]
 
+    tag = 'identity-' + '-'.join(idid)
+    init_grouping_tag(tag, ['identity', idid], title)
     items = {'tag' : tag}
     logger.debug('grouping tag for %r is %r', src_doc['rd_key'], tag)
     emit_schema('rd.msg.grouping-tag', items, deps=deps)
