@@ -9,7 +9,13 @@
 .rdwAttachments .link a,
 .rdwAttachments .file a {
   color: #ff5959;
+  font-weight: bold;
   text-decoration: none;
+  /*background-image: url("../i/new/rd_link.png");
+  background-repeat: no-repeat;
+  background-position: left;
+  min-height: 17px;
+  padding-left: 21px;*/
 }
 
 .rdwAttachments .link a:hover {
