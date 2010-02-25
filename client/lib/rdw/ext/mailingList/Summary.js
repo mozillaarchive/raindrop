@@ -36,7 +36,7 @@ function (rd, dojo, Base, model, template) {
         // so postCreate can use it to retrieve the document from the datastore.
         listId: null,
 
-        templatePath: template,
+        templateString: template,
 
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {

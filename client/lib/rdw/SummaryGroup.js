@@ -45,10 +45,7 @@ function (rd, dojo, Base, onHashChange, InflowSummaryGroup) {
         postCreate: function () {
             //Register for hashchange events so widget can update its state to
             //reflect the hash state.
-            rd.sub("rd/onHashChange", this, "onHashChange");
-
-            //Be sure to grab the latest value.
-            this.onHashChange(onHashChange.value || "rd:home");
+            this.subscribe("rd/onHashChange", "onHashChange");
         },
 
         onHashChange: function (value) {

@@ -54,6 +54,14 @@ function (rd, dojo, GenericGroup) {
         },
 
         /**
+         * Djit lifecycle method, after template is injected in the DOM.
+         */
+        postCreate: function () {
+            this.inherited("postCreate", arguments);
+            this.subscribe("rd/onHashChange", "onHashChange");
+        },
+
+        /**
          * Determines if the widget can support this summary.
          *
          * @param summary {object} the group summary API object
@@ -61,6 +69,16 @@ function (rd, dojo, GenericGroup) {
         canHandleGroup: function (summary) {
             var key = summary.rd_key;
             return key[0] === "display-group" && key[1] === "twitter";
+        },
+
+        /**
+         * Handles hash changes. If the hash change matches this group, set a style
+         * on this group. Otherwise, unset a style on it.
+         * 
+         * @param {String} value
+         */
+        onHashChange: function(value) {
+            dojo[(value === "rd:twitter" ? "addClass" : "removeClass")](this.domNode, "inflowSelected");
         }
     });
 });

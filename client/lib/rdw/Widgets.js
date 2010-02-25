@@ -26,9 +26,9 @@
 "use strict";
 
 require.def("rdw/Widgets",
-["rd", "dojo", "dojox", "rdw/_Base", "rd/onHashChange", "rd/api", "rd/api/message",
+["rd", "dojo", "dojox", "rdw/_Base", "rd/api", "rd/api/message",
  "rdw/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
-function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, SummaryGroup, fx, fxScroll) {
+function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, fxScroll) {
 
     //Reassign fxScroll to be the real function, that module does something non-standard.
     fxScroll = dojox.fx.smoothScroll;
@@ -49,7 +49,6 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
   
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
-            this.subscribe("rd/onHashChange", "onHashChange");
             this.subscribe("rd-impersonal-add", "impersonalAdd");
 
             this._groups = [];
@@ -214,17 +213,6 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, Summa
 
             //Inject nodes all at once for best performance.
             this.domNode.appendChild(frag);
-
-            //Update the state of widgets based on hashchange. Important for
-            //first load of this widget, to account for current page state.
-            this.onHashChange(onHashChange.value);
-        },
-
-        /**
-         * Just a placeholder function to allow extensions to grab on to it.
-         * @param {String} hash
-         */
-        onHashChange: function (hash) {
         },
 
         /**

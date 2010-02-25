@@ -47,7 +47,7 @@ require.modify("rdw/SummaryGroup", "rdw/ext/twitter/ext-rdw/SummaryGroup",
                 topics: {
                     "rd-protocol-twitter": "twitter"
                 },
-            
+
                 twitter: function () {
                     this.domNode.innerHTML = "Twitter Timeline";
                 }

@@ -101,7 +101,7 @@ function (require, dojo, dijit, dojox) {
             // return value comes from original target function
             return r;
         };
-    };        
+    };
 
     var rd = {}, i, subs = require.config.rd.subs,
         extSubs = {}, subObj,
