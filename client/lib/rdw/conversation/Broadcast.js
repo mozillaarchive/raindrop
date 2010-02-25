@@ -25,10 +25,10 @@
 "use strict";
 
 require.def("rdw/conversation/Broadcast",
-["rd", "dojo", "dojo/string", "rdw/Conversation", "rdw/fx/wiper", "rd/accountIds",
+["rd", "dojo", "dojo/string", "rdw/Conversation", "rd/accountIds",
  "rdw/conversation/BroadcastMessage",
  "text!rdw/conversation/templates/Broadcast!html"],
-function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, template) {
+function (rd, dojo, string, Conversation, accountIds, BroadcastMessage, template) {
     var Broadcast, idMap = {}, i, id;
 
     //Map account IDs to a lookup list.
@@ -43,7 +43,7 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
     /**
      * Groups twitter broadcast messages into one "conversation"
      */
-    Broadcast = dojo.declare("rdw.conversation.Broadcast", [Conversation, wiper], {
+    Broadcast = dojo.declare("rdw.conversation.Broadcast", [Conversation], {
         templateString: template,
 
         /**
@@ -87,7 +87,6 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
          */
         postCreate: function () {
             this.inherited("postCreate", arguments);
-            this.wiperInit("closed");
         },
     
         /**
@@ -106,9 +105,9 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
          */
         canHandle: function (conversation) {
             var msg = conversation.messages[0],
-                target = msg.schemas["rd.msg.recip-target"],
+                target = msg.schemas["rd.msg.grouping-tag"],
                 body = msg.schemas["rd.msg.body"], from, to;
-            target = target && target.target;
+            target = target && target.tag;
     
             from = body.from;
             from = body.from || (body.rd_key[0] === "rss-entry" && body.rd_key[1]);
@@ -126,7 +125,7 @@ function (rd, dojo, string, Conversation, wiper, accountIds, BroadcastMessage, t
             //If target is broadcast or notification and not associated (probably)
             //a direct prototype check, not on an instance), or if an instance that
             //already has a from that matches the conversation's from
-            return (target === "broadcast" || target === "notification") &&
+            return target === "broadcast" &&
                    (!this.from || (this.from[0] === from[0] && this.from[1] === from[1]));
         },
     

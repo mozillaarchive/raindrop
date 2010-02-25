@@ -55,13 +55,14 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'message_ids': [msgid],
             'unread_ids': [msgid],
             'subject': None, # our test messages have no subject!
-            'target-timestamp': [['from', body_schema['timestamp']]],
+            'grouping-timestamp': [[['display-group', 'inflow'], body_schema['timestamp']]],
             'identities': [['email', 'raindrop_test_recip2@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip3@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip@mozillamessaging.com'],
                            ['email', 'raindrop_test_user@mozillamessaging.com'],
                             ],
-            'from_display': ['Raindrop Test User']
+            'from_display': ['Raindrop Test User'],
+            'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
 
@@ -96,12 +97,13 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         expected_doc = {
             'earliest_timestamp': None,
             'latest_timestamp': None,
-            'target-timestamp': [],
             'subject': None, # our test messages have no subject!
             'message_ids': [],
             'unread_ids': [],
             'identities': [],
-            'from_display': []
+            'from_display': [],
+            'unread_grouping_tags': [],
+            'grouping-timestamp': [],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
         # Note our deleted message still has the rd.msg.conversation schema;
@@ -135,16 +137,16 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             # The first message in the conv is used for the subject - and
             # that message has no subject in our corpus
             'subject': None,
-            'target-timestamp': [['direct', body_reply['timestamp']],
-                                 ['from', body_orig['timestamp']],
-                                 ['personal', body_reply['timestamp']],
-                                 ],
+            'grouping-timestamp': [
+                                  [['display-group', 'inflow'], body_reply['timestamp']],
+                                ],
             'identities': [['email', 'raindrop_test_recip2@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip3@mozillamessaging.com'],
                            ['email', 'raindrop_test_recip@mozillamessaging.com'],
                            ['email', 'raindrop_test_user@mozillamessaging.com'],
                             ],
-            'from_display': ['Raindrop Test Recipient', 'Raindrop Test User']
+            'from_display': ['Raindrop Test Recipient', 'Raindrop Test User'],
+            'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
         # check messages in the convo.

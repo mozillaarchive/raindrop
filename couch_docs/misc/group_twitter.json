@@ -1,0 +1,9 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "Twitter messages",
+        "grouping_tags": ["twitter-status-update", "twitter-reply", "twitter-notification"]
+    }
+  },
+  "rd_key": ["display-group", "twitter"]
+}

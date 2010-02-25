@@ -154,7 +154,7 @@
 
 /* ### ACCOUNT GROUPS ### */
 
-.rdwExtAccountGroup {
+.rdwGenericGroup.rdwExtAccountGroup {
   -moz-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
   -webkit-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
@@ -172,15 +172,15 @@
 
 /* ### TWITTER ### */
 
-.rdwExtTwitterGroup > .WidgetHeader > .title {
+.rdwGenericGroup.rdwExtTwitterGroup > .WidgetHeader > .title {
   background-image: url("../i/new/rd_widget_twitter.png");
-  background-position: left 3px;
+  background-position: -3px 3px;
 }
 
 
 /* ### FACEBOOK ### */
 
-.rdwExtFacebookGroup > .WidgetHeader > .title {
+.rdwGenericGroup.rdwExtFacebookGroup > .WidgetHeader > .title {
   background-image: url("../i/new/rd_widget_facebook.png");
   background-position: left 2px;
   padding: 0 0 0 17px;
@@ -189,13 +189,13 @@
 
 /* ### MAILING LIST ### */
 
-.rdwConversationMailingList {
+.rdwGenericGroup.rdwConversationMailingList {
   -moz-border-image: url("../i/new/rd_widget_border_pink_thin.png") 1 8 12 4;
   -webkit-border-image: url("../i/new/rd_widget_border_pink_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 }
 
-.rdwConversationMailingList > .WidgetHeader > .title {
+.rdwGenericGroup.rdwConversationMailingList > .WidgetHeader > .title {
   padding: 0 0 0 18px;
   background-image: url("../i/new/rd_widget_mailinglist.png");
   background-repeat: no-repeat;
@@ -219,13 +219,13 @@
 
 /* ### GENERIC GROUP ### */
 
-.rdwConversationGenericGroup {
+.rdwGenericGroup {
   -moz-border-image: url("../i/new/rd_widget_border_orange_thin.png") 1 8 12 4;
   -webkit-border-image: url("../i/new/rd_widget_border_orange_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 } 
 
-.rdwConversationGenericGroup > .WidgetHeader > .title {
+.rdwGenericGroup > .WidgetHeader > .title {
   padding: 0 0 0 17px;
   background-image: url("../i/new/rd_widget_rss.png");
   background-repeat: no-repeat;

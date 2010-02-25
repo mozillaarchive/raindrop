@@ -25,14 +25,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
                     ["rd.core.content", "schema_id", "rd.msg.body"])
         self.failUnlessEqual(num, ndocs)
 
-        # messages in this schema should qualify as all of 'direct', 'group'
-        # and 'broadcast'
-        # for target in ['from', 'direct', 'group', 'broadcast']: - XXX - fix me when a 'group' message exists!
-        for target in ['from', 'direct', 'broadcast']:
-            num = yield self.get_num_with_key(
-                        ["rd.msg.recip-target", "target", target])
-            self.failUnless(num, (target, num))
-
         # There is at least one message from and to our test identity, and
         # from our 'test recipient'
         for iid in (['email', 'raindrop_test_user@mozillamessaging.com'],

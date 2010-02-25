@@ -174,6 +174,34 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         }
         self.ensure_doc(doc, expected_doc)
 
+    @defer.inlineCallbacks
+    def test_mailing_list_grouping(self):
+        # Initialize the corpus & database.
+        yield self.init_corpus('mailing-list')
+
+        # Process one message from a mailing list.
+        yield self.put_docs('mailing-list', 'simple-message', 1)
+
+        list_id = 'test.lists.example.com'
+        # we should now have one 'rd.grouping.info' doc with the mailing-list's tag
+        key = ['rd.grouping.info', 'title', list_id]
+        result = yield self.doc_model.open_view(key=key, reduce=False,
+                                                include_docs=True)
+        self.failUnlessEqual(len(result['rows']), 1)
+        doc = result['rows'][0]['doc']
+        # should have a single 'tag' associated with it.
+        self.failUnlessEqual(doc['grouping_tags'], ['mailing-list-' + list_id])
+        # Now find the 'summary' doc for this grouping.
+        key = ['rd.core.content', 'key-schema_id', [doc['rd_key'], 'rd.grouping.summary']]
+        result = yield self.doc_model.open_view(key=key, reduce=False,
+                                                include_docs=True)
+        self.failUnlessEqual(len(result['rows']), 1)
+        sdoc = result['rows'][0]['doc']
+        # this is the convo-id created for the test message.
+        conv_id = ['conv', ['email', '009b8ab39d924dd0b7e3a19d4534ca31@example.com']]
+        self.failUnlessEqual(sdoc['unread'], [conv_id])
+
+
 # Test Mailman.
 class TestMailman(TestCaseWithMailingListCorpus):
     @defer.inlineCallbacks

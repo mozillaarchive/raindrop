@@ -149,10 +149,11 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 } else if (href === "createImpersonal") {
                     //Create
                     bodySchema = this.msgs[0].schemas["rd.msg.body"];
-                    api().identityRecipTarget({
+                    flags = {bulk: true};
+                    api().identitySenderFlags({
                         id: bodySchema.from,
                         sourceSchema: bodySchema,
-                        target: "broadcast"
+                        flags: flags
                     })
                     .ok(this, function () {
                         //Notify UI listeners that there is a new impersonal
@@ -172,7 +173,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 }
             }
         },
-    
+
         /**
          * Adds a message to this group.
          *
@@ -231,7 +232,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
             //If a person replies to a message you sent we don't want it to look like a
             //"from you" message as much as it is a direct reply/conversation
             //XXX this should probably know what the last message showing is
-            target = (this.msgs[this.msgs.length - 1].schemas['rd.msg.recip-target'] && this.msgs[this.msgs.length - 1].schemas['rd.msg.recip-target'].target) || "";
+            target = (this.msgs[this.msgs.length - 1].schemas['rd.msg.grouping-tag'] && this.msgs[this.msgs.length - 1].schemas['rd.msg.grouping-tag'].tag) || "";
             targetName = target && this.i18n["targetLabel-" + target];
             if (targetName && this.typeNode) {
                 rd.escapeHtml(targetName, this.typeNode, "only");

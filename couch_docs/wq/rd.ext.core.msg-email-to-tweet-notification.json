@@ -4,7 +4,9 @@
         "source_schemas" : ["rd.msg.email"],
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
-        "info": "Creates 'rd.msg.notification' schemas for twitter notifications using info in the rd.msg.email headers"
+        "category": "extender",
+        "confidence": 1,
+        "info": "Creates 'rd.msg.grouping-tag' schemas for twitter notifications using info in the rd.msg.email headers"
     }
   }
 }

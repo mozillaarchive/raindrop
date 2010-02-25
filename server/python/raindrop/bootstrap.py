@@ -510,6 +510,7 @@ def check_accounts(whateva, config=None):
     if config is None:
         config = get_config()
 
+    all_idids = set()
     for acct_name, acct_info in config.accounts.iteritems():
         acct_id = "account!" + acct_info['id']
         logger.debug("Checking account '%s'", acct_id)
@@ -527,6 +528,8 @@ def check_accounts(whateva, config=None):
         try:
             acct = proto.protocols[acct_info['proto']](dm, acct_info)
             ids = acct.get_identities()
+            for idid in ids:
+                all_idids.add(dm.hashable_key(idid))
             # turn tuples back into the lists the couch will return
             acct_info['identities'] = [list(iid) for iid in ids]
         except:
@@ -554,6 +557,18 @@ def check_accounts(whateva, config=None):
         else:
             logger.info("Adding account '%s'", acct_id)
         _ = yield dm.create_schema_items([new_info])
+    # write a default 'inflow' grouping-tag, which catches messages tagged
+    # with each of our identities.
+    if all_idids:
+        new_info = {'rd_key' : ['display-group', 'inflow'],
+                    'rd_schema_id': 'rd.grouping.info',
+                    'rd_ext_id': 'raindrop.core',
+                    'items': {
+                        'title' : "The inflow",
+                        'grouping_tags': ['identity-' + '-'.join(idid) for idid in all_idids],
+                        }}
+        _ = yield dm.create_schema_items([new_info])
+    
 
 
 # Functions working with design documents holding views.

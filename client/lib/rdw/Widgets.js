@@ -27,34 +27,21 @@
 
 require.def("rdw/Widgets",
 ["rd", "dojo", "dojox", "rdw/_Base", "rd/onHashChange", "rd/api", "rd/api/message",
- "rdw/conversation/Broadcast", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
-function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryGroup, fx, fxScroll) {
+ "rdw/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
+function (rd, dojo, dojox, Base, onHashChange, api, message, GenericGroup, SummaryGroup, fx, fxScroll) {
 
     //Reassign fxScroll to be the real function, that module does something non-standard.
     fxScroll = dojox.fx.smoothScroll;
 
     return dojo.declare("rdw.Widgets", [Base], {
-        //Array of conversations to show.
-        //Warning: this is a prototype property,
-        //be sure to always set it on the instance.
-        conversations: [],
-    
-        //The max number of conversations to fetch from the API. Each conversation
-        // will have a maxiumum of messageLimit messages returned.
-        conversationLimit: 60,
-    
-        //The max number of messages to fetch from each conversation using the
-        // conversation APIs.
-        messageLimit: 3,
-    
-        //List of modules that can handle display of a conversation.
-        //It is assumed that moduleName.prototype.canHandle(conversation) is defined
+        //List of modules that can handle display of a summary.
+        //It is assumed that moduleName.prototype.canHandleGroup(group) is defined
         //for each entry in this array.
-        convoModules: [],
+        summaryModules: [],
     
-        //Widget used for default conversation objects, when no home group is applicable.
-        conversationCtorName: "rdw/conversation/Broadcast",
-    
+        //Widget used for default group widgets, when no other group is applicable.
+        summaryCtorName: "rdw/GenericGroup",
+
         //Widget used for the summary group widget, the first one in the widget list.
         summaryGroupCtorName: "rdw/SummaryGroup",
     
@@ -64,7 +51,24 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
         postCreate: function () {
             this.subscribe("rd/onHashChange", "onHashChange");
             this.subscribe("rd-impersonal-add", "impersonalAdd");
-            this.home();
+
+            this._groups = [];
+
+            if (!this.groupWidgets) {
+                require(this.summaryModules, (dojo.hitch(this, function () {
+                    this.groupWidgets = [];
+                    var i, module, mod;
+                    for (i = 0; (module = this.summaryModules[i]); i++) {
+                        mod = require(module);
+                        this.groupWidgets.push(mod);
+                    }
+                    this.destroyAllSupporting();
+                    this.getData();
+                })));
+            } else {
+                this.destroyAllSupporting();
+                this.getData();
+            }
         },
 
         /**
@@ -73,9 +77,6 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
          * like for on-the-fly extension purposes.
          */
         destroy: function () {
-            if (this.convoWidget) {
-                this.convoWidget.destroy();
-            }
             if (this.activeNode) {
                 delete this.activeNode;
             }
@@ -96,37 +97,91 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
         },
 
         /**
-         * Adds more conversations to the display. Called as a result of the
-         * rd-impersonal-add topic, and the home rendering on first instantiation.
+         * Adds another summary based on the conversations passed. Called as a result of the
+         * rd-impersonal-add topic. Synthesizes a "rd.grouping.info" schema based
+         * on the passed in conversations and redraws the group summary widgets.
+         * 
          * @param {Array} conversations
          */
         impersonalAdd: function (conversations) {
             //The home view groups messages by type. So, for each message in each conversation,
             //figure out where to put it.
             if (conversations && conversations.length) {
-                this.conversations.push.apply(this.conversations, conversations);
+                //Create an rd.group.info schema. Choose the first conversation's
+                //first message as the basis.
+                var i, unread = [], convo,
+                    body = conversations[0].messages[0].schemas["rd.msg.body"],
+                    summary = {
+                        rd_key: [['identity'], body.from],
+                        rd_schema_id: 'rd.grouping.info',
+                        // is grouping_tags necessary for the front-end?
+                        grouping_tags: ['identity-' + body.from.join('-')],
+                        title: body.from_display
+                    };
 
-                var i, convo, Handler, widget,
-                     frag, zIndex, SummaryWidgetCtor, group;
+                //Figure out how many unread messages there are.
                 for (i = 0; (convo = conversations[i]); i++) {
-                    //Feed the message to existing created groups.
-                    if (!this._groupHandled(convo)) {
-                        //Existing group could not handle it, see if there is a new group
-                        //handler that can handle it.
-                        Handler = this._getHomeGroup(convo);
-                        if (Handler) {
-                            widget = new Handler({
-                                conversation: convo,
-                                displayOnCreate: false
-                            }, dojo.create("div"));
-                            widget._isGroup = true;
-                            this._groups.push(widget);
-                            this.addSupporting(widget);
-                        } else {
-                            widget = this.createHomeConversation(convo);
-                            this._groups.push(widget);
-                            this.addSupporting(widget);
-                        }
+                    if (convo.unread) {
+                        unread.push(convo);
+                    }
+                }
+
+                //Only worry about rendering if we have unread conversations to show.
+                if (unread.length) {
+                    //Add the conversations to the schema. This is not part
+                    //of the formal schema definition, just helps out to pass
+                    //it with the schema.
+                    summary.conversations = unread;
+                    summary.num_unread = unread.length;
+                    this.render([summary]);
+                }
+            }
+        },
+
+        /**
+         * Does the API call to get data, then calls rendering.
+         */
+        getData: function () {
+            return api({
+                url: 'inflow/grouping/summary'
+            }).ok(this, "render");
+        },
+
+        /**
+         * Does the actual display of the group widgets. It can be called multiple
+         * times, but it does not remove older summaries that have been rendered.
+         * The idea is to additively add new summaries, as when a "move to bulk"
+         * action occurs.
+         * 
+         * @param {Array} summaries the array of "rd.grouping.info" schema summaries.
+         */
+        render: function (summaries) {
+            if (summaries && summaries.length) {
+                var i, summary, Handler, widget, frag, zIndex,
+                SummaryWidgetCtor, group, key;
+
+                //Weed out items that are not useful to this widget.
+                for (i = 0; (summary = summaries[i]); i++) {
+                    key = summary.rd_key;
+                    // ignore 'inflow' and 'sent' and things with no unread count.
+                    if ((key[0] === 'display-group' && (key[1] === 'inflow' || key[1] === 'sent')) ||
+                        !summary.num_unread) {
+                        continue;
+                    }
+
+                    //Create new group for each summary.
+                    Handler = this._getGroup(summary);
+                    if (Handler) {
+                        widget = new Handler({
+                            summary: summary
+                        }, dojo.create("div"));
+                        widget._isGroup = true;
+                        this._groups.push(widget);
+                        this.addSupporting(widget);
+                    } else {
+                        widget = this.createDefaultGroup(summary);
+                        this._groups.push(widget);
+                        this.addSupporting(widget);
                     }
                 }
             }
@@ -142,12 +197,12 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
 
             //Create summary group widget and add it first to the fragment.
             if (!this.summaryWidget) {
-              SummaryWidgetCtor = require(this.summaryGroupCtorName);
-              this.summaryWidget = new SummaryWidgetCtor();
-              //Want summary widget to be the highest, add + 1 since group work
-              //below uses i starting at 0.
-              this.addSupporting(this.summaryWidget);
-              this.summaryWidget.placeAt(frag);
+                SummaryWidgetCtor = require(this.summaryGroupCtorName);
+                this.summaryWidget = new SummaryWidgetCtor();
+                //Want summary widget to be the highest, add + 1 since group work
+                //below uses i starting at 0.
+                this.addSupporting(this.summaryWidget);
+                this.summaryWidget.placeAt(frag);
             }
 
             //Add all the widgets to the DOM and ask them to display.
@@ -155,50 +210,14 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
             for (i = 0; (group = this._groups[i]); i++) {
                 group.domNode.style.zIndex = zIndex - i;
                 group.placeAt(frag);
-                group.display();
             }
 
             //Inject nodes all at once for best performance.
             this.domNode.appendChild(frag);
-        },
 
-        /** Responds to rd-protocol-home topic. */
-        home: function () {
-            //reset stored state.
-            this.conversations = [];
-            //Indicate this is a collection of home conversations.
-            this.conversations._rdwConversationsType = "home";
-            this._groups = [];
-    
-            if (!this.convoWidgets) {
-                require(this.convoModules, (dojo.hitch(this, function () {
-                    this.convoWidgets = [];
-                    var i, module, mod;
-                    for (i = 0; (module = this.convoModules[i]); i++) {
-                        mod = require(module);
-                        this.convoWidgets.push(mod);
-                    }
-                    this.destroyAllSupporting();
-                    this._renderHome();
-                })));
-            } else {
-                this.destroyAllSupporting();
-                this._renderHome();
-            }
-        },
-
-        /** Does the actual display of the home view. */
-        _renderHome: function () {
-            api({
-                url: 'inflow/conversations/impersonal',
-                limit: this.conversationLimit,
-                message_limit: this.messageLimit 
-            }).ok(this, function (conversations) {
-                this.impersonalAdd(conversations);
-                //Update the state of widgets based on hashchange. Important for
-                //first load of this widget, to account for current page state.
-                this.onHashChange(onHashChange.value);
-            });
+            //Update the state of widgets based on hashchange. Important for
+            //first load of this widget, to account for current page state.
+            this.onHashChange(onHashChange.value);
         },
 
         /**
@@ -209,46 +228,27 @@ function (rd, dojo, dojox, Base, onHashChange, api, message, Broadcast, SummaryG
         },
 
         /**
-         * Creates a Conversation widget for the Home view. The Conversation widget
-         * should not display itself immediately since prioritization of the home
+         * Creates a default widget for a summary. The widget
+         * should not display itself immediately since prioritization of the
          * widgets still needs to be done. Similarly, it should not try to attach
          * to the document's DOM yet. Override for more custom behavior/subclasses.
-         * @param {Object} conversation
+         * @param {Object} summary
          * @returns {rdw/Conversation} an rdw/Conversation or a subclass of it.
          */ 
-        createHomeConversation: function (conversation) {
-            return new (require(this.conversationCtorName))({
-                conversation: conversation,
-                unreadReplyLimit: 1,
-                displayOnCreate: false,
-                allowReplyMessageFocus: false
+        createDefaultGroup: function (summary) {
+            return new (require(this.summaryCtorName))({
+                summary: summary
             }, dojo.create("div"));
         },
 
         /**
-         * If a group in the groups array can handle the conversation, give
-         * it to that group and return true.
-         * @param {Object} conversation
-         * @returns {Boolean}
-         */
-        _groupHandled: function (conversation) {
-            for (var i = 0, group; (group = this._groups[i]); i++) {
-                if (group.canHandle && group.canHandle(conversation)) {
-                    group.addConversation(conversation);
-                    return true;
-                }
-            }
-            return false;
-        },
-
-        /**
-         * Determines if there is a home group that can handle the conversation.
-         * @param {Object} conversation
+         * Determines if there is a group widget that can handle the summary.
+         * @param {Object} summary
          * @returns {rdw/Conversation} can return null
          */
-        _getHomeGroup: function (/*Object*/conversation) {
-            for (var i = 0, module; (module = this.convoWidgets[i]); i++) {
-                if (module.prototype.canHandle(conversation)) {
+        _getGroup: function (summary) {
+            for (var i = 0, module; (module = this.groupWidgets[i]); i++) {
+                if (module.prototype.canHandleGroup(summary)) {
                     return module;
                 }
             }

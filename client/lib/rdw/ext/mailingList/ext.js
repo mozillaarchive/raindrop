@@ -256,24 +256,9 @@ require.modify("rdw/Widgets", "rdw/ext/mailingList/ext-rdw/Widgets",
         //Modify rdw.Widgets to allow showing mailing lists.
         rd.applyExtension("rdw/ext/mailingList/ext", "rdw/Widgets", {
             addToPrototype: {
-                convoModules: [
+                summaryModules: [
                     "rdw/ext/mailingList/Group"
                 ]
-            },
-        
-            after: {
-                onHashChange: function (value) {
-                    //Hide the twitter group widgets when viewing the twitter stream,
-                    //otherwise make sure they are visible.
-                    var widgets = dijit.registry.byClass("rdw.ext.mailingList.Group"),
-                            parts = value.split(":"),
-                            isList = parts[1] === "mailingList",
-                            listId = parts[2];
-        
-                    widgets.forEach(function (widget) {
-                        widget.domNode.style.display = (isList && widget.listId === listId ? "none" : "");
-                    });
-                }
             }
         });
     }
