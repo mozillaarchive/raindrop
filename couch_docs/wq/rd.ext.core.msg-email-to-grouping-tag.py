@@ -40,25 +40,29 @@
 #From: you; to: bulk            you/inflow            bulk 
 #From: you; to: other           you/inflow            you/inflow
 #
-#From: other; to: bulk          [bulk or other]       bulk
+#From: other; to: bulk          [*bulk or other]      bulk
 #From: other; to: you           you/inflow            you/inflow
 #From: other; to: bulk, you     you/inflow            you/inflow
 #
-#From: bulk ; to: other         [bulk or other]       bulk 
+#From: bulk ; to: other         [bulk or *other]      bulk 
 #From: bulk ; to: you           you                   bulk 
 #From: bulk ; to: other, you    you/inflow            bulk
 #
 #From: other; to: <none>        other                 other
 #From: bulk ; to: <none>        bulk                  bulk
 
-# (note - [bul or other] means either of the 2 addresses could be selected;
-#  they are both treated the same as neither has the 'bulk' flag yet)
+# (note - [bulk or other] means either of the 2 addresses could in theory be
+# selected; they are both treated the same as neither has the 'bulk' flag yet.
+# However, in both cases we choose to use the 'to' - as we aren't addressed,
+# the 'to' addresses is more likely to be the actual bulk sender.
 
 # which all reduces to:
 # if sender has the bulk flag, they get it.
 # if I'm personally addressed, inflow gets it.
 # if any recipient has the bulk flag, they get it
-# the sender gets it.
+# If I'm the sender, inflow gets it.
+# If recipients exist, first gets it.
+# Sender gets it
 
 def get_recips(doc):
     fr = doc.get('from')
@@ -104,8 +108,16 @@ def handler(src_doc):
                     title = rtitle
                     break
             else:
-                # the sender gets it.
-                idid, title = all_recips[0]
+                # If I'm the sender, inflow gets it.
+                if all_recips[0][0] in my_identities:
+                    idid, title = all_recips[0]
+                else:
+                    # If recipients exist, first gets it.
+                    if len(all_recips) > 1:
+                        idid, title = all_recips[1]
+                    else:
+                        # the sender gets it.
+                        idid, title = all_recips[0]
 
     tag = 'identity-' + '-'.join(idid)
     init_grouping_tag(tag, ['identity', idid], title)

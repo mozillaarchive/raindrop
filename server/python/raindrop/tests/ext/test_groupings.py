@@ -194,10 +194,10 @@ Hello everyone
         return self.check_grouping(self.my_addy, [self.other_addy],
                                    self.my_addy, True)
 
-    #From: other; to: bulk          bulk or other         bulk
+    #From: other; to: bulk          bulk* or other        bulk
     def test_other_bulk(self):
         return self.check_grouping(self.other_addy, [self.bulk_addy],
-                                   self.other_addy, False)
+                                   self.bulk_addy, False)
 
     def test_other_bulk_flagged(self):
         return self.check_grouping(self.other_addy, [self.bulk_addy],
@@ -223,10 +223,10 @@ Hello everyone
                                    [self.my_addy, self.bulk_addy],
                                    self.my_addy, True)
 
-    #From: bulk ; to: other         bulk or other         bulk 
+    #From: bulk ; to: other         bulk or *other         bulk 
     def test_bulk_other(self):
         return self.check_grouping(self.bulk_addy, [self.other_addy],
-                                   self.bulk_addy, False)
+                                   self.other_addy, False)
 
     def test_bulk_other_flagged(self):
         return self.check_grouping(self.bulk_addy, [self.other_addy],
