@@ -27,7 +27,7 @@
 
 require.def("rdw/Widgets",
 ["rd", "dojo", "dojox", "rdw/_Base", "rd/api", "rd/api/message",
- "rdw/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll"],
+ "rdw/GenericGroup", "rdw/SummaryGroup", "dojo/fx", "dojox/fx/scroll", "rdw/GroupRss"],
 function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, fxScroll) {
 
     //Reassign fxScroll to be the real function, that module does something non-standard.
@@ -37,7 +37,9 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
         //List of modules that can handle display of a summary.
         //It is assumed that moduleName.prototype.canHandleGroup(group) is defined
         //for each entry in this array.
-        summaryModules: [],
+        summaryModules: [
+            "rdw/GroupRss"                 
+        ],
     
         //Widget used for default group widgets, when no other group is applicable.
         summaryCtorName: "rdw/GenericGroup",
