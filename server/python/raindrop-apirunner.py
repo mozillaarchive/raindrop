@@ -229,7 +229,7 @@ def get_api_handler(cfg, req):
     c.request("GET", uri)
     resp = c.getresponse()
     if resp.status != 200:
-        raise APILoadError("api query failure (%s: %s)", resp.status, resp.reason)
+        raise APILoadError("api query failure (%s: %s) to %s:%s", resp.status, resp.reason, cfg['host'],cfg['port'])
     result = json.load(resp)
     resp.close()
     rows = result['rows']
