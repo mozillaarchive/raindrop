@@ -71,7 +71,7 @@ RAINDROP_CONTENT_TYPES = {
     '.ttf'  : 'application/x-font',
 }
 
-RAINDROP_IGNORE = set(('.patch', '.diff', '.orig', '.zip'))
+RAINDROP_IGNORE = set(('.patch', '.diff', '.orig', '.zip', '.min' ))
 
 # Updating design documents when not necessary can be expensive as all views
 # in that doc are reset. So we've created a helper - a simple 'fingerprinter'
@@ -151,7 +151,21 @@ def install_client_files(whateva, options):
         return {} # return an empty doc.
 
     def _insert_file(path, couch_path, attachments, fp):
-        f = open(path, 'rb')
+        minified_path = "%s.min" % path
+        
+        f = False
+
+        # There is a minified version, and it appears newer
+        if os.path.exists(minified_path):
+            logger.debug("Found a minified version of %s (%s)" % (path, minified_path))
+            if os.path.getmtime(minified_path) > os.path.getmtime(path):
+                f = open(minified_path, 'rb')
+            else:
+                logger.debug("Minified copy is out of date, please update %s from %s" % (minified_path, path))
+        
+        if not f:           
+            f = open(path, 'rb')
+        
         ct = RAINDROP_CONTENT_TYPES.get(os.path.splitext(path)[1])
         if not ct:
             ct = mimetypes.guess_type(path)[0]

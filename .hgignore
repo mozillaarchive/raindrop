@@ -4,6 +4,7 @@ syntax:regexp
 \.pyc
 \.swp
 \.DS_Store
+\.min
 ^server/python/build/
 ^nbproject/
 ^pipeline.svg$
