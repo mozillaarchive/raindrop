@@ -174,7 +174,8 @@
 
 .rdwGenericGroup.rdwExtTwitterGroup > .WidgetHeader > .title {
   background-image: url("../i/new/rd_widget_twitter.png");
-  background-position: -3px 3px;
+  background-position: 0px 3px;
+  padding: 0 0 0 22px;
 }
 
 
@@ -296,4 +297,8 @@
 
 .rdwWidgets.start .rdwMessage > .message > .unreadCount:empty:after {
   content: "";
+}
+
+.inflowSelected .WidgetHeader > .title {
+  opacity: 0.5;
 }
