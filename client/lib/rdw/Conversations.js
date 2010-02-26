@@ -671,8 +671,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         checkTransitionEnd: function () {
             if (this.onTransitionEndCallback) {
                 setTimeout(dojo.hitch(this, function () {
-                    this.onTransitionEndCallback();
-                    delete this.onTransitionEndCallback;
+                    if (this.onTransitionEndCallback) {
+                        this.onTransitionEndCallback();
+                        delete this.onTransitionEndCallback;
+                    }
                 }), 15);
             }
         },
