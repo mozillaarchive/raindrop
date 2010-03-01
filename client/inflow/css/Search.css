@@ -200,4 +200,29 @@
   color: #FF5959;
 }
 
+.rdwDataSelectorTypes [data-type="contact"] {
+  padding: 0 0 0 28px;
+  background-image: url("../i/new/rd_contact.png");
+  background-repeat: no-repeat;
+  background-position: 10px;
+}
+
+.rdwDataSelectorTypes [data-type="locationTag"] {
+  padding: 0 0 0 28px;
+  background-image: url("../i/new/rd_folder.png");
+  background-repeat: no-repeat;
+  background-position: 10px;
+}
+
+.rdwDataSelectorTypes [data-type="mailingList"] {
+  padding: 0 0 0 28px;
+  background-image: url("../i/new/rd_widget_mailinglist.png");
+  background-repeat: no-repeat;
+  background-position: 10px;
+}
+
+.rdwDataSelectorTypes .selected[data-type="mailingList"] {
+  background-color: #ffdedf;
+}
+
 
