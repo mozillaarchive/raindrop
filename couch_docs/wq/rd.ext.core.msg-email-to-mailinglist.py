@@ -546,7 +546,7 @@ def handler(message):
         list_id = list_id_part + ".googlegroups.com"
         action = match.group(2)
         logger.debug(
-          "LIST ID %s from Google Groups %S message", list_id, action)
+          "LIST ID %s from Google Groups %s message", list_id, action)
 
     # This is a common mailing list format used by Majordomo, SKYLIST,
     # Yahoo Groups, and others.  Instead of an actual list id being provided
