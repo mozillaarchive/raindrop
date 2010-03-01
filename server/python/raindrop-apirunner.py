@@ -100,7 +100,7 @@ class CouchDB:
 
     # Args here are different than js - pythonic makes more sense...
     def allDocs(self, keys, **options):
-        assert keys, "you really don't want all the docs!"
+        assert keys, "don't call me if you don't want any docs!"
         uri = self.uri + "_all_docs" + self.encodeOptions(options)
         resp = self.request("POST", uri,
                             headers={"Content-Type": "application/json"},
