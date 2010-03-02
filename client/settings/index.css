@@ -21,7 +21,7 @@
  * Contributor(s):
  * */
 
-@import url("/raindrop/inflow/inflow.css");
+@import url("../inflow/inflow.css");
 
 body.settings {
   background-color: transparent;

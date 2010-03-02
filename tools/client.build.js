@@ -27,7 +27,6 @@ require(
         "inflow",
         "rd/schema",
         "require/rdCouch",
-        "i18n!rdw/nls/i18n",
 
         //START all the extensions. This is assumes user wants all our
         //extensions
@@ -41,7 +40,6 @@ require(
 
         "rdw/ext/mailingList/ext",
         "rdw/ext/mailingList/model",
-        "i18n!rdw/ext/mailingList/nls/i18n",
         "rdw/ext/mailingList/Summary",
         "rdw/ext/mailingList/SummaryGroup",
         "rdw/ext/mailingList/Group",
