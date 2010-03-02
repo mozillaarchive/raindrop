@@ -8,4 +8,5 @@ syntax:regexp
 ^server/python/build/
 ^nbproject/
 ^pipeline.svg$
+^client/dojo/
 ^tools/clientbuild/

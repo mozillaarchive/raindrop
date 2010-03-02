@@ -31,7 +31,7 @@ var djConfig, require;
     //Find raindrop location
     var scripts = document.getElementsByTagName("script"), prefix = "", i,
         src, index, dbPath, appName, dojoPrefix, exts, extNew, empty = {}, prop,
-        scp, extList, ext, modules, useSync = false;
+        scp, extList, ext, modules, useSync = false, deps = '"rd"';
     for (i = scripts.length - 1; (i > -1) && (scp = scripts[i]); i--) {
         src = scripts[i].src;
         index = src && src.indexOf("/rdconfig.js");
@@ -80,9 +80,7 @@ var djConfig, require;
             couchUrl: prefix.split("/", 3).join("/"),
             /*INSERT SUBS HERE*/
             /*INSERT EXTS HERE*/
-        },
-
-        deps: ["rd"]
+        }
     };
 
     require.paths[appName] = prefix + "../" + appName + "/" + appName;
@@ -91,10 +89,13 @@ var djConfig, require;
 
     require.rd.appName = appName;
 
-    if (modules) {
-        require.deps = ["rd"].concat(modules);
+    if (modules && modules.length) {
+        for (i = 0; i < modules.length; i++) {
+            deps += ', "' + modules[i] + '"';
+        }
     }
 
-    document.write('<script src="' + dojoPrefix + 'dojo.js" ' + (useSync ? '' : 'async="async"') + '></script>' +
-                   '<script src="' + prefix + 'jquery-1.4.js" ' + (useSync ? '' : 'async="async"') + '></script>');
+    document.write('<script src="' + dojoPrefix + 'dojo.js"></script>' +
+                   '<script src="' + prefix + 'jquery-1.4.js" ' + (useSync ? '' : 'async="async"') + '></script>' +
+                   '<script type="text/javascript">require([' + deps + ']);</script>');
 }());

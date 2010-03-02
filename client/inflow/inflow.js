@@ -133,10 +133,8 @@ console.log("NOW CALLING require.ready in inflow.js");
                 args = location.href.split("#")[0].split("?")[1];
             if (fragId) {
                 rd.dispatchFragId(fragId);
-            } else {
-                rd.pub("rd-protocol-home");
             }
-    
+
             //Listen for hash changes but only if the hash value is empty,
             //which means do our default action (view home)
             rd.sub("rd/onHashChange", function (val) {

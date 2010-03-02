@@ -124,7 +124,7 @@ require.def("rdw/Message",
                 if (attachments) {
                     for (prop in attachments) {
                         if (attachments.hasOwnProperty(prop)) {
-                            if (prop.indexOf("subpart") === -1) {
+                            if (prop.indexOf("subpart") === -1 && prop.indexOf("rd.ext.core.msg-rfc-to-email/body") === -1) {
                                 needFiles = true;
                                 break;
                             }
