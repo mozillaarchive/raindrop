@@ -34,7 +34,7 @@
 .rdwAttachments .attachTab {
   color: #666;
   display: inline-block;
-  margin: 0 1px -2px -20px;
+  margin: 0 1px -2px -16px;
   padding: 0 10px;
   -moz-border-image: url("../i/new/rd_tab.png") 1 12 1 12;
   -webkit-border-image: url("../i/new/rd_tab.png") 1 12 1 12;
@@ -42,6 +42,7 @@
   height: 16px;
   font-size: 10px;
   position: relative;
+  width: 65px;
 }
 
 .rdwAttachments .attachTab:first-child {

@@ -26,14 +26,16 @@
 }
 
 .rdwExtMailingListSummary .id {
-  font-weight: bold;
   color: inherit;
   display: inline;
-  padding: 3px 10px;
+  background-image: url("../../../../inflow/i/new/rd_widget_mailinglist.png");
+  background-repeat: no-repeat;
+  background-position: 0 3px; 
+  padding: 0 0 0 20px;
+  /* padding: 1px 5px;
   background-color: #ffdede;
   -moz-border-radius: 5px;
-  -webkit-border-radius: 5px;
-  text-shadow: 0 1px 0 #fff;
+  -webkit-border-radius: 5px; */
 }
 
 .rdwExtMailingListSummary .description {
