@@ -34,8 +34,7 @@ class TestConvoSimple(APITestCase):
         # all messages in a convo must have the same conversation ID.
         messages = convo['messages']
         # No message should appear twice.
-        seen_keys = set([tuple(msg['schemas']['rd.msg.body']['rd_key'])
-                        for msg in messages])
+        seen_keys = set([tuple(msg['id']) for msg in messages])
         self.failUnlessEqual(len(seen_keys), len(messages), str(seen_keys))
 
     @defer.inlineCallbacks
@@ -47,9 +46,7 @@ class TestConvoSimple(APITestCase):
         for convo in result:
             self.sanity_check_convo(convo)
             for msg in convo['messages']:
-                # take the rd_key from the body schema
-                rdkey = msg['schemas']['rd.msg.body']['rd_key']
-                seen.add(tuple(rdkey))
+                seen.add(tuple(msg['id']))
 
         self.failUnlessEqual(seen.intersection(known_msgs), known_msgs)
         unknown_msgs = self.get_known_msgs_not_from_identities()
@@ -61,16 +58,17 @@ class TestConvoSimple(APITestCase):
         return self.test_identities_mine(iids)
 
     @defer.inlineCallbacks
-    def test_direct(self, endpoint="inflow/conversations/direct"):
+    def test_direct(self, endpoint="inflow/conversations/direct",
+                    schemas=None):
         known_msgs = self.get_known_msgs_to_identities()
-        result = yield self.call_api(endpoint)
+        result = yield self.call_api(endpoint, schemas=schemas)
         seen = set()
         for convo in result:
             self.sanity_check_convo(convo)
             for msg in convo['messages']:
-                # take the rd_key from the body schema
-                rdkey = msg['schemas']['rd.msg.body']['rd_key']
-                seen.add(tuple(rdkey))
+                seen.add(tuple(msg['id']))
+            if schemas is not None and schemas != ['*']:
+                self.failUnlessEqual(sorted(schemas), sorted(msg['schemas'].keys()))
 
         self.failUnlessEqual(seen.intersection(known_msgs), known_msgs)
         unknown_msgs = self.get_known_msgs_not_from_identities()
@@ -79,6 +77,15 @@ class TestConvoSimple(APITestCase):
     @defer.inlineCallbacks
     def test_personal(self):
         _ = yield self.test_direct("inflow/conversations/personal")
+
+    @defer.inlineCallbacks
+    def test_personal_star(self):
+        _ = yield self.test_direct("inflow/conversations/personal", ['*'])
+
+    @defer.inlineCallbacks
+    def test_personal_specific(self):
+        _ = yield self.test_direct("inflow/conversations/personal",
+                                   ['rd.msg.body'])
 
     @defer.inlineCallbacks
     def test_twitter(self):
@@ -94,9 +101,8 @@ class TestConvoSimple(APITestCase):
         self.failUnlessEqual(1, len(convo['messages']))
 
         msg = convo['messages'][0]
-        # check the rd_key from the body schema
-        rdkey = msg['schemas']['rd.msg.body']['rd_key']        
-        self.failUnlessEqual(['tweet', 6119612045], rdkey)
+        # check the message ID
+        self.failUnlessEqual(['tweet', 6119612045], msg['id'])
 
     @defer.inlineCallbacks
     def test_with_messages(self):

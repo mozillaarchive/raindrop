@@ -114,11 +114,11 @@ class ConversationAPI(API):
         # now return the union.
         return all_known.intersection(set(idids))
 
-    def _fetch_messages(self, db, msg_keys):
+    def _fetch_messages(self, db, msg_keys, schemas):
         # Generate proper key for megaview lookup.
         keys = [['rd.core.content', 'key', k] for k in msg_keys]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
-        message_results = []
+        message_results = {}
         from_map = {}
         # itertools.groupby rocks :)
         for (rd_key, dociter) in itertools.groupby(
@@ -130,7 +130,9 @@ class ConversationAPI(API):
                 # Make sure we have the right aggregate to use for this row.
                 rd_key = doc['rd_key']
                 schema_id = doc['rd_schema_id']
-            
+                if schemas != ['*'] and schema_id not in schemas:
+                    continue
+
                 # Skip some schemas since it is extra stuff we do not need.
                 # Prefer a blacklist vs. a whitelist, since user extensions may add
                 # other things, and do not want to have extensions register extra stuff? TODO.
@@ -157,48 +159,50 @@ class ConversationAPI(API):
             try:
                 body = bag['rd.msg.body']
             except KeyError:
-                continue
-            frm = body.get('from')
-            if frm:
-                # Hold on to the from names to check if they are known later
-                # TODO: this should probably be a back end extension.
-                # TODO: fix the above comment - this kinda *is* a back-end extension :)
-                from_key = hashable_key(frm)
-                from_map.setdefault(from_key, []).append(bag)
+                pass
+            else:
+                frm = body.get('from')
+                if frm:
+                    # Hold on to the from names to check if they are known later
+                    # TODO: this should probably be a back end extension.
+                    # TODO: fix the above comment - this kinda *is* a back-end extension :)
+                    from_key = hashable_key(frm)
+                    from_map.setdefault(from_key, []).append(bag)
 
-            message_results.append(bag)
+            message_results[hashable_key(rd_key)] = bag
 
         # Look up the IDs for the from identities. If they are real
         # identities, synthesize a schema to represent this.
         # TODO: this should probably be a back-end extension.
         # TODO: as above, fix the above comment :)
 
-        idtys = self._filter_known_identities(db, from_map)
         # Cycle through the identities, and work up a schema for
         # them if they are known.
-        for idty in idtys:
-            bags = from_map[idty]
-            for bag in bags:
-                bag["rd.msg.ui.known"] = {
-                    "rd_schema_id" : "rd.msg.ui.known"
-                }
+        if schemas==['*'] or 'rd.msg.ui.known' in schemas:
+            idtys = self._filter_known_identities(db, from_map)
+            for idty in idtys:
+                bags = from_map[idty]
+                for bag in bags:
+                    bag["rd.msg.ui.known"] = {
+                        "rd_schema_id" : "rd.msg.ui.known"
+                    }
         # make "objects" as returned by the API
         ret = []
-        for bag in message_results:
+        for rd_key, bag in message_results.iteritems():
             attachments = []
             for schema_items in bag.itervalues():
                 if 'is_attachment' in schema_items:
                     attachments.append(schema_items)
 
             ob = {"schemas": bag,
-                  "id": bag['rd.msg.body']['rd_key'],
+                  "id": rd_key,
                   }
             if attachments:
                 ob['attachments'] = attachments
             ret.append(ob)
         return ret
 
-    def _build_conversations(self, db, conv_summaries, message_limit):
+    def _build_conversations(self, db, conv_summaries, message_limit, schemas=None):
         # Takes a list of rd.conv.summary schemas and some request args,
         # and builds a list of conversation objects suitable for the result
         # of the API call.
@@ -209,33 +213,23 @@ class ConversationAPI(API):
         msg_keys = []
         convs = []
         for cs in conv_summaries:
-            ret_conv = {
-                'id': cs['rd_key'],
-                'identities': cs['identities'],
-                'unread': len(cs['unread_ids']),
-                'unread_ids': cs['unread_ids'],
-                'message_ids': cs['message_ids'],
-                'messages': []
-            }
-
-            # Some messages, like tweets do not have subjects            
-            if 'subject' in cs:
-                ret_conv['subject'] = cs['subject']
-
-            # Some messages, like rss feeds do not have a correct from.
-            if 'from_display' in cs:
-                ret_conv['from_display'] = cs['from_display']
-
+            rdkey = cs['rd_key']
+            ret_conv = self._filter_user_fields(cs)
+            ret_conv['id'] = rdkey
             ret.append(ret_conv)
-            these_ids = cs['message_ids']
-            if message_limit is not None:
-                these_ids = these_ids[:message_limit]
-            for msg_key in these_ids:
-                msg_keys.append(msg_key)
-                convs.append(ret_conv)
+            if schemas:
+                ret_conv['messages'] = []
+                these_ids = cs['message_ids']
+                if message_limit is not None:
+                    these_ids = these_ids[:message_limit]
+                for msg_key in these_ids:
+                    msg_keys.append(msg_key)
+                    convs.append(ret_conv)
 
+        # If they want specific full schemas, then we override the 'messages'
+        # element accordingly.
         if msg_keys:
-            messages = self._fetch_messages(db, msg_keys)
+            messages = self._fetch_messages(db, msg_keys, schemas)
             assert len(messages)==len(msg_keys) # else our zip() will be wrong!
             for ret_conv, msg in zip(convs, messages):
                 ret_conv['messages'].append(msg)
@@ -244,7 +238,7 @@ class ConversationAPI(API):
     # The 'single' end-point for getting a single conversation.
     def by_id(self, req):
         self.requires_get(req)
-        args = self.get_args(req, key="key", message_limit=None)
+        args = self.get_args(req, 'key', message_limit=None, schemas=None)
         db = RDCouchDB(req)
         conv_id = args["key"]
         log("conv_id: %s", conv_id)
@@ -254,16 +248,19 @@ class ConversationAPI(API):
         if not result['rows']:
             return None
         sum_doc = result['rows'][0]['doc']
-        return self._build_conversations(db, [sum_doc], args['message_limit'])[0]
+        return self._build_conversations(db, [sum_doc], args['message_limit'],
+                                         args['schemas'])[0]
 
     # Fetch all conversations which have the specified messages in them.
     def with_messages(self, req):
         self.requires_get_or_post(req)
-        args = self.get_args(req, 'keys', message_limit=None)
+        args = self.get_args(req, 'keys', message_limit=None,
+                             schemas=None)
         db = RDCouchDB(req)
-        return self._with_messages(db, args['keys'], args['message_limit'])
+        return self._with_messages(db, args['keys'], args['message_limit'],
+                                   args['schemas'])
 
-    def _with_messages(self, db, msg_keys, message_limit):
+    def _with_messages(self, db, msg_keys, message_limit, schemas):
         # make a megaview request to determine the convo IDs with the messages.
         # XXX - note we could maybe avoid include_docs by using the
         # 'message_ids' field on the conv_summary doc - although that will not
@@ -281,12 +278,12 @@ class ConversationAPI(API):
         result = db.megaview(keys=keys, reduce=False, include_docs=True)
         # now make the conversation objects.
         docs = [row['doc'] for row in result['rows']]
-        return self._build_conversations(db, docs, message_limit)
+        return self._build_conversations(db, docs, message_limit, schemas)
 
     # Fetch all conversations which include a message from the specified contact
     def contact(self, req):
         self.requires_get(req)
-        args = self.get_args(req, "id", message_limit=None)
+        args = self.get_args(req, "id", message_limit=None, schemas=None)
         cid = args['id']
 
         db = RDCouchDB(req)
@@ -300,7 +297,7 @@ class ConversationAPI(API):
         # XXX - shouldn't we do 'to' etc too?
         db = RDCouchDB(req)
         self.requires_get(req)
-        args = self.get_args(req, ids=None, message_limit=None)
+        args = self.get_args(req, ids=None, message_limit=None, schemas=None)
         ids = args['ids']
         if ids is None:
             # special case - means "my identity".  Note this duplicates code
@@ -322,7 +319,7 @@ class ConversationAPI(API):
         result = db.allDocs(keys=list(conv_doc_ids), include_docs=True)
         # filter out deleted etc.
         docs = [row['doc'] for row in result['rows'] if 'doc' in row]
-        convos = self._build_conversations(db, docs, args['message_limit'])
+        convos = self._build_conversations(db, docs, args['message_limit'], args['schemas'])
         convos.sort(key=lambda item: item['messages'][0]['schemas']['rd.msg.body']['timestamp'],
                    reverse=True)
         return convos
@@ -335,7 +332,8 @@ class ConversationAPI(API):
             'descending': True,
         }
         self.requires_get_or_post(req)
-        args = self.get_args(req, 'keys', limit=30, skip=0, message_limit=None)
+        args = self.get_args(req, 'keys', limit=30, skip=0, message_limit=None,
+                             schemas=None)
         opts['limit'] = args['limit']
         opts['skip'] = args['skip']
         db = RDCouchDB(req)
@@ -347,7 +345,8 @@ class ConversationAPI(API):
                                  **opts)
             convo_summaries.extend(row['doc'] for row in result['rows'])
 
-        convos = self._build_conversations(db, convo_summaries, args['message_limit'])
+        convos = self._build_conversations(db, convo_summaries, args['message_limit'],
+                                           args['schemas'])
         # results are already sorted!
         return convos
 
@@ -378,7 +377,8 @@ class ConversationAPI(API):
         }
 
         self.requires_get(req)
-        args = self.get_args(req, limit=30, skip=0, message_limit=None)
+        args = self.get_args(req, limit=30, skip=0, message_limit=None,
+                             schemas=None)
         opts['limit'] = args['limit']
         opts['skip'] = args['skip']
         db = RDCouchDB(req)
@@ -386,7 +386,7 @@ class ConversationAPI(API):
         result = db.megaview(**opts)
 
         keys = [row['value']['rd_key'] for row in result['rows']]
-        convos = self._with_messages(db, keys, args['message_limit'])
+        convos = self._with_messages(db, keys, args['message_limit'], args['schemas'])
         
         convos.sort(key=lambda item: item['messages'][0]['schemas']['rd.msg.body']['timestamp'],
                    reverse=True)

@@ -50,8 +50,6 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         self.failUnlessEqual(rows[0]['doc']['rd_schema_id'], 'rd.conv.summary')
         doc_sum = rows[0]['doc']
         expected_doc = {
-            'earliest_timestamp': body_schema['timestamp'],
-            'latest_timestamp': body_schema['timestamp'],
             'message_ids': [msgid],
             'unread_ids': [msgid],
             'subject': None, # our test messages have no subject!
@@ -64,6 +62,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'from_display': ['Raindrop Test User'],
             'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
+        del doc_sum['messages'] # delete fields we aren't testing.
         self.failUnlessDocEqual(doc_sum, expected_doc)
 
         # only this message should be in the convo.
@@ -95,8 +94,6 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         self.failUnlessEqual(rows[0]['doc']['rd_schema_id'], 'rd.conv.summary')
         doc_sum = rows[0]['doc']
         expected_doc = {
-            'earliest_timestamp': None,
-            'latest_timestamp': None,
             'subject': None, # our test messages have no subject!
             'message_ids': [],
             'unread_ids': [],
@@ -105,6 +102,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'unread_grouping_tags': [],
             'grouping-timestamp': [],
         }
+        del doc_sum['messages'] # delete fields we aren't testing.
         self.failUnlessDocEqual(doc_sum, expected_doc)
         # Note our deleted message still has the rd.msg.conversation schema;
         # but as we tested above, it doesn't appear in the 'summary'
@@ -130,8 +128,6 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         self.failUnlessEqual(rows[0]['doc']['rd_schema_id'], 'rd.conv.summary')
         doc_sum = rows[0]['doc']
         expected_doc = {
-            'earliest_timestamp': min(body_orig['timestamp'], body_reply['timestamp']),
-            'latest_timestamp': max(body_orig['timestamp'], body_reply['timestamp']),
             'unread_ids': [msgid_reply, msgid],
             'message_ids': [msgid_reply, msgid],
             # The first message in the conv is used for the subject - and
@@ -148,6 +144,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'from_display': ['Raindrop Test Recipient', 'Raindrop Test User'],
             'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
+        del doc_sum['messages'] # delete fields we aren't testing.
         self.failUnlessDocEqual(doc_sum, expected_doc)
         # check messages in the convo.
         msgs = yield self.get_messages_in_convo(doc_sum['rd_key'])
