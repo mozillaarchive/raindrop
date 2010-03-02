@@ -55,7 +55,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
         elif deps is not None:
             if ext.category != ext.SUMMARIZER:
                 raise ValueError("extension %r is not a 'summarizer' so can "
-                                 "not emit dependencies.", ext.id)
+                                 "not emit dependencies." % (ext.id,))
             ni['rd_deps'] = deps
         else:
             if ext.category == ext.SUMMARIZER:
