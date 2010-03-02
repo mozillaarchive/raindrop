@@ -166,7 +166,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
             } else if (contact.name) {
                 //Create the contact record first. Dynamically load the uuid stuff we need
                 //for the contacts.
-                require(["dojox", "dojox.uuid.generateRandomUuid", "dojox.uuid.Uuid"],
+                require(["dojox", "dojox/uuid/generateRandomUuid", "dojox/uuid/Uuid"],
                     dojo.hitch(this, function (dojox) {
                     var uuid = dojox.uuid, uid, apiInst, contactSI;
                     uuid.Uuid.setGenerator(uuid.generateRandomUuid);

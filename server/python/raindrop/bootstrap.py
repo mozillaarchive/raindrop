@@ -130,6 +130,14 @@ def extract( filename, dir ):
     os.chdir( pushd )
 
 
+def get_client_dir():
+    root_dir = path_part_nuke(model.__file__, 4)
+    client_dir = os.path.join(root_dir, 'tools', 'clientbuild')
+    if os.path.exists(client_dir):
+        return client_dir
+    else:
+        return os.path.join(root_dir, 'client')
+
 def install_client_files(whateva, options):
     '''
     cram everyone in 'client' into the app database
@@ -212,7 +220,7 @@ def install_client_files(whateva, options):
         attachments = design_doc['_attachments'] = {}
         # we cannot go in a zipped egg...
         root_dir = path_part_nuke(model.__file__, 4)
-        client_dir = os.path.join(root_dir, 'client/' + doc_name)
+        client_dir = os.path.join(get_client_dir(), doc_name)
         logger.debug("listing contents of '%s' to look for client files", client_dir)
 
         # recursively go through directories, adding files.
@@ -229,7 +237,7 @@ def install_client_files(whateva, options):
     dl = []
     # we cannot go in a zipped egg...
     root_dir = path_part_nuke(model.__file__, 4)
-    client_dir = os.path.join(root_dir, 'client')
+    client_dir = get_client_dir()
     files = os.listdir(client_dir)
     
     # find all the directories in the client dir
@@ -251,7 +259,7 @@ def install_client_files(whateva, options):
 
         # we cannot go in a zipped egg...
         root_dir = path_part_nuke(model.__file__, 4)
-        client_dir = os.path.join(root_dir, 'client')
+        client_dir = get_client_dir()
         zip_path = os.path.join(client_dir, 'dojo.zip')
         finger = fp.get_finger('client/dojo.zip')
         # .zip files might be large, so update in chunks...

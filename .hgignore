@@ -8,3 +8,4 @@ syntax:regexp
 ^server/python/build/
 ^nbproject/
 ^pipeline.svg$
+^tools/clientbuild/
