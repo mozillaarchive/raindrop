@@ -154,7 +154,7 @@
 
 /* ### ACCOUNT GROUPS ### */
 
-.rdwGenericGroup.rdwExtAccountGroup {
+.rdwExtAccountGroup {
   -moz-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
   -webkit-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
@@ -172,6 +172,12 @@
 
 /* ### TWITTER ### */
 
+.rdwGenericGroup.rdwExtTwitterGroup {
+  -moz-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
+  border-width: 1px 8px 12px 4px;
+}
+
 .rdwGenericGroup.rdwExtTwitterGroup > .WidgetHeader > .title {
   background-image: url("../i/new/rd_widget_twitter.png");
   background-position: 0px 3px;
@@ -181,7 +187,7 @@
 
 /* ### FACEBOOK ### */
 
-.rdwGenericGroup.rdwExtFacebookGroup > .WidgetHeader > .title {
+.rdwExtFacebookGroup > .WidgetHeader > .title {
   background-image: url("../i/new/rd_widget_facebook.png");
   background-position: left 2px;
   padding: 0 0 0 17px;

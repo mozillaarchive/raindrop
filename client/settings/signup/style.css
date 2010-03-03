@@ -1,0 +1,211 @@
+                   /*
+                 ._-_.
+                 |_-_(
+                 I
+                /_\ ___
+        ._-_.   |,|/   \
+        |_-_(   | /_____\       ._-_.
+        I        \| u  -| _     |_-_(
+       / \    -_-_-_-_--|/ \    I
+      /___\   \._._._./-|___\  / \
+      |_u |    |_   _| -| u_| /___\
+      |_-_-_-_-_-  U_| -|  _| | u_|
+      |_\._._._./   _|-_-_-_-_-_-_|
+       \_|-   -|    _|    ..   -|_|
+        \|-   U|    _| U MoMo U-|/
+         |U   -|  U _|   ____  -|
+         |- _ -|    _|  /|-|-\ -|
+         |-/U\-|    _|  |-|-|| -|
+         ,___|_   _|-----'__I|-|-I__|__,
+      ._/ /                 \____/      \,
+     /  \ \                  \```\        \,
+    (__   _\                 |'''|         |_,
+    /   ./ /                  \```\       /  _\
+   |   /  /                   |'''|       \,   |
+  /  (                       \```\       /  _/ \
+ /_                           |'''|           _,|
+|                                                \*/
+
+
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@font-face {
+  font-family: Droid-sans;
+  src: url("f/Droid-Sans/DroidSans.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Droid-sans;
+  src: url("f/Droid-Sans/DroidSans-Bold.ttf");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Droid-sans-mono;
+  src: url("f/Droid-Sans-Mono/DroidSansMono.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Droid-serif;
+  src: url("f/Droid-Serif/DroidSerif-Regular.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Droid-serif;
+  src: url("f/Droid-Serif/DroidSerif-Italic.ttf");
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: Droid-serif;
+  src: url("f/Droid-Serif/DroidSerif-Bold.ttf");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Droid-serif;
+  src: url("f/Droid-Serif/DroidSerif-BoldItalic.ttf");
+  font-weight: bold;
+  font-style: italic;
+}
+
+body {
+  font-family: "Droid-sans", Helvetica, arial, sans;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+a {
+  color: #1a1a1a;
+}
+
+input[type="text"] {
+  width: 100%;
+  color: #888;
+  border: 1px solid #e6e6e6;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  padding: 4px;
+  background-image: url("i/rd_input_bg.png");
+  background-repeat: repeat-x;
+  margin: 0 0 8px 0;
+  font-family: "Droid-sans", Helvetica, arial, sans;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+input[type="button"] {
+  background-color: #fff;
+  background-image: url("i/rd_button_bg.png");
+  background-position: center bottom;
+  background-repeat: repeat-x;
+  border-color: #e6e6e6 #ccc #ccc;
+  border-style: solid;
+  border-width: 1px;
+  color; #333;
+  font-size: 10px;
+  font-style: normal;
+  padding: 2px 4px;
+  float: right;
+  text-decoration: none;
+}
+
+input[type="button"]:hover {
+  border: 1px solid #888;
+}
+
+.row {
+  width: 960px;
+  float: left;
+  margin: 10px 0;
+  color: #1a1a1a;
+}
+
+.c1 {
+  width: 220px;
+  margin: 0 10px;
+  float: left;
+  display: inline-block;
+  min-height: 1px;
+}
+
+.c2 {
+  width: 460px;
+  margin: 0 10px;
+  float: left;
+  display: inline-block;
+  min-height: 1px;
+}
+
+.c3 {
+  width: 700px;
+  margin: 0 10px;
+  float: left;
+  display: inline-block;
+  min-height: 1px;
+}
+
+.c4 {
+  width: 940px;
+  margin: 0 10px;
+  float: left;
+  display: inline-block;
+  min-height: 1px;
+}
+
+.logo {
+  display: block;
+  height: 15px;
+  background-image: url("i/rd_logo_alpha.png");
+  background-repeat: no-repeat;
+}
+
+.gmail {
+  display: block;
+  height: 13px;
+  background-image: url("i/rd_gmail.png");
+  background-repeat: no-repeat;
+  background-position: right;
+  margin-top: 4px;
+}
+
+.twitter {
+  display: block;
+  height: 12px;
+  background-image: url("i/rd_twitter.png");
+  background-repeat: no-repeat;
+  background-position: right;
+  margin-top: 4px;
+}
+
+.info {
+  background-image: url("i/rd_lineclip.png");
+  background-repeat: no-repeat;
+  padding-top: 16px;
+}
+
+#uninvited {
+  width: 77px;
+  height: 15px;
+  background-image: url("i/rd_logo.png");
+  background-repeat: no-repeat;
+  position: fixed;
+  display: block;
+  top: 50%;
+  left: 50%;
+  margin-left: -38px;
+  margin-top: -7px;
+}

@@ -1,12 +1,22 @@
 <div class="rdwConversation" dojoAttachEvent="onclick: onClick">
   <div class="header hbox" dojoAttachPoint="headerNode">
     <a href="#" class="subject boxFlex" title="${i18n.expand}" dojoAttachPoint="subjectNode"></a>
-    <div class="type" dojoAttachPoint="typeNode"></div>
+    <div class="leftActions">
+      <button name="archive">${i18n.archive}</button>
+      <button name="delete">${i18n.deleted}</button>
+    </div>
   </div>
   <div class="messages" dojoAttachPoint="containerNode"></div>
-  <div class="quickReply">
-    <textarea class="replyTextArea">${i18n.reply}</textarea>
+  <div class="quickReply hbox">
+    <div class="boxFlex">
+      <textarea class="replyTextArea">${i18n.reply}</textarea>
+    </div>
+    <button class="reply" name="reply" dojoattachpoint="replyNode">${i18n.reply}</button>
+    <button class="actions" name="actions">
+      <div class="buttonActions">actions</div>
+    </button>
   </div>
+  <!--
   <div class="actions hbox" dojoAttachPoint="actionsNode">
     <div class="leftActions boxFlex">
       <button name="expand" dojoAttachPoint="expandNode">${i18n.expand}</button>
@@ -15,6 +25,6 @@
       <button name="impersonal">${i18n.impersonal}</button>
     </div>
     <button name="reply" dojoattachpoint="replyNode">${i18n.reply}</button>
-  </div>
+  </div>-->
   <div dojoAttachPoint="toolDisplayNode"></div>
 </div>

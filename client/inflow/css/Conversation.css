@@ -30,8 +30,8 @@
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  -moz-border-radius: 5px;
-  -webkit-border-radius: 5px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
   border: 1px solid #e6e6e6;
   background-color: #fff;
   background-image: url("../i/new/rd_message_bg.png");
@@ -182,7 +182,30 @@
 }
 
 .rdwConversation .quickReply {
-  margin: 3px 5px;
+  margin: 5px;
+  width: 608px;
+}
+
+.rdwConversation .quickReply button.reply {
+  -moz-border-radius: 0px 2px 2px 0px;
+  -webkit-border-top-right-radius: 2px;
+  -webkit-border-bottom-right-radius: 2px;
+  -webkit-border-top-left-radius: 0px;
+  -webkit-border-bottom-left-radius: 0px;
+}
+
+.rdwConversation .quickReply button.actions {
+  margin-left: 5px;
+}
+
+.buttonActions {
+  background-image: url("../i/new/rd_actions.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  color: transparent;
+  display: block;
+  text-indent: -1000px;
+  width: 24px;
 }
 
 .rdwConversation .replyTextArea {
@@ -194,16 +217,16 @@
   color: #888;
   font-family: "droid-sans", helvetica, arial, sans;
   font-size: 12px;
-  background-color: #fff;
-  background-image: url("../i/new/rd_input_bg.png");
-  background-repeat: repeat-x;
+  background-color: #fafafa;
   border: 1px solid #e6e6e6;
+  border-right: none;
 }
 
 .rdwConversation .replyTextArea:focus {
   color: #333;
   height: 60px;
   border: 1px solid #ccc;
+  border-right: none;
 }
 
 .rdwConversation.group .replyTextArea,
@@ -238,7 +261,7 @@
 }
 
 .rdwConversationFullMessage > .message > .actions button,
-.rdwConversation > .actions > .leftActions button,
+.leftActions button,
 .rdwAttachments .attachAction button {
   display: inline;
   float: left;
@@ -252,19 +275,19 @@
 }
 
 .rdwConversationFullMessage > .message > .actions button:first-child,
-.rdwConversation > .actions > .leftActions button:first-child, 
+.leftActions button:first-child, 
 .rdwAttachments .attachAction button:first-child {
-  -moz-border-radius-bottomleft: 4px;
-  -moz-border-radius-topleft: 4px;
-  -webkit-border-bottom-left-radius: 4px;
-  -webkit-border-top-left-radius: 4px;
+  -moz-border-radius-bottomleft: 2px;
+  -moz-border-radius-topleft: 2px;
+  -webkit-border-bottom-left-radius: 2px;
+  -webkit-border-top-left-radius: 2px;
 }
 
 .rdwConversationFullMessage > .message > .actions button:last-child,
-.rdwConversation > .actions > .leftActions button:last-child,
+.leftActions button:last-child,
 .rdwAttachments .attachAction button:last-child {
-  -moz-border-radius-bottomright: 4px;
-  -moz-border-radius-topright: 4px;
-  -webkit-border-bottom-right-radius: 4px;
-  -webkit-border-top-right-radius: 4px;
+  -moz-border-radius-bottomright: 2px;
+  -moz-border-radius-topright: 2px;
+  -webkit-border-bottom-right-radius: 2px;
+  -webkit-border-top-right-radius: 2px;
 }

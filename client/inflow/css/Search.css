@@ -89,6 +89,7 @@
   border-width: 1px 4px 7px 1px;
   -moz-border-radius: 0px;
   -webkit-border-radius: 0px;
+  background-color: transparent;
 }
 
 .rdwDataSelector.expanded .rdwDataSelectorFilters h3,
@@ -191,13 +192,14 @@
 }
 
 .rdwDataSelectorMatches h4 {
-  font-weight: normal;
+  font-weight: bold;
   padding: 3.5px;
 }
 
 .rdwDataSelectorMatches .rdwGoMatchMenuRealOption.dijitMenuItem  {
   border: 0 none transparent;
   color: #FF5959;
+  font-weight: bold;
 }
 
 .rdwDataSelectorTypes [data-type="contact"] {
