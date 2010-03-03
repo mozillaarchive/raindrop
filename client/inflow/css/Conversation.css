@@ -186,6 +186,10 @@
   width: 608px;
 }
 
+.dj_gecko .rdwConversation .quickReply {
+  height: 24px;
+}
+
 .rdwConversation .quickReply button.reply {
   -moz-border-radius: 0px 2px 2px 0px;
   -webkit-border-top-right-radius: 2px;
