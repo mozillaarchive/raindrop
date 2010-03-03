@@ -1,11 +1,11 @@
 <form class="account ${doc.kind}" onsubmit="return false">
   <strong class="name">${kindDocProps._name}</strong>
   <a class="delete" dojoAttachEvent="onclick: onDelete">delete</a>
-  <span class="url">${kindDocProps._domain}<span class="username" dojoAttachPoint="userNameDisplayNode">${doc.name}</span></span>
+  <span class="url">${kindDocProps._domain}<span class="username" dojoAttachPoint="userNameDisplayNode">${doc.username}</span></span>
   <table class="login">
     <tr>
       <td><label for="username">username:</label></td>
-      <td><input type="text" name="userName" dojoAttachPoint="userNameNode" value="${doc.name}"></td>
+      <td><input type="text" name="userName" dojoAttachPoint="userNameNode" value="${doc.username}"></td>
     </tr>
     <tr>
       <td><label for="password">password:</label></td>
