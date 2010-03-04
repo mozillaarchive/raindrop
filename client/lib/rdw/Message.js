@@ -112,6 +112,7 @@ require.def("rdw/Message",
             this.inherited("postCreate", arguments);
 
             var bodySchema = this.msg.schemas['rd.msg.body'],
+                msgKey = this.msg.id,
                 emailSchema = this.msg.schemas["rd.msg.email"], attachments,
                 prop, needFiles = false;
 
@@ -134,7 +135,7 @@ require.def("rdw/Message",
                 if (needFiles) {
                     api({
                         url: 'inflow/message/attachments',
-                        key: dojo.toJson(bodySchema.rd_key)
+                        key: dojo.toJson(msgKey)
                     })
                     .ok(this, function (json) {
                         this.msg.fileAttachments = json;
