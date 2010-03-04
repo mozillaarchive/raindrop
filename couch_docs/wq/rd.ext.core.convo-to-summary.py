@@ -132,12 +132,28 @@ def build_summary(conv_id):
         #We want the subject from the first (topic) message
         subject = good_msgs[-1]['rd.msg.body'].get('subject')
         # and the summary to include the first, and last 2 unread
+        num_summaries = 2 # not including the first...
+        to_summarize = []
         if unread:
-            to_summarize = unread[:2]
-        else:
-            to_summarize = []
+            to_summarize.extend(unread[:num_summaries])
+        # if there aren't enough unread, use most recent read ones
+        index = 0
+        while len(to_summarize) < num_summaries and index < len(good_msgs):
+            # explicit loop with 'is' testing instead of 'in' to avoid large
+            # object comparison.
+            for ur in unread:
+                if ur is good_msgs[index]:
+                    break
+            else:
+                to_summarize.append(good_msgs[index])
+            index += 1
         if not to_summarize or to_summarize[-1] is not good_msgs[-1]:
             to_summarize.append(good_msgs[-1])
+        if to_summarize:
+            # now sort them as the checking of unread first may mean the
+            # order is no longer by timestamp.
+            to_summarize.sort(key=lambda item: item['rd.msg.body']['timestamp'],
+                              reverse=True)
     else:
         subject = None
         to_summarize = []
