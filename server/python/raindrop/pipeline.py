@@ -408,13 +408,20 @@ class DocsBySeqIteratorFactory(object):
         self.stopping = False
         result = yield doc_model.db.listDocsBySeq(limit=limit,
                                                   startkey=start_seq)
-        self.rows = result['rows']
-        if not self.rows:
+        rows = result['rows']
+        # We can only return False when there are no rows at all (ie, before
+        # removing deleted items) else we will think we are at the very end.
+        if not rows:
+            self.last_seq = start_seq
             defer.returnValue(False) # nothing to do.
 
-        self.last_seq = self.rows[-1]['key']
+        # take the 'last_seq' before filtering deleted items
+        self.last_seq = rows[-1]['key']
+        self.rows = [r for r in rows
+                     if 'error' not in r and 'deleted' not in r['value']]
+
         self.dep_rows = []
-        if include_deps:
+        if include_deps and self.rows:
             # find any documents which declare they depend on the documents
             # in the list, then lookup the "source" of that doc
             # (ie, the one that "normally" triggers that doc to re-run)
@@ -422,8 +429,6 @@ class DocsBySeqIteratorFactory(object):
             all_ids = set()
             keys = []
             for row in self.rows:
-                if 'deleted' in row['value']:
-                    continue
                 src_id = row['id']
                 all_ids.add(src_id)
                 try:
@@ -456,15 +461,6 @@ class DocsBySeqIteratorFactory(object):
                     return
                 if self.stopping:
                     return
-                # is it a "real" document?
-                if 'error' in row:
-                    # This is usually a simple 'not found' error; it doesn't
-                    # mean an 'error record'
-                    mutter('skipping document %(key)s - %(error)s', row)
-                    continue
-                if 'deleted' in row['value']:
-                    mutter('skipping document %s - deleted', row['key'])
-                    continue
                 src_id = row['id']
                 src_rev = row['value']['rev']
                 yield src_id, src_rev, None, seq
@@ -475,7 +471,7 @@ class DocsBySeqIteratorFactory(object):
             for src_id in self.dep_rows:
                 yield src_id, None, None, None
 
-        assert self.rows, "not initialized"
+        assert self.rows is not None, "not initialized"
         return do_iter()
 
 
@@ -550,12 +546,12 @@ class IncomingItemProcessor(object):
                 iter = DocsBySeqIteratorFactory()
                 more = yield iter.initialize(doc_model, start_seq=self.current_seq,
                                              include_deps=True)
+                self.current_seq = iter.last_seq
                 if not more:
                     break
                 for runner in self.runners:
                     ds.append(runner.process_queue(iter.make_iter()))
                 _ = yield defer.DeferredList(ds)                    
-                self.current_seq = iter.last_seq
             took = time.clock() - start
             logger.debug("incoming queue complete at seq %d (%0.2f secs)",
                          self.current_seq, took)
@@ -606,7 +602,6 @@ class StatefulQueueManager(object):
         self.status_msg_last = None
 
     def _start_q(self, q, q_state, def_done, do_incoming=False):
-        logger.debug("starting queue %r", q.queue_id)
         assert not q_state.running, q
         q_state.running = True
         # in the interests of not letting the backlog processing cause
@@ -739,6 +734,7 @@ class StatefulQueueManager(object):
     @defer.inlineCallbacks
     def _run_queue(self, q, qstate, num_to_process=2000):
         start_seq = qstate.schema_item['items']['seq']
+        logger.debug("starting queue %r at sequence %s", q.queue_id, start_seq)
         # There is quite a performance penalty involved in getting the
         # dependencies for extensions which don't need them...
         try:
@@ -767,7 +763,10 @@ class StatefulQueueManager(object):
         finally:
             del self.queue_iters[q.queue_id]
 
-        _ = yield self._save_queue_state(qstate, q.current_seq, num_created)
+        # make sure we use the iterator factory's last_seq as the extensions
+        # current_seq may not be correct if all items in the _changes feed
+        # were deleted...
+        _ = yield self._save_queue_state(qstate, iterfact.last_seq, num_created)
         defer.returnValue(False)
 
     @defer.inlineCallbacks
@@ -1000,35 +999,39 @@ class ExtensionProcessor(object):
             result = yield dm.open_view(key=key, reduce=False)
             rows = result['rows']
             if rows:
-                dirty = False
-                for row in rows:
-                    assert 'error' not in row, row # views don't give error records!
-                    prev_src = row['value']['rd_source']
-                    # a hack to prevent us cycling to death - if our previous
-                    # run of the extension created this document, just skip
-                    # it.
-                    # This might be an issue in the 'reprocess' case.
-                    if prev_src is not None and prev_src[0] == src_id and \
-                       row['value']['rd_schema_id'] in ext.source_schemas:
-                        # This is illegal for a provider.
-                        if is_provider:
-                            raise ValueError("extension %r is configured to depend on schemas it previously wrote" %
-                                             ext_id)
-                        # must be an extender, which is OK (see above)
-                        logger.debug("skipping document %r - it depends on itself",
-                                     src_id)
-                        defer.returnValue((None, None))
+                if ext.uses_dependencies:
+                    # we can't just check the source doc - assume the worst.
+                    dirty = True
+                else:
+                    dirty = False
+                    for row in rows:
+                        assert 'error' not in row, row # views don't give error records!
+                        prev_src = row['value']['rd_source']
+                        # a hack to prevent us cycling to death - if our previous
+                        # run of the extension created this document, just skip
+                        # it.
+                        # This might be an issue in the 'reprocess' case.
+                        if prev_src is not None and prev_src[0] == src_id and \
+                           row['value']['rd_schema_id'] in ext.source_schemas:
+                            # This is illegal for a provider.
+                            if is_provider:
+                                raise ValueError("extension %r is configured to depend on schemas it previously wrote" %
+                                                 ext_id)
+                            # must be an extender, which is OK (see above)
+                            logger.debug("skipping document %r - it depends on itself",
+                                         src_id)
+                            defer.returnValue((None, None))
 
-                    if prev_src != [src_id, src_rev]:
-                        dirty = True
-                        break
-                    # error rows are considered 'dirty'
-                    cur_schema = row['value']['rd_schema_id']
-                    if cur_schema == 'rd.core.error':
-                        logger.debug('document %r generated previous error '
-                                     'records - re-running', src_id)
-                        dirty = True
-                        break
+                        if prev_src != [src_id, src_rev]:
+                            dirty = True
+                            break
+                        # error rows are considered 'dirty'
+                        cur_schema = row['value']['rd_schema_id']
+                        if cur_schema == 'rd.core.error':
+                            logger.debug('document %r generated previous error '
+                                         'records - re-running', src_id)
+                            dirty = True
+                            break
             else:
                 dirty = True
             if not dirty and not force:
