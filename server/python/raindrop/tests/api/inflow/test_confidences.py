@@ -67,6 +67,7 @@ def handler(doc):
 
 from twisted.internet import defer
 from raindrop.tests.api import APITestCase
+from pprint import pformat
 
 class TestConfidencesBase(APITestCase):
     @defer.inlineCallbacks
@@ -94,11 +95,11 @@ class TestConfidencesBase(APITestCase):
             if convo['id'] == our_conv_id:
                 msgs = convo['messages']
                 # and only one message in the convo.
-                self.failUnlessEqual(len(msgs), 1, msgs)
+                self.failUnlessEqual(len(msgs), 1, pformat(msgs))
                 # and the body schema should have the modified "from" address"
                 self.failUnlessEqual(msgs[0]['schemas']['rd.msg.body']['from'],
                                      ['email', 'raindrop_test_user@mozillamessaging.com'],
-                                     msgs)
+                                     pformat(msgs))
                 break
         else:
             self.fail("failed to find our message")
