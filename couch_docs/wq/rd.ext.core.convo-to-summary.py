@@ -39,8 +39,7 @@ def build_summaries(to_summarize):
                     continue
         yield summary
 
-def handler(doc):
-    conv_id = doc['conversation_id']
+def build_summary(conv_id):
     logger.debug('rebuilding conversation %r', conv_id)
     # query to determine all messages in this convo.
     result = open_view(key=['rd.msg.conversation', 'conversation_id', conv_id],
@@ -162,5 +161,22 @@ def handler(doc):
         msg_key = list(msg.values())[0]['rd_key']
         for sid in src_msg_schemas:
             deps.append((msg_key, sid))
-    emit_schema('rd.conv.summary', item, rd_key=conv_id, deps=deps)
+    return item, deps
 
+def handler(doc):
+    rd_source = [doc['_id'], doc['_rev']]
+    # ask for our 'later_handler' to be called with this
+    process_later((doc['conversation_id'], rd_source))
+
+def later_handler(infos):
+    # first make a list of unique convo IDs and remembering an arbitrary
+    # rd_source we can record.
+    cid_src = {}
+    for cid, rd_source in infos:
+        cid_src[hashable_key(cid)] = rd_source
+
+    # now build them.
+    for cid, rd_source in cid_src.iteritems():
+        item, deps = build_summary(cid)
+        emit_schema('rd.conv.summary', item, rd_key=cid, rd_source=rd_source,
+                    deps=deps)

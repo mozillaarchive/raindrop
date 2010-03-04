@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 __my_identities = []
 
+class ProcessLaterException(Exception):
+    def __init__(self, value):
+        self.value = value
+        Exception.__init__(self, value)
+
 class InternalNoDepsSentinal: pass
 
 def get_ext_env(doc_model, context, src_doc, ext):
@@ -41,6 +46,21 @@ def get_ext_env(doc_model, context, src_doc, ext):
     # NOTE: These are all called in the context of a worker thread and
     # are expected by the caller to block.
     new_items = context['new_items']
+
+    def _do_deps(schema_item, deps):
+        if deps is InternalNoDepsSentinal:
+            pass
+        elif deps is not None:
+            if not ext.uses_dependencies:
+                raise ValueError("extension %r is not marked as using "
+                                 "dependencies" % (ext.id,))
+            schema_item['rd_deps'] = deps
+        else:
+            if ext.uses_dependencies:
+                logger.warn("Extension %r is marked as using dependencies, "
+                            "but did not specify them.  Performance of this "
+                            "extension will suffer.", ext.id)
+
     def emit_schema(schema_id, items, rd_key=None, attachments=None, deps=None):
         ni = {'rd_schema_id': schema_id,
               'items': items,
@@ -50,18 +70,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
             ni['rd_key'] = src_doc['rd_key']
         else:
             ni['rd_key'] = rd_key
-        if deps is InternalNoDepsSentinal:
-            pass
-        elif deps is not None:
-            if ext.category != ext.SUMMARIZER:
-                raise ValueError("extension %r is not a 'summarizer' so can "
-                                 "not emit dependencies." % (ext.id,))
-            ni['rd_deps'] = deps
-        else:
-            if ext.category == ext.SUMMARIZER:
-                logger.warn("Extension %r is a 'summarizer' that does not "
-                            "emit dependencies.  Performance of this "
-                            "extension will suffer.", ext.id)
+        _do_deps(ni, deps)
         ni['rd_source'] = [src_doc['_id'], src_doc['_rev']]
         if attachments is not None:
             ni['attachments'] = attachments
@@ -69,6 +78,20 @@ def get_ext_env(doc_model, context, src_doc, ext):
             ni['rd_schema_provider'] = ext.id
         new_items.append(ni)
         return doc_model.get_doc_id_for_schema_item(ni)
+
+    def later_emit_schema(schema_id, items, rd_key, rd_source, attachments=None, deps=None):
+        ni = {'rd_schema_id': schema_id,
+              'items': items,
+              'rd_ext_id' : ext.id,
+              }
+        ni['rd_key'] = rd_key
+        _do_deps(ni, deps)
+        ni['rd_source'] = rd_source
+        if attachments is not None:
+            ni['attachments'] = attachments
+        if ext.category != ext.EXTENDER:
+            ni['rd_schema_provider'] = ext.id
+        new_items.append(ni)
 
     def emit_related_identities(identity_ids, def_contact_props):
         logger.debug("emit_related_identities for %r", ext.id)
@@ -171,14 +194,21 @@ def get_ext_env(doc_model, context, src_doc, ext):
         emit_schema('rd.grouping.info', items, rd_key=grouping_key,
                     deps=InternalNoDepsSentinal)
 
+    def process_later(info):
+        raise ProcessLaterException(info)
+
     new_globs = {}
-    new_globs['emit_schema'] = emit_schema
+    if src_doc:
+        new_globs['emit_schema'] = emit_schema
+    else:
+        new_globs['emit_schema'] = later_emit_schema
     new_globs['emit_related_identities'] = emit_related_identities
     new_globs['find_and_emit_conversation'] = find_and_emit_conversation
     new_globs['init_grouping_tag'] = init_grouping_tag
     new_globs['open_attachment'] = open_attachment
     new_globs['open_schema_attachment'] = open_schema_attachment
     new_globs['open_schemas'] = open_schemas
+    new_globs['process_later'] = process_later
     new_globs['get_schema_attachment_info'] = doc_model.get_schema_attachment_info
     new_globs['open_view'] = open_view
     new_globs['update_documents'] = update_documents

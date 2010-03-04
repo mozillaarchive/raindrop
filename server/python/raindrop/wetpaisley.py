@@ -258,6 +258,9 @@ class CouchDB(paisley.CouchDB):
                    'key': seq['seq'],
                    'value': last_change, # has 'rev'
                   }
+            # 'deleted' was in the value
+            if 'deleted' in seq:
+                row['value']['deleted'] = seq['deleted']
             if 'doc' in seq:
                 row['doc'] = seq['doc']
             rows.append(row)

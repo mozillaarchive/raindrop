@@ -268,4 +268,59 @@ Hello everyone
 
 
 class TestCustomBacklog(TestCustom):
-    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor
+    use_incoming_processor = not TestCustom.use_incoming_processor
+
+
+class TestGroupingSummaries(TestCaseWithTestDB):
+    msg_template = """\
+Delivered-To: raindrop_test_user@mozillamessaging.com
+From: someone@somewhere
+To: %s
+Date: Sat, 21 Jul 2009 12:13:14 -0000
+Message-Id: <%s>
+
+Hello everyone
+"""
+    @defer.inlineCallbacks
+    def test_multiple_tags(self):
+        items = []
+        grouping_key = ['grouping', 'whateva']
+        # first create a grouping with 2 tags
+        tag_user_1 = "identity-email-user1@something"
+        tag_user_2 = "identity-email-user2@something"
+        si = {'rd_key': grouping_key,
+              'rd_schema_id': 'rd.grouping.info',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {'grouping_tags': [tag_user_1, tag_user_2]},
+              }
+        items.append(si)
+
+        for addy, msgid in [('user1@something', '1234@something'),
+                            ('user2@something', '5678@something',)
+                           ]:
+            msg = self.msg_template % (addy, msgid)
+            si = {'rd_key': ['email', msgid],
+                  'rd_schema_id': 'rd.msg.rfc822',
+                  'rd_source' : None,
+                  'rd_ext_id': 'rd.testsuite',
+                  'items': {},
+                  'attachments' : {
+                        'rfc822': {
+                            'data': msg,
+                        }
+                  }
+            }
+            items.append(si)
+        _ = yield self.doc_model.create_schema_items(items)
+        _ = yield self.ensure_pipeline_complete()
+        docs = yield self.doc_model.open_schemas([(grouping_key, 'rd.grouping.summary')])
+        self.failUnlessEqual(len(docs), 1)
+        doc = docs[0]
+        self.failUnlessEqual(doc['rd_key'], grouping_key)
+        # both messages should show in the summary.
+        self.failUnlessEqual(doc['num_unread'], 2)
+
+
+class TestGroupingSummariesBacklog(TestGroupingSummaries):
+    use_incoming_processor = not TestGroupingSummaries.use_incoming_processor

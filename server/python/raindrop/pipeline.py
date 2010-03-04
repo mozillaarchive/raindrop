@@ -32,24 +32,11 @@ from twisted.internet import reactor
 
 from raindrop.model import DocumentSaveError
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-import base64
-    
-
 import extenv
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-def decode_rdkey(encoded_key):
-    prefix, b64part = encoded_key.split(".", 1)
-    json_str = base64.decodestring(b64part)
-    return [prefix, json.loads(json_str)]
 
 
 class Extension(object):
@@ -62,14 +49,10 @@ class Extension(object):
     # "complete", so extensions which depend on it aren't run and the field
     # values don't appear in the megaview.
     EXTENDER = "extender"
-    # A 'summarizer' creates 'summary' record; this means they will emit
-    # 'dependencies' and should one day get some special 'batching' treatment
-    # to avoid them doing unnecessary work.
-    SUMMARIZER = "summarizer"
 
-    ALL_CATEGORIES = (SMART, PROVIDER, EXTENDER, SUMMARIZER)
+    ALL_CATEGORIES = (SMART, PROVIDER, EXTENDER)
 
-    def __init__(self, id, doc, handler, globs):
+    def __init__(self, id, doc, globs):
         self.id = id
         self.doc = doc
         # make the source schemas more convenient to use...
@@ -79,15 +62,17 @@ class Extension(object):
         else:
             self.source_schemas = [doc['source_schema']]
         self.confidence = doc.get('confidence')
-        self.handler = handler
         self.globs = globs
         self.running = False # for reentrancy testing...
         # the category - for now we have a default, but later should not!
         self.category = doc.get('category', self.PROVIDER)
+        self.uses_dependencies = doc.get('uses_dependencies', False)
         if self.category not in self.ALL_CATEGORIES:
             logger.error("extension %r has invalid category %r (must be one of %s)",
                          id, self.category, self.ALL_CATEGORIES)
 
+        self.handler = globs.get('handler')
+        self.later_handler = globs.get('later_handler')
 
 @defer.inlineCallbacks
 def load_extensions(doc_model):
@@ -116,13 +101,13 @@ def load_extensions(doc_model):
         except Exception, exc:
             logger.error("Failed to initialize extension %r: %s", ext_id, exc)
             continue
-        handler = globs.get('handler')
-        if handler is None or not callable(handler):
+        assert ext_id not in extensions, ext_id # another with this ID??
+        ext = Extension(ext_id, doc, globs)
+        if ext.handler is None or not callable(ext.handler):
             logger.error("source-code in extension %r doesn't have a 'handler' function",
                          ext_id)
             continue
-        assert ext_id not in extensions, ext_id # another with this ID??
-        extensions[ext_id] = Extension(ext_id, doc, handler, globs)
+        extensions[ext_id] = ext
     defer.returnValue(extensions)
 
 
@@ -437,11 +422,12 @@ class DocsBySeqIteratorFactory(object):
             all_ids = set()
             keys = []
             for row in self.rows:
+                if 'deleted' in row['value']:
+                    continue
                 src_id = row['id']
                 all_ids.add(src_id)
                 try:
-                    _, enc_rd_key, schema_id = doc_model.split_doc_id(src_id)
-                    rd_key = decode_rdkey(enc_rd_key)
+                    _, rd_key, schema_id = doc_model.split_doc_id(src_id)
                 except ValueError:
                     # not a raindrop document - ignore it.
                     continue
@@ -756,7 +742,7 @@ class StatefulQueueManager(object):
         # There is quite a performance penalty involved in getting the
         # dependencies for extensions which don't need them...
         try:
-            include_deps = q.processor.ext.category == Extension.SUMMARIZER
+            include_deps = q.processor.ext.uses_dependencies
         except AttributeError:
             # hacky - not an 'extension' based queue (ie, the outgoing one)
             include_deps = False
@@ -831,6 +817,7 @@ class ProcessingQueueRunner(object):
 
         logger.debug("starting processing %r", self.queue_id)
         items = []
+        pending = []
         # Given multiple extensions may write to the same document (as all
         # instances of the same schema are stored in the same document),
         # conflicts are inevitable.  When we see conflicts we simply retry a
@@ -846,7 +833,7 @@ class ProcessingQueueRunner(object):
                 self.current_seq = seq
             if schema_id is None:
                 try:
-                    _, _, schema_id = doc_model.split_doc_id(src_id)
+                    _, _, schema_id = doc_model.split_doc_id(src_id, decode_key=False)
                 except ValueError, why:
                     logger.log(1, 'skipping document %r: %s', src_id, why)
                     continue
@@ -854,7 +841,14 @@ class ProcessingQueueRunner(object):
             if schema_id not in schema_ids:
                 continue
 
-            got, must_save = yield processor(src_id, src_rev)
+            try:
+                got, must_save = yield processor(src_id, src_rev)
+            except extenv.ProcessLaterException, exc:
+                # This extension has been asked to be called later at the
+                # end of the batch - presumably to save doing duplicate work.
+                pending.append(exc.value)
+                continue
+
             if not got:
                 continue
             num_created += len(got)
@@ -905,6 +899,15 @@ class ProcessingQueueRunner(object):
             if conflicts:
                 raise DocumentSaveError(conflicts)
 
+        if pending:
+            # If the extension asked for stuff to be done later, then now
+            # is later!  We must do it per-batch, so the backlog processor
+            # doesn't think we are done with this batch before we actually are.
+            got = yield self.processor.process_pending(pending)
+            if got:
+                _ = yield doc_model.create_schema_items(got)
+                num_created += len(got)
+
         logger.debug("finished processing %r to %r - %d processed",
                      self.queue_id, self.current_seq, num_created)
         defer.returnValue(num_created)
@@ -935,6 +938,42 @@ class ExtensionProcessor(object):
         assert self.ext.running
         self.ext.running = False
 
+    def _merge_new_with_previous(self, new_items, docs_previous):
+        # check the new items created against the 'source' documents created
+        # previously by the extension.  Nuke the ones which were provided
+        # before and which aren't now.  (This is most likely after an
+        # 'rd.core.error' schema record is written, then the extension is
+        # re-run and it successfully creates a 'real' schema)
+        dm = self.doc_model
+        ext_id = self.ext.id
+        docs_this = set()
+        for i in new_items:
+            prev_key = dm.hashable_key((i['rd_key'], i['rd_schema_id']))
+            docs_this.add(prev_key)
+        for (prev_key, prev_val) in docs_previous.iteritems():
+            if prev_key not in docs_this:
+                si = {'rd_key': prev_val['rd_key'],
+                      'rd_schema_id': prev_val['rd_schema_id'],
+                      'rd_ext_id': ext_id,
+                      '_deleted': True,
+                      '_rev': prev_val['_rev'],
+                      }
+                new_items.insert(0, si)
+                logger.debug('deleting previous schema item %(rd_schema_id)r'
+                             ' by %(rd_ext_id)r for key %(rd_key)r', si)
+
+    @defer.inlineCallbacks
+    def process_pending(self, pending):
+        new_items = []
+        context = {'new_items': new_items}
+        self._get_ext_env(context, None)
+        func = self.ext.later_handler
+        # Note we don't catch exceptions - failure stops this queue!
+        try:
+            _ = yield threads.deferToThread(func, pending)
+        finally:
+            self._release_ext_env()
+        defer.returnValue(new_items)
 
     @defer.inlineCallbacks
     def __call__(self, src_id, src_rev):
@@ -953,7 +992,7 @@ class ExtensionProcessor(object):
             # re-running.  Such extensions are unlikely to be able to be
             # correctly overridden, but that is life.
             pass
-        elif ext.category in [ext.PROVIDER, ext.EXTENDER, ext.SUMMARIZER]:
+        elif ext.category in [ext.PROVIDER, ext.EXTENDER]:
             is_provider = ext.category!=ext.EXTENDER
             # We need to find *all* items previously written by this extension
             # so we can manage updating/removal of the old items.
@@ -1043,38 +1082,27 @@ class ExtensionProcessor(object):
                 result = yield threads.deferToThread(func, src_doc)
             finally:
                 self._release_ext_env()
+        except extenv.ProcessLaterException, exc:
+            assert not new_items, "extensions can't do now and later!"
+            # we still need to delete the older ones created last time.
+            self._merge_new_with_previous(new_items, docs_previous)
+            if new_items:
+                _ = yield self.doc_model.create_schema_items(new_items)
+            # can't use simple 'raise' as the yield above prevents it.
+            raise exc
+        except:
+            # handle_ext_failure may put error records into new_items.
+            self._handle_ext_failure(Failure(), src_doc, new_items)
+        else:
             if result is not None:
                 # an extension returning a value implies they may be
                 # confused?
                 logger.warn("extension %r returned value %r which is ignored",
                             ext, result)
-        except:
-            # handle_ext_failure may put error records into new_items.
-            self._handle_ext_failure(Failure(), src_doc, new_items)
 
         logger.debug("extension %r generated %d new schemas", ext_id, len(new_items))
 
-        # check the new items created against the 'source' documents created
-        # previously by the extension.  Nuke the ones which were provided
-        # before and which aren't now.  (This is most likely after an
-        # 'rd.core.error' schema record is written, then the extension is
-        # re-run and it successfully creates a 'real' schema)
-        docs_this = set()
-        for i in new_items:
-            prev_key = dm.hashable_key((i['rd_key'], i['rd_schema_id']))
-            docs_this.add(prev_key)
-        for (prev_key, prev_val) in docs_previous.iteritems():
-            if prev_key not in docs_this:
-                si = {'rd_key': prev_val['rd_key'],
-                      'rd_schema_id': prev_val['rd_schema_id'],
-                      'rd_ext_id': ext_id,
-                      '_deleted': True,
-                      '_rev': prev_val['_rev'],
-                      }
-                new_items.insert(0, si)
-                logger.debug('deleting previous schema item %(rd_schema_id)r'
-                             ' by %(rd_ext_id)r for key %(rd_key)r', si)
-
+        self._merge_new_with_previous(new_items, docs_previous)
         # We try hard to batch writes; we earlier just checked to see if
         # only the same key was written, but that still failed.  Last
         # ditch attempt is to see if the extension made a query - if it

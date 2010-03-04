@@ -249,10 +249,17 @@ class DocumentModel(object):
         return "!".join(bits)
 
     @classmethod
-    def split_doc_id(cls, doc_id):
+    def split_doc_id(cls, doc_id, decode_key=True):
         if not doc_id.startswith('rc!'):
             raise ValueError("Not a raindrop content docid")
-        rt, rdkey, schema = doc_id.split("!", 3)
+        rt, enc_rdkey, schema = doc_id.split("!", 3)
+        if decode_key:
+            # decode the key portion.
+            prefix, b64part = enc_rdkey.split(".", 1)
+            json_str = base64.decodestring(b64part)
+            rdkey = [prefix, json.loads(json_str)]
+        else:
+            rdkey = enc_rdkey
         return rt, rdkey, schema
 
     @defer.inlineCallbacks
