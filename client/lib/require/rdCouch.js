@@ -44,7 +44,8 @@
             "group_level": 1,
             "reduce": 1,
             "include_docs": 1,
-            "docs": 1
+            "docs": 1,
+            "schemas": 1
         },
 
         /**
