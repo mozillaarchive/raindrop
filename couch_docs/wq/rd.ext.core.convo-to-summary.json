@@ -2,7 +2,8 @@
   "schemas" : {
     "rd.ext.workqueue" : {
         "source_schemas" : ["rd.msg.conversation"],
-        "category": "summarizer",
+        "category": "provider",
+        "uses_dependencies": true,
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
         "info": "Creates conversation summary schemas"

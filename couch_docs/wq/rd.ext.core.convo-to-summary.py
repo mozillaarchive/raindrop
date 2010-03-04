@@ -6,18 +6,40 @@
 # so when as item is marked as 'unread', the summary changes accordingly.
 import itertools
 
-# these are the schemas we need.
-src_msg_schemas = [
-    'rd.msg.body',
-    'rd.msg.conversation',
-    'rd.msg.archived',
-    'rd.msg.deleted',
-    'rd.msg.seen',
-    'rd.msg.grouping-tag',
-]
+# keys are the schemas we need, values are the fields from this schema we
+# include in the summary (where None means we just use the schema internally
+# in this extension but don't emit it in the summary)
+src_msg_schemas = {
+    'rd.msg.body': '''body_preview from from_display to to_display cc
+                      cc_display bcc bcc_display timestamp'''.split(),
+    'rd.msg.conversation': None,
+    'rd.msg.archived': None,
+    'rd.msg.deleted': None,
+    'rd.msg.seen': ['seen'],
+    'rd.msg.grouping-tag': None,
+    'rd.msg.email': ['_attachments']
+}
 
-def handler(doc):
-    conv_id = doc['conversation_id']
+def build_summaries(to_summarize):
+    for msg in to_summarize:
+        summary = {'id': msg['rd.msg.body']['rd_key'],
+                   'schemas': {}}
+        for scid, names in src_msg_schemas.iteritems():
+            if not names:
+                continue
+            try:
+                schema = msg[scid]
+            except KeyError:
+                continue
+            this = summary['schemas'][scid] = {}
+            for name in names:
+                try:
+                    this[name] = schema[name]
+                except KeyError:
+                    continue
+        yield summary
+
+def build_summary(conv_id):
     logger.debug('rebuilding conversation %r', conv_id)
     # query to determine all messages in this convo.
     result = open_view(key=['rd.msg.conversation', 'conversation_id', conv_id],
@@ -45,7 +67,6 @@ def handler(doc):
     good_msgs = []
     unread = []
     latest_by_recip_target = {}
-    earliest_timestamp = latest_timestamp = None
     subject = None
     groups_with_unread = set()
     for msg_info in all_msgs:
@@ -80,22 +101,12 @@ def handler(doc):
                 from_display.append(fd)
         except KeyError:
             pass # things like RSS feeds don't have a 'from_display'
-        if earliest_timestamp is None or \
-           msg_info['rd.msg.body']['timestamp'] < earliest_timestamp:
-            earliest_timestamp = msg_info['rd.msg.body']['timestamp']
-        if latest_timestamp is None or \
-           msg_info['rd.msg.body']['timestamp'] > latest_timestamp:
-            latest_timestamp = msg_info['rd.msg.body']['timestamp']
         if 'rd.msg.grouping-tag' in msg_info:
             this_group = msg_info['rd.msg.grouping-tag']['tag']
             this_ts = msg_info['rd.msg.body']['timestamp']
             cur_latest = latest_by_recip_target.get(this_group, 0)
             if this_ts > cur_latest:
                 latest_by_recip_target[this_group] = this_ts
-        #We want the subject from the first (topic) message
-        #XXX This method doesn't guarantee the topic message but works better
-        if earliest_timestamp and earliest_timestamp == msg_info['rd.msg.body']['timestamp']:
-            subject = msg_info['rd.msg.body'].get('subject')
 
     # build a map of grouping-tag to group ID
     latest_by_grouping = {}
@@ -114,17 +125,46 @@ def handler(doc):
     # sort the messages and select the 3 most-recent.
     good_msgs.sort(key=lambda item: item['rd.msg.body']['timestamp'],
                    reverse=True)
-    recent = good_msgs[:3]
+    unread.sort(key=lambda item: item['rd.msg.body']['timestamp'],
+                reverse=True)
+
+    if good_msgs:
+        #We want the subject from the first (topic) message
+        subject = good_msgs[-1]['rd.msg.body'].get('subject')
+        # and the summary to include the first, and last 2 unread
+        num_summaries = 2 # not including the first...
+        to_summarize = []
+        if unread:
+            to_summarize.extend(unread[:num_summaries])
+        # if there aren't enough unread, use most recent read ones
+        index = 0
+        while len(to_summarize) < num_summaries and index < len(good_msgs):
+            # explicit loop with 'is' testing instead of 'in' to avoid large
+            # object comparison.
+            for ur in unread:
+                if ur is good_msgs[index]:
+                    break
+            else:
+                to_summarize.append(good_msgs[index])
+            index += 1
+        if not to_summarize or to_summarize[-1] is not good_msgs[-1]:
+            to_summarize.append(good_msgs[-1])
+        if to_summarize:
+            # now sort them as the checking of unread first may mean the
+            # order is no longer by timestamp.
+            to_summarize.sort(key=lambda item: item['rd.msg.body']['timestamp'],
+                              reverse=True)
+    else:
+        subject = None
+        to_summarize = []
 
     item = {
         'subject': subject,
-        # msg list is only the "good" messages.
+        'messages': list(build_summaries(to_summarize)),
         'message_ids': [i['rd.msg.body']['rd_key'] for i in good_msgs],
         'unread_ids': [i['rd.msg.body']['rd_key'] for i in unread],
         'identities': sorted(list(identities)),
         'from_display': from_display,
-        'earliest_timestamp': earliest_timestamp,
-        'latest_timestamp': latest_timestamp,
         'grouping-timestamp': [],
         'unread_grouping_tags': sorted(groups_with_unread),
     }
@@ -137,4 +177,22 @@ def handler(doc):
         msg_key = list(msg.values())[0]['rd_key']
         for sid in src_msg_schemas:
             deps.append((msg_key, sid))
-    emit_schema('rd.conv.summary', item, rd_key=conv_id, deps=deps)
+    return item, deps
+
+def handler(doc):
+    rd_source = [doc['_id'], doc['_rev']]
+    # ask for our 'later_handler' to be called with this
+    process_later((doc['conversation_id'], rd_source))
+
+def later_handler(infos):
+    # first make a list of unique convo IDs and remembering an arbitrary
+    # rd_source we can record.
+    cid_src = {}
+    for cid, rd_source in infos:
+        cid_src[hashable_key(cid)] = rd_source
+
+    # now build them.
+    for cid, rd_source in cid_src.iteritems():
+        item, deps = build_summary(cid)
+        emit_schema('rd.conv.summary', item, rd_key=cid, rd_source=rd_source,
+                    deps=deps)

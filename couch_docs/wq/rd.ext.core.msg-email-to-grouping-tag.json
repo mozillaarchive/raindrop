@@ -2,7 +2,8 @@
   "schemas" : {
     "rd.ext.workqueue" : {
         "source_schemas" : ["rd.msg.body"],
-        "category": "summarizer",
+        "category": "provider",
+        "uses_dependencies": true,
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
         "info": "Creates 'rd.msg.recip-target' schemas for emails..."

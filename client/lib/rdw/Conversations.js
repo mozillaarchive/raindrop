@@ -891,7 +891,8 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         conversation: function (convoId) {
             api({
                 url: 'inflow/conversations/by_id',
-                key: dojo.fromJson(decodeURIComponent(convoId))
+                key: dojo.fromJson(decodeURIComponent(convoId)),
+                schemas: ['*']
             })
             .ok(this, function (conversation) {
                 //Show the conversation.         
