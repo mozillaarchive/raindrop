@@ -82,6 +82,11 @@
 
 .WidgetBox > .WidgetHeader {
   width: 100%;
+  line-height: 18px;
+}
+
+.dj_gecko .WidgetBox > .WidgetHeader {
+  line-height: 16px;
 }
 
 .WidgetBox > .WidgetHeader > .title {

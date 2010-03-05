@@ -43,7 +43,7 @@
 }
 
 .rdwMessage > .message  > .header { 
-  padding: 3px 5px 4px;
+  padding: 3px 5px;
 }
 
 .rdwMessage > .message > .header > .author > .from {
