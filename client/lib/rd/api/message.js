@@ -135,7 +135,7 @@ function (rd, dojo, api, identity) {
                                 };
                             }
                         }
-    
+
                         dfd.callback(messageResults);
                     })
                     .error(dfd);

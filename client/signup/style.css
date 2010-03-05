@@ -137,8 +137,17 @@ input[type="submit"]:hover {
   border: 1px solid #888;
 }
 
+.error {
+  padding: 4px;
+  margin: 0 0 8px 0;
+  color: #FF3333;
+}
 .hidden {
     display: none;    
+}
+
+.invisible {
+    visibility: hidden;
 }
 
 .row {

@@ -93,7 +93,25 @@ function (require,   dojo, rd) {
         dojo.query("#credentials")
             .onsubmit(function (evt) {
                 //Handle form submissions for the credentials.
-                location = '#three';
+                //First clear old errors
+                dojo.query(".error").addClass("invisible");
+                
+                //Make sure we have all the inputs.
+                var ids = ["gmailName", "gmailPassword", "twitterName", "twitterPassword"],
+                    i, id, value, node, isError = false;
+
+                for (i = 0; (id = ids[i]) && (node = dojo.byId(id)); i++) {
+                    value = node.value;
+                    if (!dojo.trim(node.value) || node.getAttribute("placeholder") === value) {
+                        dojo.removeClass(dojo.byId(id + "Error"), "invisible");
+                        isError = true;
+                    }
+                }
+
+                if (!isError) {
+                    location = '#three';
+                }
+
                 dojo.stopEvent(evt);
             })
             .query('input[type="text"]')
