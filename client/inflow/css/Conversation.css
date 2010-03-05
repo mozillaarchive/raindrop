@@ -34,7 +34,7 @@
   -webkit-border-radius: 2px;
   border: 1px solid #e6e6e6;
   background-color: #fff;
-  background-image: url("../i/new/rd_message_bg.png");
+  background-image: url("../i/rd_message_bg.png");
   background-repeat: repeat-x;
 }
 
@@ -50,14 +50,14 @@
   left: 35px;
   width: 260px;
   height: 120px;
-  background-image: url("../i/new/rd_move_bg2.png");
+  background-image: url("../i/rd_move_bg2.png");
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   z-index: 2;
 } 
 
 .rdwConversation > .newImpersonal > .impersonalOptions {
-  background-image: url("../i/new/rd_move_bg.png");
+  background-image: url("../i/rd_move_bg.png");
   background-repeat: no-repeat;
   background-position: left center;
   padding: 0 0 0 50px;
@@ -78,7 +78,7 @@
 }
 
 .rdwConversationFullConversation.read {
-  background-image: url("../i/new/rd_message_bg.png");
+  background-image: url("../i/rd_message_bg.png");
   background-repeat: repeat-x;
   opacity: 1;
 }
@@ -147,19 +147,21 @@
   -webkit-box-sizing: border-box;
 }
 
+/*
 .rdwConversation > .header > .type.direct {
-  background-image: url("../i/new/rd_inflow_directmessage.png");
+  background-image: url("../i/rd_inflow_directmessage.png");
   background-repeat: no-repeat;
   background-position: left 4px;
   padding: 0 0 0 21px;
 }
 
 .rdwConversation > .header > .type.group {
-  background-image: url("../i/new/rd_inflow_groupmessage.png");
+  background-image: url("../i/rd_inflow_groupmessage.png");
   background-repeat: no-repeat;
   background-position: left 4px;
   padding: 0 0 0 26px;
 }
+*/
 
 .rdwConversation > .header > .subject {
   margin: 3px 0 0 0;
@@ -203,9 +205,9 @@
 }
 
 .buttonActions {
-  background-image: url("../i/new/rd_actions.png");
-  background-position: center center;
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
+  background-position: 0px -253px;
   color: transparent;
   display: block;
   text-indent: -1000px;

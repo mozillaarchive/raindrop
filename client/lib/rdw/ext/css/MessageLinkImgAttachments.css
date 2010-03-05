@@ -23,7 +23,7 @@
 
 .rdwMessage > .message > .rdwAttachments .photo > .thumbnail {
   display: inline-block;
-  background-image: url("../../../../inflow/i/new/rd_attachments_picture.png");
+  background-image: url("../../../../inflow/i/rd_attachments_picture.png");
   width: 110px;
   height: 70px;
   position: relative;

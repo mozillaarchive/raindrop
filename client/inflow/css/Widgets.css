@@ -120,7 +120,7 @@
 }
 
 .WidgetBox > .WidgetHeader > .actions > .noteCount {
-  background-image: url("../i/new/rd_notification_icon.png");
+  background-image: url("../i/rd_notification_icon.png");
   background-repeat: no-repeat;
   background-position: right;
   padding-right: 24px;
@@ -128,7 +128,7 @@
 }
 
 .WidgetBox > .WidgetHeader > .actions > .broadcastCount {
-  background-image: url("../i/new/rd_broadcast_icon.png");
+  background-image: url("../i/rd_broadcast_icon.png");
   background-repeat: no-repeat;
   background-position: right;
   padding-right: 25px;
@@ -144,8 +144,8 @@
 .rdwSummaryGroup {
   padding: 23px 0 0 2px;
   margin: 0 0 10px 0;
-  -moz-border-image: url("../i/new/rd_summary_border_thin.png") 2 10 17 8;
-  -webkit-border-image: url("../i/new/rd_summary_border_thin.png") 2 10 17 8;
+  -moz-border-image: url("../i/rd_summary_border_thin.png") 2 10 17 8;
+  -webkit-border-image: url("../i/rd_summary_border_thin.png") 2 10 17 8;
   border-width: 2px 10px 17px 8px;  
   -moz-box-shadow: none;
   -webkit-box-shadow: none;
@@ -155,8 +155,8 @@
 /* ### ACCOUNT GROUPS ### */
 
 .rdwExtAccountGroup {
-  -moz-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
-  -webkit-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
+  -moz-border-image: url("../i/rd_widget_border_blue_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/rd_widget_border_blue_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 }
 
@@ -173,14 +173,15 @@
 /* ### TWITTER ### */
 
 .rdwGenericGroup.rdwExtTwitterGroup {
-  -moz-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
-  -webkit-border-image: url("../i/new/rd_widget_border_blue_thin.png") 1 8 12 4;
+  -moz-border-image: url("../i/rd_widget_border_blue_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/rd_widget_border_blue_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px;
 }
 
 .rdwGenericGroup.rdwExtTwitterGroup > .WidgetHeader > .title {
-  background-image: url("../i/new/rd_widget_twitter.png");
-  background-position: 0px 3px;
+  background-image: url("../i/x.png");
+  background-repeat: no-repeat;
+  background-position: 0px -85px;
   padding: 0 0 0 22px;
 }
 
@@ -188,40 +189,41 @@
 /* ### FACEBOOK ### */
 
 .rdwExtFacebookGroup > .WidgetHeader > .title {
-  background-image: url("../i/new/rd_widget_facebook.png");
-  background-position: left 2px;
   padding: 0 0 0 17px;
+  background-image: url("../i/x.png");
+  background-repeat: no-repeat;
+  background-position: 0px -23px;
 }
 
 
 /* ### MAILING LIST ### */
 
 .rdwGenericGroup.rdwConversationMailingList {
-  -moz-border-image: url("../i/new/rd_widget_border_pink_thin.png") 1 8 12 4;
-  -webkit-border-image: url("../i/new/rd_widget_border_pink_thin.png") 1 8 12 4;
+  -moz-border-image: url("../i/rd_widget_border_pink_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/rd_widget_border_pink_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 }
 
 .rdwGenericGroup.rdwConversationMailingList > .WidgetHeader > .title {
   padding: 0 0 0 18px;
-  background-image: url("../i/new/rd_widget_mailinglist.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: left 3px;
+  background-position: 0px -43px;
 }
 
 /* ### RSS ### */
 
 .rdwGroupRss.rdwGenericGroup {
-  -moz-border-image: url("../i/new/rd_widget_border_orange_thin.png") 1 8 12 4;
-  -webkit-border-image: url("../i/new/rd_widget_border_orange_thin.png") 1 8 12 4;
+  -moz-border-image: url("../i/rd_widget_border_orange_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/rd_widget_border_orange_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 } 
 
 .rdwGroupRss.rdwGenericGroup > .WidgetHeader > .title {
   padding: 0 0 0 17px;
-  background-image: url("../i/new/rd_widget_rss.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: left 2px;
+  background-position: 0px -65px;
   min-height: 16px;
   display: block;
 }
@@ -229,16 +231,16 @@
 /* ### GENERIC GROUP ### */
 
 .rdwGenericGroup {
-  -moz-border-image: url("../i/new/rd_widget_border_green_thin.png") 1 8 12 4;
-  -webkit-border-image: url("../i/new/rd_widget_border_green_thin.png") 1 8 12 4;
+  -moz-border-image: url("../i/rd_widget_border_green_thin.png") 1 8 12 4;
+  -webkit-border-image: url("../i/rd_widget_border_green_thin.png") 1 8 12 4;
   border-width: 1px 8px 12px 4px; 
 }
 
 .rdwGenericGroup > .WidgetHeader > .title {
   padding: 0 0 0 18px;
-  background-image: url("../i/new/rd_widget_broadcast.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: left 4px;
+  background-position: 0px -1px;
 }
 
 /* ### BROADCASTS ### */
@@ -264,7 +266,7 @@
   float: none;
   margin: 0;
   padding: 0 0 0 18px;
-  background-image: url("../i/new/rd_widget_broadcast.png");
+  background-image: url("../i/rd_widget_broadcast.png");
   background-repeat: no-repeat;
   background-position: left 3px;
 }
@@ -281,7 +283,7 @@
 .rdwWidgets.start .rdwMessage > .message > .header {
   margin: 4px 0 0 0;
   padding: 4px 0 0 0;
-  background-image: url("../i/new/rd_widget_header_bg.png");
+  background-image: url("../i/rd_widget_header_bg.png");
   background-repeat: repeat-x;
 }
 

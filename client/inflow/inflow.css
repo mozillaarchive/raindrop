@@ -118,7 +118,7 @@ button {
   color: #333;
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
-  background-image: url("i/new/rd_button_bg.png");
+  background-image: url("i/rd_button_bg.png");
   background-position: bottom;
   background-repeat: repeat-x;
   background-color: #fff;
@@ -157,9 +157,9 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   display: block;
   width: 15px;
   color: transparent;
-  background-image: url("i/new/rd_home.png");
+  background-image: url("i/x.png");
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: 0px -120px;
   text-indent: -1000px;
 }
 
@@ -167,7 +167,7 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   width: 100%;
   height: 52px;
   padding: 16px 10px;
-  background-image: url("i/new/rd_top_header_white.png");
+  background-image: url("i/rd_top_header_white.png");
   background-repeat: repeat-x;
   background-position: bottom;
   -moz-box-sizing: border-box;
@@ -195,9 +195,9 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   position: absolute;
   height: 15px;
   width: 77px;
-  background-image: url("i/new/rd_logo.png");
+  background-image: url("i/x.png");
   background-repeat: no-repeat;
-  background-position: right;
+  background-position: 0px -282px;
   z-index: 101;
   top: 18px;
   left: 870px;
@@ -219,7 +219,7 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 
 #notices > .notice {
   position: absolute;
-  background-image: url("i/new/rd_welcome.png");
+  background-image: url("i/rd_welcome.png");
   width: 300px;
   height: 450px;
   top: 50%;
@@ -306,8 +306,9 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 #footer {
   padding: 24px 12px 12px;
   font-size: 10px;
-  background-image: url("i/new/rd_footer_bg.png");
+  background-image: url("i/x.png");
   background-repeat: no-repeat;
+  background-position: 0px -623px;
 }
 
 #footer a {
@@ -337,7 +338,7 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   border-style: solid;
   border-color: #ccc;
   padding: 1px 3px 1px 3px;
-  background-image: url("i/new/rd_button_bg.png");
+  background-image: url("i/rd_button_bg.png");
   background-position: bottom;
   background-repeat: repeat-x;
   background-color: #fff;
@@ -348,9 +349,9 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 }
 
 .dijitComboBox .dijitArrowButtonInner {
-  background-image: url("i/new/rd_search.png");
+  background-image: url("i/x.png");
   background-repeat: no-repeat;
-  background-position: center center;
+  background-position: 0px -104px;
 }
 
 .dijitInlineTable {

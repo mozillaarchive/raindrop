@@ -84,8 +84,8 @@
   left: -11px;
   width: 724px;
   height: 330px;
-  -moz-border-image: url("../i/new/rd_search_bg.png") 1 4 7 1;
-  -webkit-border-image: url("../i/new/rd_search_bg.png") 1 4 7 1;
+  -moz-border-image: url("../i/rd_search_bg.png") 1 4 7 1;
+  -webkit-border-image: url("../i/rd_search_bg.png") 1 4 7 1;
   border-width: 1px 4px 7px 1px;
   -moz-border-radius: 0px;
   -webkit-border-radius: 0px;
@@ -129,9 +129,6 @@
 }
 
 .rdwDataSelector .rdwDataSelectorFilters .selected {
-  /*background-image: url("../i/new/rd_search_selected.png");
-  background-position: right center;
-  background-repeat: no-repeat;*/
   font-weight: bold;
   background-color: #f2f2f2;
 }
@@ -204,23 +201,23 @@
 
 .rdwDataSelectorTypes [data-type="contact"] {
   padding: 0 0 0 28px;
-  background-image: url("../i/new/rd_contact.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: 10px;
+  background-position: 10px -133px;
 }
 
 .rdwDataSelectorTypes [data-type="locationTag"] {
   padding: 0 0 0 28px;
-  background-image: url("../i/new/rd_folder.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: 10px;
+  background-position: 10px -173px;
 }
 
 .rdwDataSelectorTypes [data-type="mailingList"] {
   padding: 0 0 0 28px;
-  background-image: url("../i/new/rd_widget_mailinglist.png");
+  background-image: url("../i/x.png");
   background-repeat: no-repeat;
-  background-position: 10px;
+  background-position: 10px -213px;
 }
 
 .rdwDataSelectorTypes .selected[data-type="mailingList"] {

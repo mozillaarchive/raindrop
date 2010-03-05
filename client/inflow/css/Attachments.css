@@ -11,7 +11,7 @@
   color: #ff5959;
   font-weight: bold;
   text-decoration: none;
-  /*background-image: url("../i/new/rd_link.png");
+  /*background-image: url("../i/rd_link.png");
   background-repeat: no-repeat;
   background-position: left;
   min-height: 17px;
@@ -36,8 +36,8 @@
   display: inline-block;
   margin: 0 1px -2px -16px;
   padding: 0 10px;
-  -moz-border-image: url("../i/new/rd_tab.png") 1 12 1 12;
-  -webkit-border-image: url("../i/new/rd_tab.png") 1 12 1 12;
+  -moz-border-image: url("../i/rd_tab.png") 1 12 1 12;
+  -webkit-border-image: url("../i/rd_tab.png") 1 12 1 12;
   border-width: 1px 12px 1px 12px;
   height: 16px;
   font-size: 10px;
@@ -54,8 +54,8 @@
   margin: -7px 5px 10px 5px;
   padding: 8px 5px;
   position: relative;
-  -moz-border-image: url("../i/new/rd_attachments_bg2.png") 10 14 3 2;
-  -webkit-border-image: url("../i/new/rd_attachments_bg2.png") 10 14 3 2;
+  -moz-border-image: url("../i/rd_attachments_bg.png") 10 14 3 2;
+  -webkit-border-image: url("../i/rd_attachments_bg.png") 10 14 3 2;
   border-width: 10px 14px 3px 2px;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
