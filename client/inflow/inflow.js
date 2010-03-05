@@ -29,7 +29,7 @@ require.def("inflow",
 [
     "require", "dojo", "dijit", "rd",
     "dojo/parser",
-    "dijit/Dialog",
+    "rd/accountIds",
     "rd/onHashChange",
     "rdw/Loading",
     "rdw/Notify",
@@ -42,36 +42,15 @@ require.def("inflow",
     "rd/engine",
     "rd/conversation"
 ],
-function (require, dojo, dijit, rd, parser) {
+function (require, dojo, dijit, rd, parser, accountIds) {
+    //If no account IDs, then just redirect to signup.
+    if (!accountIds || !accountIds.length) {
+        location.replace("../signup/index.html");
+    }
+
     var inflow = {};
 
     dojo.mixin(inflow, {
-        addAccountUrl: "/raindrop/settings/index.html",
-
-        showAccounts: function () {
-            //summary: shows the account setup in an iframe.
-            require(["dijit/Dialog"], dojo.hitch(this, function (Dialog) {
-                this.accountsDialog = new Dialog({
-                    "class": "inflowAddAccountFrame"    
-                }, dojo.create("div", null, dojo.body()));
-    
-                this.accountsDialog.containerNode.innerHTML = '<iframe src="' + this.addAccountUrl + '"></iframe>';
-                this.accountsDialog.show();
-            }));
-        },
-
-        onAccountFrameMessage: function (evt) {
-            //summary: a postMessage endpoint for messages from the account frame.
-            if (evt.data === "settings-done") {
-                this.accountsDialog.hide();
-                this.accountsDialog.destroy();
-                this.accountsDialog = null;
-            }
-
-            //TODO: enable server syncing once our story is better there.
-            //rd.engine.syncNow();
-        },
-    
         isComposeVisible: true,
     
         showQuickCompose: function () {
@@ -113,11 +92,6 @@ function (require, dojo, dijit, rd, parser) {
     //TODO: need to make this more generic, to work across raindrop apps.
     window.name = "raindrop";
 
-    //Listen to no accounts/show account settings subscriptions
-    rd.sub("rd.api.me.noAccounts", inflow, "showAccounts");
-    rd.sub("rd-protocol-account-settings", inflow, "showAccounts");
-
-console.log("NOW CALLING require.ready in inflow.js");
     //Do onload work that shows the initial display.
     require.ready(function () {
         //Start page parsing of widgets.
@@ -142,9 +116,6 @@ console.log("NOW CALLING require.ready in inflow.js");
                     rd.pub("rd-protocol-home");
                 }
             });
-    
-            //Listen for completion for the addAccount frame.
-            window.addEventListener("message", dojo.hitch(inflow, "onAccountFrameMessage"), false);
     
             //Listen for quick compose open calls        
             //dojo.query(".quickComposeLaunch").onclick(function(evt) {

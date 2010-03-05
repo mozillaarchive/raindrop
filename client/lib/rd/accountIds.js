@@ -44,7 +44,6 @@ function (rd, json) {
         };
 
     if (!json.rows.length || (json.rows.length === 1 && json.rows[0].value.rd_key[1] === "account!rss")) {
-        rd.pub("rd/api/accountIds/noAccounts");
         return [];
     } else {
         for (i = 0; (row = json.rows[i]); i++) {
