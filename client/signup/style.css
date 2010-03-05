@@ -88,13 +88,19 @@ body {
   line-height: 18px;
 }
 
+.section {
+  position: absolute;
+  top: 40px;
+  left: 0;
+}
+
 a {
   color: #1a1a1a;
 }
 
 input[type="text"] {
   width: 100%;
-  color: #888;
+  color: #333;
   border: 1px solid #e6e6e6;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -107,7 +113,11 @@ input[type="text"] {
   line-height: 16px;
 }
 
-input[type="button"] {
+input[type="text"].placeholder {
+  color: #888;
+}
+
+input[type="submit"] {
   background-color: #fff;
   background-image: url("i/rd_button_bg.png");
   background-position: center bottom;
@@ -123,8 +133,12 @@ input[type="button"] {
   text-decoration: none;
 }
 
-input[type="button"]:hover {
+input[type="submit"]:hover {
   border: 1px solid #888;
+}
+
+.hidden {
+    display: none;    
 }
 
 .row {
