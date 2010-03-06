@@ -1,3 +1,4 @@
+from pprint import pformat
 
 from twisted.internet import defer
 from raindrop.tests.api import APITestCase
@@ -90,19 +91,23 @@ class TestConvoSimple(APITestCase):
     @defer.inlineCallbacks
     def test_twitter(self):
         result = yield self.call_api("inflow/conversations/twitter")
-        # confirm only one conversation
-        self.failUnlessEqual(1, len(result))
+        # confirm 3 conversations
+        self.failUnlessEqual(3, len(result), pformat(result))
 
-        # get the one conversation and sanity check it.
-        convo = result[0]
-        self.sanity_check_convo(convo)
+        # get the conversations and sanity check them.
+        ex_ids = [['tweet', tid] for tid in [6119612045, 11111, 22222]]
+        seen_ids = []
+        for convo in result:
+            self.sanity_check_convo(convo)
 
-        # confirm only one message
-        self.failUnlessEqual(1, len(convo['messages']))
+            # confirm only one message
+            self.failUnlessEqual(1, len(convo['messages']), pformat(convo))
 
-        msg = convo['messages'][0]
-        # check the message ID
-        self.failUnlessEqual(['tweet', 6119612045], msg['id'])
+            msg = convo['messages'][0]
+            # record the message ID
+            seen_ids.append(msg['id'])
+
+        self.failUnlessEqual(sorted(seen_ids), sorted(ex_ids))
 
     @defer.inlineCallbacks
     def test_with_messages(self):

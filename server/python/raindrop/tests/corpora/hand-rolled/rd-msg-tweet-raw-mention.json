@@ -1,13 +1,13 @@
 {
 	"rd_key": [
 		"tweet", 
-		11111
+		22222
 	], 
 	"twitter_favorited": false, 
 	"rd_schema_provider": "proto.twitter", 
 	"twitter_user": "davidascher", 
 	"rd_schema_id": "rd.msg.tweet.raw", 
-	"twitter_id": 6119612045, 
+	"twitter_id": 22222, 
 	"rd_schema_items": {
 		"proto.twitter": {
 			"rd_source": null, 
