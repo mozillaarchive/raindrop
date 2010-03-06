@@ -1,11 +1,12 @@
 {
 	"rd_key": [
 		"tweet", 
-		6119612045
+		11111
 	], 
 	"twitter_favorited": false, 
 	"rd_schema_provider": "proto.twitter", 
 	"twitter_user": "davidascher", 
+	"twitter_in_reply_to_screen_name": "raindrop_test_user",
 	"rd_schema_id": "rd.msg.tweet.raw", 
 	"twitter_id": 6119612045, 
 	"rd_schema_items": {
@@ -14,10 +15,9 @@
 			"schema": null
 		}
 	}, 
-	"twitter_source": "<a href=\"http://twitterrific.com\" rel=\"nofollow\">Twitterrific</a>", 
 	"twitter_created_at_in_seconds": 1259348322, 
 	"twitter_truncated": false, 
-	"twitter_text": "HTML & Javascript templating needs a serious reboot.", 
+	"twitter_text": "are you sure about that?", 
 	"twitter_created_at": "Fri Nov 27 18:58:42 +0000 2009", 
 	"twitter_user_name": "David Ascher"
 }

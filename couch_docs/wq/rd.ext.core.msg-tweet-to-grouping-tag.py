@@ -27,22 +27,29 @@ def handler(src_doc):
     my_identities = [iid[1] for iid in get_my_identities() if iid[0]=='twitter']
 
     if src_doc['rd_schema_id'] == 'rd.msg.tweet.raw':
-        # a normal tweet.
-        if src_doc['twitter_user'] in my_identities:
-            val = 'from'
-        elif 'twitter_in_reply_to_screen_name' in src_doc and \
+        # a normal tweet - for now, even our tweets stay in the twitter group
+        if 'twitter_in_reply_to_screen_name' in src_doc and \
            src_doc['twitter_in_reply_to_screen_name'] in my_identities:
-            # sent to me and others...
-            val = 'twitter-reply'
+            # sent to me and others - this is targetted at the inflow.
+            val = 'identity-twitter-' + src_doc['twitter_in_reply_to_screen_name']
         else:
-            val = 'twitter-status-update' # regular tweet not aimed at me...
+            # look for @me in the text
+            for tid in my_identities:
+                if '@' + tid in src_doc.get('twitter_text', ''):
+                    val = 'identity-twitter-' + tid
+                    break
+            else:
+                # regular tweet - peek in the twitter body not aimed at me
+                # (possibly even *from* me - but even they go into the twitter
+                # group.)
+                val = 'twitter-status-update' 
     elif src_doc['rd_schema_id'] == 'rd.msg.tweet-direct.raw':
         # direct message - it would be unusual to have a direct message not
         # targetted at one of our accounts, but you never know..
         if src_doc['twitter_sender_screen_name'] in my_identities:
-            val = 'from'
+            val = 'from' # XXX - wrong!
         elif src_doc['twitter_recipient_screen_name'] in my_identities:
-            val = 'twitter-reply'
+            val = 'identity-twitter-' + src_doc['twitter_in_reply_to_screen_name']
         else:
             logger.info("Unusual - a direct message for %r, but we are %r",
                         src_doc['twitter_recipient_screen_name'], my_identities)

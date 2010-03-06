@@ -1,7 +1,7 @@
 {
 	"rd_key": [
 		"tweet", 
-		6119612045
+		11111
 	], 
 	"twitter_favorited": false, 
 	"rd_schema_provider": "proto.twitter", 
@@ -14,10 +14,9 @@
 			"schema": null
 		}
 	}, 
-	"twitter_source": "<a href=\"http://twitterrific.com\" rel=\"nofollow\">Twitterrific</a>", 
 	"twitter_created_at_in_seconds": 1259348322, 
 	"twitter_truncated": false, 
-	"twitter_text": "HTML & Javascript templating needs a serious reboot.", 
+	"twitter_text": "I agree with @raindrop_test_user", 
 	"twitter_created_at": "Fri Nov 27 18:58:42 +0000 2009", 
 	"twitter_user_name": "David Ascher"
 }

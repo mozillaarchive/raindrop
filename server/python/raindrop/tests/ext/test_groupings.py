@@ -14,10 +14,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
     @defer.inlineCallbacks
-    def test_simple_notification(self):
-        ndocs = yield self.load_corpus("hand-rolled", "sent-email-simple-reply")
-        _ = yield self.ensure_pipeline_complete()
-
+    def check_groupings(self, ex_tag, ex_grouping_key):
         # open all grouping-tag schemas - should be only 1
         key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
@@ -25,17 +22,24 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         # Check that grouping-tag specifies a tag for us
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
-        ex_tag = 'identity-email-raindrop_test_user@mozillamessaging.com'
         self.failUnlessEqual(rows[0]['doc']['tag'], ex_tag)
-        # The back-end boostrap process has arranged for "our identities" to
-        # be associated with the inflow grouping.
-        ex_grouping_key = ['display-group', 'inflow']
         key = ["rd.core.content", "schema_id", "rd.grouping.summary"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
         self.failUnlessEqual(rows[0]['doc']['rd_key'], ex_grouping_key)
+
+
+    @defer.inlineCallbacks
+    def test_simple_notification(self):
+        ndocs = yield self.load_corpus("hand-rolled", "sent-email-simple-reply")
+        _ = yield self.ensure_pipeline_complete()
+        ex_tag = 'identity-email-raindrop_test_user@mozillamessaging.com'
+        # The back-end boostrap process has arranged for "our identities" to
+        # be associated with the inflow grouping.
+        ex_grouping_key = ['display-group', 'inflow']
+        _ = yield self.check_groupings(ex_tag, ex_grouping_key)
 
     @defer.inlineCallbacks
     def test_bulk_sender(self):
@@ -55,25 +59,11 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
 
-        # open all grouping-tag schemas - should be only 1
-        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
-        # Check the grouping-tag schema for the identity caused the message
-        # to be reported as the *senders* tag
-        rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['tag'],
-                             'identity-email-raindrop_test_recip@mozillamessaging.com')
-        # And that we have a grouping-summary for this sender (ie, it is no
+        ex_tag = 'identity-email-raindrop_test_recip@mozillamessaging.com'
+        # We expect a grouping-summary for this sender (ie, it is no
         # longer in the 'inflow' group.)
         ex_grouping_key = ['identity', ['email', 'raindrop_test_recip@mozillamessaging.com']]
-        key = ["rd.core.content", "schema_id", "rd.grouping.summary"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
-        rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
-        self.failUnlessEqual(rows[0]['doc']['rd_key'], ex_grouping_key)
+        _ = yield self.check_groupings(ex_tag, ex_grouping_key)
 
     @defer.inlineCallbacks
     def test_groups_single(self):
@@ -106,6 +96,34 @@ class TestSimpleCorpus(TestCaseWithCorpus):
             'num_unread': 1,
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
+
+    @defer.inlineCallbacks
+    def test_simple_twitter(self):
+        ndocs = yield self.load_corpus("hand-rolled", "rd-msg-tweet-raw-1")
+        _ = yield self.ensure_pipeline_complete()
+        ex_tag = 'twitter-status-update'
+        ex_grouping_key = ['display-group', 'twitter']
+        _ = yield self.check_groupings(ex_tag, ex_grouping_key)
+
+    @defer.inlineCallbacks
+    def test_simple_twitter_reply(self):
+        ndocs = yield self.load_corpus("hand-rolled", "rd-msg-tweet-raw-reply")
+        _ = yield self.ensure_pipeline_complete()
+        # A twitter reply should have a tag with our identity and appear in
+        # the inflow.
+        ex_tag = 'identity-twitter-raindrop_test_user'
+        ex_grouping_key = ['display-group', 'inflow']
+        _ = yield self.check_groupings(ex_tag, ex_grouping_key)
+
+    @defer.inlineCallbacks
+    def test_simple_twitter_mention(self):
+        ndocs = yield self.load_corpus("hand-rolled", "rd-msg-tweet-raw-mention")
+        _ = yield self.ensure_pipeline_complete()
+        # A tweet with @my_username should have a tag with our identity and
+        # appear in the inflow.
+        ex_tag = 'identity-twitter-raindrop_test_user'
+        ex_grouping_key = ['display-group', 'inflow']
+        _ = yield self.check_groupings(ex_tag, ex_grouping_key)
 
 
 class TestSimpleCorpusBacklog(TestSimpleCorpus):
