@@ -1,3 +1,5 @@
+import rfc822
+import time
 from twisted.internet import defer, reactor
 
 from raindrop.tests import TestCaseWithCorpus, TestCaseWithTestDB
@@ -128,8 +130,8 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         self.failUnlessEqual(rows[0]['doc']['rd_schema_id'], 'rd.conv.summary')
         doc_sum = rows[0]['doc']
         expected_doc = {
-            'unread_ids': [msgid_reply, msgid],
-            'message_ids': [msgid_reply, msgid],
+            'unread_ids': [msgid, msgid_reply],
+            'message_ids': [msgid, msgid_reply],
             # The first message in the conv is used for the subject - and
             # that message has no subject in our corpus
             'subject': None,
@@ -150,6 +152,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         msgs = yield self.get_messages_in_convo(doc_sum['rd_key'])
         self.failUnlessEqual(sorted(msgs), sorted([msgid_reply, msgid]))
 
+
 class TestSimpleCorpusBacklog(TestSimpleCorpus):
     use_incoming_processor = False
 
@@ -161,16 +164,18 @@ class TestConvCombine(TestCaseWithTestDB, ConvoTestMixin):
 Delivered-To: raindrop_test_user@mozillamessaging.com
 From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
 To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
-Date: Sat, 21 Jul 2009 12:13:14 -0000
+Date: %(date)s
 Message-Id: %(mid)s
 References: %(refs)s
 
 Hello
 """
 
-    def get_message_schema_item(self, msgid, refs):
+    def get_message_schema_item(self, msgid, refs, date=None):
         args = {'mid': '<'+msgid+'>',
-                'refs': ' '.join(['<'+ref+'>' for ref in refs])}
+                'refs': ' '.join(['<'+ref+'>' for ref in refs]),
+                'date': rfc822.formatdate(date),
+                }
         src = self.msg_template % args
         si = {'rd_key': ['email', msgid],
               'rd_schema_id': 'rd.msg.rfc822',
@@ -320,6 +325,43 @@ Content-Transfer-Encoding: 7bit
         doc = result['rows'][0]['doc']
         self.failUnlessEqual(sorted(doc['message_ids']),
                              sorted([['email', mid1], ['email', mid2]]))
+
+
+    @defer.inlineCallbacks
+    def test_convo_order_seen(self):
+        msg_ids = ["1@something", "2@something", "3@something", "4@something"]
+        dates = [time.time()+x for x in range(4)]
+        items = []
+        for msgid, date in zip(msg_ids, dates):
+            si = self.get_message_schema_item(msgid, [msg_ids[0]], date)
+            items.append(si)
+            _ = yield self.doc_model.create_schema_items([si])
+        # mark all except the second as 'seen'
+        for msgid in [msg_ids[0]] + msg_ids[2:]:
+            si = {'rd_key': ['email', msgid],
+                  'rd_schema_id': 'rd.msg.seen',
+                  'rd_source' : None,
+                  'rd_ext_id': 'rd.testsuite',
+                  'items': {'seen': True,
+                            'outgoing_state': 'sent',},
+                  }
+            items.append(si)
+        _ = yield self.doc_model.create_schema_items(items)
+        _ = yield self.ensure_pipeline_complete()
+        # Now get the convo summary - the summary messages should include
+        # the first, second and last (second preferred over 3rd as it is
+        # unread, last included as it is most-recent read)
+        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        result = yield self.doc_model.open_view(key=key, reduce=False,
+                                                include_docs=True)
+        self.failUnlessEqual(len(result['rows']), 1)
+        # and it should have both messages.
+        doc = result['rows'][0]['doc']
+        found_keys = [m['id'] for m in doc['messages']]
+        expected_ids = [msg_ids[0], msg_ids[1], msg_ids[3]]
+        expected_keys = [['email', mid] for mid in expected_ids]
+        self.failUnlessEqual(found_keys, expected_keys)
+
 
 class TestConvCombineBacklog(TestConvCombine):
     use_incoming_processor = False

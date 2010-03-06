@@ -122,38 +122,25 @@ def build_summary(conv_id):
             latest_by_grouping[hashable_key(gkey)] = this_ts
         logger.debug('grouping-tag %r appears in grouping %r', gtag, gkey)
 
-    # sort the messages and select the 3 most-recent.
-    good_msgs.sort(key=lambda item: item['rd.msg.body']['timestamp'],
-                   reverse=True)
-    unread.sort(key=lambda item: item['rd.msg.body']['timestamp'],
-                reverse=True)
+    # sort the messages so we can determine the first
+    good_msgs.sort(key=lambda item: item['rd.msg.body']['timestamp'])
+    unread.sort(key=lambda item: item['rd.msg.body']['timestamp'])
 
     if good_msgs:
-        #We want the subject from the first (topic) message
-        subject = good_msgs[-1]['rd.msg.body'].get('subject')
-        # and the summary to include the first, and last 2 unread
+        # We want the subject from the first (topic) message
+        subject = good_msgs[0]['rd.msg.body'].get('subject')
         num_summaries = 2 # not including the first...
-        to_summarize = []
-        if unread:
-            to_summarize.extend(unread[:num_summaries])
-        # if there aren't enough unread, use most recent read ones
-        index = 0
-        while len(to_summarize) < num_summaries and index < len(good_msgs):
-            # explicit loop with 'is' testing instead of 'in' to avoid large
-            # object comparison.
-            for ur in unread:
-                if ur is good_msgs[index]:
-                    break
-            else:
-                to_summarize.append(good_msgs[index])
-            index += 1
-        if not to_summarize or to_summarize[-1] is not good_msgs[-1]:
-            to_summarize.append(good_msgs[-1])
-        if to_summarize:
-            # now sort them as the checking of unread first may mean the
-            # order is no longer by timestamp.
-            to_summarize.sort(key=lambda item: item['rd.msg.body']['timestamp'],
-                              reverse=True)
+        # and the summary to include the first, and prefer the last 2 unread
+        # but if not enough unread, use the most recent read.
+        # establish this order via sorting.
+        def key_fun(info):
+            is_unread = 'rd.msg.seen' not in info or not info['rd.msg.seen']['seen']
+            return (int(is_unread), info['rd.msg.body']['timestamp'])
+        to_summarize = sorted(good_msgs[1:], key=key_fun)[-num_summaries:]
+        # re-sort again based purely on timestamp.
+        to_summarize.sort(key=lambda info: info['rd.msg.body']['timestamp'])
+        # and the convo starter.
+        to_summarize.insert(0, good_msgs[0])
     else:
         subject = None
         to_summarize = []
