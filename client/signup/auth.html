@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <title>Raindrops keep falling on my head</title>
     <link rel="SHORTCUT ICON" href="i/favicon.ico">
     <link rel="stylesheet" type="text/css" href="style.css" />
-  </head>
+</head>
 <body>
   <div class="row">
-    <div class="c4 logo">
-    </div>
+        <div class="c4 logo">
+        </div>
   </div>
   <div class="row">
-    <div class="c1">
-      <p>Hey there. Before we can create your account we need to verify your identity.</p><br>
-      <p><button class="zero" onClick="parent.location='step_one.html'">sign in using <div class="google"></div> account</button></p>
-    </div>
+        <div class="c1">
+            <form action="/openid/login" id="login" method="POST">
+                <input type="hidden" name="identity" value="https://www.google.com/accounts/o8/id">
+                <p>Hey there. Before we can create your account we need to verify your identity.</p><br>
+                <p><button class="zero" onclick="document.byId('login').submit()">sign in using <div class="google"></div> account</button></p>
+            </form>
+        </div>
   </div>
 </body>
 </html>
