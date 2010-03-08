@@ -105,8 +105,7 @@ input[type="text"] {
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   padding: 4px;
-  background-image: url("i/rd_input_bg.png");
-  background-repeat: repeat-x;
+  background-color: #fafafa;
   margin: 0 0 8px 0;
   font-family: "Droid-sans", Helvetica, arial, sans;
   font-size: 12px;
@@ -123,7 +122,7 @@ button {
   background-image: url("i/rd_button_bg.png");
   background-position: center bottom;
   background-repeat: repeat-x;
-  border-color: #e6e6e6 #ccc #ccc;
+  border-color: #ccc;
   border-style: solid;
   border-width: 1px;
   color; #333;
@@ -140,10 +139,15 @@ button:hover {
 }
 
 .error {
-  padding: 4px;
-  margin: 0 0 8px 0;
+  height: 25px;
+  padding: 0 0 8px 0;
   color: #FF3333;
 }
+
+.error:before {
+  content: "*";
+}
+
 .hidden {
     display: none;    
 }

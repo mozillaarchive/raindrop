@@ -28,9 +28,9 @@
 .rdwExtMailingListSummary .id {
   color: inherit;
   display: inline;
-  background-image: url("../../../../inflow/i/rd_widget_mailinglist.png");
+  background-image: url("../../../../inflow/i/x.png");
   background-repeat: no-repeat;
-  background-position: 0 3px; 
+  background-position: 0 -225px; 
   padding: 0 0 0 20px;
   /* padding: 1px 5px;
   background-color: #ffdede;
