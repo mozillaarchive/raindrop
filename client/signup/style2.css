@@ -88,19 +88,13 @@ body {
   line-height: 18px;
 }
 
-.section {
-  position: absolute;
-  top: 40px;
-  left: 0;
-}
-
 a {
   color: #1a1a1a;
 }
 
 input[type="text"] {
   width: 100%;
-  color: #333;
+  color: #888;
   border: 1px solid #e6e6e6;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -113,11 +107,7 @@ input[type="text"] {
   line-height: 16px;
 }
 
-input[type="text"].placeholder {
-  color: #888;
-}
-
-input[type="submit"],
+input[type="button"],
 button {
   background-color: #fff;
   background-image: url("i/rd_button_bg.png");
@@ -132,24 +122,15 @@ button {
   padding: 2px 4px;
   float: right;
   text-decoration: none;
+  height: 22px;
+  line-height: 16px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
 }
 
-input[type="submit"]:hover,
+input[type="button"]:hover,
 button:hover {
   border: 1px solid #888;
-}
-
-.error {
-  padding: 4px;
-  margin: 0 0 8px 0;
-  color: #FF3333;
-}
-.hidden {
-    display: none;    
-}
-
-.invisible {
-    visibility: hidden;
 }
 
 .row {
