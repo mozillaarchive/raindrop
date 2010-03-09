@@ -129,6 +129,9 @@ button {
   font-size: 10px;
   font-style: normal;
   padding: 2px 4px;
+  line-height: 16px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
   float: right;
   text-decoration: none;
 }
@@ -249,9 +252,7 @@ button:hover {
   height: 13px;
   background-image: url("i/google.png");
   background-repeat: no-repeat;
-  vertical-align: bottom;
-}
-
-.dj_gecko .google {
-  vertical-align: middle;
+  vertical-align: text-top;
+  position: relative;
+  top: 1px;
 }
