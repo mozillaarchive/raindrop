@@ -130,7 +130,7 @@ def run_timings_async(_, opts):
     # now do a few in (hopefully) parallel
     tc.pipeline.options.exts = ['rd.ext.core.msg-email-to-body',
                                 'rd.ext.core.msg-email-to-mailinglist',
-                                'rd.ext.core.msg-email-to-recip-target',
+                                'rd.ext.core.msg-email-to-grouping-tag',
                                 'rd.ext.core.msg-body-to-quoted',
                                 'rd.ext.core.msg-body-quoted-to-hyperlink',
                                 ]
