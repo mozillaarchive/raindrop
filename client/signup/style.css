@@ -119,8 +119,8 @@ input[type="text"].placeholder {
 input[type="submit"],
 button {
   background-color: #fff;
-  background-image: url("i/rd_button_bg.png");
-  background-position: center bottom;
+  background-image: url("i/x.png");
+  background-position: 0 0;
   background-repeat: repeat-x;
   border-color: #ccc;
   border-style: solid;
@@ -201,30 +201,32 @@ button:hover {
 .logo {
   display: block;
   height: 15px;
-  background-image: url("i/rd_logo_alpha.png");
+  background-image: url("i/x.png");
+  background-position: 0 -20px;
   background-repeat: no-repeat;
 }
 
 .gmail {
   display: block;
   height: 13px;
-  background-image: url("i/rd_gmail.png");
+  background-image: url("i/x.png");
+  background-position: right -35px;
   background-repeat: no-repeat;
-  background-position: right;
   margin-top: 4px;
 }
 
 .twitter {
   display: block;
   height: 12px;
-  background-image: url("i/rd_twitter.png");
+  background-image: url("i/x.png");
+  background-position: right -49px;
   background-repeat: no-repeat;
-  background-position: right;
   margin-top: 4px;
 }
 
 .info {
-  background-image: url("i/rd_lineclip.png");
+  background-image: url("i/x");
+  background-position: 0 -62px;
   background-repeat: no-repeat;
   padding-top: 16px;
 }
