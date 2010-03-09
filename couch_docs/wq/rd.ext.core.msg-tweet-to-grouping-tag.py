@@ -48,11 +48,11 @@ def handler(src_doc):
         # targetted at one of our accounts, but you never know..
         if src_doc['twitter_sender_screen_name'] in my_identities:
             val = 'from' # XXX - wrong!
-        elif src_doc['twitter_recipient_screen_name'] in my_identities:
-            val = 'identity-twitter-' + src_doc['twitter_in_reply_to_screen_name']
+        elif src_doc.get('twitter_recipient_screen_name') in my_identities:
+            val = 'identity-twitter-' + src_doc['twitter_recipient_screen_name']
         else:
             logger.info("Unusual - a direct message for %r, but we are %r",
-                        src_doc['twitter_recipient_screen_name'], my_identities)
+                        src_doc.get('twitter_recipient_screen_name'), my_identities)
             val = 'twitter-status-update' # regular tweet not aimed at me...
     else:
         raise RuntimeError("Not expecting doc %r" % src_doc)
