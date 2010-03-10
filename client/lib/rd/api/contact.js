@@ -73,13 +73,13 @@ function (rd, dojo, api, identity) {
          * @param {Array} ids an array of contact IDs to fetch.
          */
         _fetch: function (dfd, args, ids) {
-            //rd.api.identity handles loading of the identity/contact records, so wait for it.
-            api.identity._fetchIdentityContacts().addErrback(dfd, "errback").addCallback(this, function () {
+            //rd/api/identity handles loading of the identity/contact records, so wait for it.
+            identity._fetchIdentityContacts().addErrback(dfd, "errback").addCallback(this, function () {
                 //Figure out what kind of IDs there are.
                 var sample = ids[0], temp = [], i, id, idty, cIds, missing = [], found = [], keys = [];
                 if (sample && sample.rd_key && sample.rd_key[0] === "identity") {
                     //They are identity docs. Find the contact IDs by using
-                    //the lookups from rd.api.identity.
+                    //the lookups from rd/api/identity.
                     for (i = 0; (idty = ids[i]); i++) {
                         cIds = identity._byIdty[idty.rd_key[1].join(",")];
                         if (cIds) {
@@ -167,7 +167,7 @@ function (rd, dojo, api, identity) {
         _attachIdentity: function (idty) {
             console.assert(idty.rd_key[0] === 'identity', idty); // not an identity?
             var idid = idty.rd_key[1],
-                cIds = api.identity._byIdty[idid.join(",")],
+                cIds = identity._byIdty[idid.join(",")],
                 j, cId, contact, idType;
             if (cIds && cIds.length) {
                 for (j = 0; (cId = cIds[j]); j++) {
