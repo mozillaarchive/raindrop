@@ -27,12 +27,16 @@
 
 //Just a collection of require.modify calls.
 require.modify("rdw/Summary", "rdw/ext/twitter/ext-rdw/Summary",
-    ["rd", "rdw/Summary"],
-    function (rd) {
+    ["rd", "rdw/ext/twitter/Summary", "rdw/Summary"],
+    function (rd, Summary) {
         rd.applyExtension("rdw/ext/twitter/ext", "rdw/Summary", {
             addToPrototype: {
                 twitter: function () {
-                    rd.escapeHtml("Twitter Timeline", this.domNode);
+                    var summaryWidget = new Summary({
+                    }, dojo.create("div"));
+
+                    this.addSupporting(summaryWidget);
+                    summaryWidget.placeAt(this.domNode);
                 }
             }
         });

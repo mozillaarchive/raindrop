@@ -31,7 +31,7 @@ require.def("rdw/QuickCompose",
 function (require, rd, dojo, Base, FilteringSelect, DataSelector, api, me, template) {
 
     return dojo.declare("rdw.QuickCompose", [Base], {
-        templatePath: template,
+        templateString: template,
 
         //The widget to use for address selection for the From value.
         fromSelector: "dijit/form/FilteringSelect",
