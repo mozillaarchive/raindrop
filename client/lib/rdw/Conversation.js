@@ -202,7 +202,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 showUnreadReplies = this.unreadReplyLimit > -1,
                 msgLimit = showUnreadReplies ? this.unreadReplyLimit + 1 : limit,
                 toShow = [0], i, msg, seen, len, refIndex, index,
-                notShownCount, lastWidget, html,
+                notShownCount, lastWidget, html, ctorArgs,
                 Ctor = require(this.messageCtorName);
 
             //Set the state as displayed, in case widgets are refreshed for extensions.
