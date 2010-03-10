@@ -203,7 +203,8 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 msgLimit = showUnreadReplies ? this.unreadReplyLimit + 1 : limit,
                 toShow = [0], i, msg, seen, len, refIndex, index,
                 notShownCount, lastWidget, html, ctorArgs,
-                Ctor = require(this.messageCtorName);
+                Ctor = require(this.messageCtorName),
+                unreadCount = (this.conversation.unread_ids && this.conversation.unread_ids.length) || 0;
 
             //Set the state as displayed, in case widgets are refreshed for extensions.
             this.displayOnCreate = true;
@@ -254,7 +255,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
                 rd.escapeHtml(hyperlink.add(rd.escapeHtml(this.conversation.subject || "")), this.subjectNode, "only");
             }
     
-            dojo.addClass(this.domNode, (this.conversation.num_unread ? "unread" : "read"));
+            dojo.addClass(this.domNode, (unreadCount ? "unread" : "read"));
 
             //Now figure out how many replies to show. Always show the first message.
             for (i = 1; (i < limit) && (msg = this.msgs[i]); i++) {
