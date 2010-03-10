@@ -225,7 +225,7 @@ button:hover {
 }
 
 .info {
-  background-image: url("i/x");
+  background-image: url("i/x.png");
   background-position: 0 -62px;
   background-repeat: no-repeat;
   padding-top: 16px;
@@ -234,7 +234,8 @@ button:hover {
 #uninvited {
   width: 77px;
   height: 15px;
-  background-image: url("i/rd_logo.png");
+  background-image: url("i/x.png");
+  background-position: 0 -20px;
   background-repeat: no-repeat;
   position: fixed;
   display: block;
