@@ -31,9 +31,20 @@ class TestConvoSimple(APITestCase):
         # some 'random' messages not associated with our test identities.
         return set([('email', '07316ced2329a69aa169f3b9c6467703@bitbucket.org')])
 
+    @defer.inlineCallbacks
     def sanity_check_convo(self, convo):
         # all messages in a convo must have the same conversation ID.
         messages = convo['messages']
+        keys = [['rd.core.content', 'key-schema_id', [msg['id'], 'rd.msg.conversation']]
+                for msg in messages]
+        result = yield self.doc_model.open_view(keys=keys, reduce=False,
+                                                include_docs=True)
+        for row in result['rows']:
+            exp = convo['id']
+            got = row['doc']['conversation_id']
+            self.failUnlessEqual(exp, got,
+                                 "wanted %r - got %r: %s" % (exp, got, pformat(row)))
+
         # No message should appear twice.
         seen_keys = set([tuple(msg['id']) for msg in messages])
         self.failUnlessEqual(len(seen_keys), len(messages), str(seen_keys))
@@ -45,7 +56,7 @@ class TestConvoSimple(APITestCase):
         result = yield self.call_api("inflow/conversations/identities", ids=iids)
         seen = set()
         for convo in result:
-            self.sanity_check_convo(convo)
+            _ = yield self.sanity_check_convo(convo)
             for msg in convo['messages']:
                 seen.add(tuple(msg['id']))
 
@@ -65,9 +76,13 @@ class TestConvoSimple(APITestCase):
         result = yield self.call_api(endpoint, schemas=schemas)
         seen = set()
         for convo in result:
-            self.sanity_check_convo(convo)
+            _ = yield self.sanity_check_convo(convo)
             for msg in convo['messages']:
                 seen.add(tuple(msg['id']))
+                # check the 'rd_*' fields have been removed.
+                for schid, schvals in msg['schemas'].iteritems():
+                    self.failIf('rd_key' in schvals, schvals)
+                
             if schemas is not None and schemas != ['*']:
                 self.failUnlessEqual(sorted(schemas), sorted(msg['schemas'].keys()))
 
@@ -98,7 +113,7 @@ class TestConvoSimple(APITestCase):
         ex_ids = [['tweet', tid] for tid in [6119612045, 11111, 22222]]
         seen_ids = []
         for convo in result:
-            self.sanity_check_convo(convo)
+            _ = yield self.sanity_check_convo(convo)
 
             # confirm only one message
             self.failUnlessEqual(1, len(convo['messages']), pformat(convo))
@@ -116,10 +131,13 @@ class TestConvoSimple(APITestCase):
                                      keys=list(known_msgs))
         # should be 1 convo
         self.failUnlessEqual(len(result), 1)
-        self.sanity_check_convo(result[0])
+        _ = yield self.sanity_check_convo(result[0])
         seen=set()
         for msg in result[0]['messages']:
             seen.add(self.doc_model.hashable_key(msg['id']))
+            # check the 'rd_*' fields have been removed.
+            for schid, schvals in msg['schemas'].iteritems():
+                self.failIf('rd_key' in schvals, schvals)
         self.failUnlessEqual(known_msgs.intersection(seen), known_msgs)
 
     @defer.inlineCallbacks
@@ -141,7 +159,7 @@ class TestConvoSimple(APITestCase):
 
         result = yield self.call_api("inflow/conversations/by_id",
                                      key=conv_id)
-        self.sanity_check_convo(result)
+        _ = yield self.sanity_check_convo(result)
         seen = set()
         for msg in result['messages']:
             seen.add(self.doc_model.hashable_key(msg['id']))

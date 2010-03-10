@@ -118,7 +118,7 @@ class ConversationAPI(API):
         # Generate proper key for megaview lookup.
         keys = [['rd.core.content', 'key', k] for k in msg_keys]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
-        message_results = {}
+        message_results = []
         from_map = {}
         # itertools.groupby rocks :)
         for (rd_key, dociter) in itertools.groupby(
@@ -138,10 +138,10 @@ class ConversationAPI(API):
                 # other things, and do not want to have extensions register extra stuff? TODO.
                 if '.rfc822' in schema_id or '.raw' in schema_id:
                     continue
-                # Remove the individual extension values and any other special meta.
-                for attr in ('rd_schema_items', 'rd_megaview_expandable'):
-                    if attr in doc:
-                        del doc[attr]
+                # Remove all special raindrop and couch fields.
+                for name, val in doc.items():
+                    if name.startswith('rd_') or name.startswith('_'):
+                        del doc[name]
 
                 # We may get many of the same schema, which implies
                 # we need to aggregate them - tags is a good example.
@@ -169,7 +169,7 @@ class ConversationAPI(API):
                     from_key = hashable_key(frm)
                     from_map.setdefault(from_key, []).append(bag)
 
-            message_results[hashable_key(rd_key)] = bag
+            message_results.append((rd_key, bag))
 
         # Look up the IDs for the from identities. If they are real
         # identities, synthesize a schema to represent this.
@@ -188,7 +188,7 @@ class ConversationAPI(API):
                     }
         # make "objects" as returned by the API
         ret = []
-        for rd_key, bag in message_results.iteritems():
+        for rd_key, bag in message_results:
             attachments = []
             for schema_items in bag.itervalues():
                 if 'is_attachment' in schema_items:
