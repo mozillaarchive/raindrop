@@ -48,7 +48,18 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         //The max number of messages to fetch from each conversation using the
         // conversation APIs.
         messageLimit: 3,
-    
+
+        /**
+         * The list of additional schemas to fetch for the conversations/personal
+         * call. Extensions can add to this array to fetch schemas on messages
+         * that they care about. Most useful for extensions that deal with
+         * attachments.
+         */
+        personalSchemas: [
+            "rd.msg.body.attachment.link.img",
+            "rd.msg.body.quoted.hyperlinks"     
+        ],
+
         //The widget to use to show a full conversation.
         fullConversationCtorName: "rdw/conversation/FullConversation",
     
@@ -766,14 +777,39 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 message_limit: this.messageLimit
             })
             .ok(this, function (conversations) {
-                //Indicate this is a collection of home conversations.
-                this.conversations._rdwConversationsType = "home";
-    
-                //Show the conversation.
-                this.updateConversations("summary", conversations);
-    
-                //Update the summary.
-                this.summaryWidget.home();
+                //TODO: Fix this. Need to do another /personal call to get
+                //schemas for attachments.
+                api({
+                    url: 'inflow/conversations/personal',
+                    limit: this.conversationLimit,
+                    schemas: dojo.toJson(this.personalSchemas),
+                    message_limit: this.messageLimit
+                }).ok(this, function(c2) {
+                    //TODO: Fix this. Merge the schemas from the c2 call into
+                    //the first conversations call.
+                    var i, j, convo, convo2, msg, msg2;
+                    for (i = 0; (convo = conversations[i]); i++) {
+                        convo2 = c2[i];
+                        
+                        for (j = 0; (msg = convo.messages[j]); j++) {
+                            msg2 = convo2.messages[j];
+
+                            if (msg && msg2 && msg.id[0] === msg2.id[0] && msg.id[1] === msg2.id[1]) {
+                                dojo.mixin(msg.schemas, msg2.schemas);
+                            }
+                        }
+                        
+                    }
+                    
+                    //Indicate this is a collection of home conversations.
+                    this.conversations._rdwConversationsType = "home";
+
+                    //Show the conversation.
+                    this.updateConversations("summary", conversations);
+        
+                    //Update the summary.
+                    this.summaryWidget.home(); 
+                });
             });
         },
   

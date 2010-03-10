@@ -2,7 +2,8 @@
   "schemas" : {
     "rd.ext.uiext" : {
       "exts": {
-        "rdw/Message": "rdw/ext/MessageBitlyLinkAttachments"
+        "rdw/Message": "rdw/ext/MessageBitlyLinkAttachments",
+        "rdw/Conversations": "rdw/ext/MessageBitlyLinkAttachments"
       }
     }
   }

@@ -25,6 +25,19 @@
 /*global require: false, console:false */
 "use strict";
 
+require.modify("rdw/Conversations", "rdw/ext/youTubeMessage-rdw/Conversations",
+    ["rd", "dojo", "rd/api", "rdw/Conversations"],
+    function (rd, dojo, api) {
+        rd.applyExtension("rdw/ext/youTubeMessage", "rdw/Conversations", {
+            addToPrototype: {
+                personalSchemas: [
+                    "rd.msg.body.youtubed"
+                ]
+            }
+        });
+    }
+);
+
 require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
 ["rd", "dojo", "rd/schema", "rdw/Message", "dojo/fx"], function (
   rd,   dojo,   rdSchema,    Message,       fx) {

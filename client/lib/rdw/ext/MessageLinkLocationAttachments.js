@@ -25,6 +25,19 @@
 /*global require: false */
 "use strict";
 
+require.modify("rdw/Conversations", "rdw/ext/MessageLinkLocationAttachments-rdw/Conversations",
+    ["rd", "dojo", "rd/api", "rdw/Conversations"],
+    function (rd, dojo, api) {
+        rd.applyExtension("rdw/ext/MessageLinkLocationAttachments", "rdw/Conversations", {
+            addToPrototype: {
+                personalSchemas: [
+                    "rd.msg.body.attachment.link.foursquare"
+                ]
+            }
+        });
+    }
+);
+
 require.modify("rdw/Message", "rdw/ext/MessageLinkLocationAttachments",
 ["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
   require,   rd,   dojo,   rdSchema,    Message) {

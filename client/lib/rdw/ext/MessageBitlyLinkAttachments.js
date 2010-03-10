@@ -25,6 +25,19 @@
 /*global require: false */
 "use strict";
 
+require.modify("rdw/Conversations", "rdw/ext/MessageBitlyLinkAttachments-rdw/Conversations",
+    ["rd", "dojo", "rd/api", "rdw/Conversations"],
+    function (rd, dojo, api) {
+        rd.applyExtension("rdw/ext/MessageBitlyLinkAttachments", "rdw/Conversations", {
+            addToPrototype: {
+                personalSchemas: [
+                    "rd.msg.body.bit.ly"
+                ]
+            }
+        });
+    }
+);
+
 require.modify("rdw/Message", "rdw/ext/MessageBitlyLinkAttachments",
 ["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
   require,   rd,   dojo,   rdSchema,    Message) {

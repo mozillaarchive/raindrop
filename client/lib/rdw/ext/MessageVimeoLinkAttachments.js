@@ -25,6 +25,19 @@
 /*global require: false */
 "use strict";
 
+require.modify("rdw/Conversations", "rdw/ext/MessageVimeoLinkAttachments-rdw/Conversations",
+    ["rd", "dojo", "rd/api", "rdw/Conversations"],
+    function (rd, dojo, api) {
+        rd.applyExtension("rdw/ext/MessageVimeoLinkAttachments", "rdw/Conversations", {
+            addToPrototype: {
+                personalSchemas: [
+                    "rd.msg.body.quoted.hyperlinks.vimeo"
+                ]
+            }
+        });
+    }
+);
+
 require.modify("rdw/Message", "rdw/ext/MessageVimeoLinkAttachments",
 ["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
   require,   rd,   dojo,   rdSchema,    Message) {
