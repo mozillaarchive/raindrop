@@ -30,11 +30,16 @@ from __future__ import division
 import os
 import time
 import optparse
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from twisted.internet import reactor, defer
 from twisted.python import log
 
 from raindrop.tests import TestCaseWithCorpus, FakeOptions
+from raindrop.config import get_config
 
 def format_num_bytes(nbytes):
     KB = 1000
@@ -157,7 +162,44 @@ def run_timings_sync(_, opts):
     ndocs, avg = yield timeit(load_and_sync, tc, opts)
     print "Loaded and processed %d documents in %.3f" % (ndocs, avg)
     _ = yield report_db_state(tc.pipeline.doc_model.db, opts)
-   
+
+
+@defer.inlineCallbacks
+def run_api_timings(_, opts):
+    import httplib
+    from urllib import urlencode    
+    couch = get_config().couches['local']
+    c = httplib.HTTPConnection(couch['host'], couch['port'])
+    tpath = '/%s/_api/inflow/%s'
+    
+    def make_req(path):
+        c.request('GET', path)
+        return c.getresponse()
+
+    @defer.inlineCallbacks
+    def do_timings(api, desc=None, **kw):
+        api_path = tpath % (couch['name'], api)
+        if kw:
+            opts = kw.copy()
+            for opt_name in opts:
+                opts[opt_name] = json.dumps(opts[opt_name])
+            api_path += "?" + urlencode(opts)
+        resp, reqt = yield timeit(make_req, api_path)
+        dat, respt = yield timeit(resp.read)
+        if not desc:
+            desc = api
+        if resp.status != 200:
+            print "*** api %r failed with %s: %s" % (desc, resp.status, resp.reason)
+        print "Made '%s' API request in %.3f, read response in %.3f (size was %s)" \
+              % (desc, reqt, respt, format_num_bytes(len(dat)))
+        defer.returnValue(json.loads(dat))
+
+    result = yield do_timings("grouping/summary")
+    for gs in result:
+        title = gs.get('title') or gs['rd_key']
+        _ = yield do_timings("conversations/in_groups", "in_groups: " + str(title),
+                             limit=60, message_limit=2, keys=[gs['rd_key']])
+
 
 def main():
     parser = optparse.OptionParser()
@@ -171,11 +213,21 @@ documents.""")
                       help=
 """Directory where the couchdb database files are stored.  If specified
 the size on disk of the DB and views will be reported.""")
+    parser.add_option("", "--skip-sync", action="store_true",
+                      help="don't benchmark sync processing")
+    parser.add_option("", "--skip-async", action="store_true",
+                      help="don't benchmark async processing")
+    parser.add_option("", "--skip-api", action="store_true",
+                      help="don't benchmark api processing")
     opts, args = parser.parse_args()
 
     d = defer.Deferred()
-    d.addCallback(run_timings_async, opts)
-    d.addCallback(run_timings_sync, opts)
+    if not opts.skip_async:
+        d.addCallback(run_timings_async, opts)
+    if not opts.skip_sync:
+        d.addCallback(run_timings_sync, opts)
+    if not opts.skip_api:
+        d.addCallback(run_api_timings, opts)
 
     def done(whateva):
         reactor.stop()
