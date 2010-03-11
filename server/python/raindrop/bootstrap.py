@@ -533,18 +533,21 @@ def check_accounts(whateva, config=None):
         config = get_config()
 
     all_idids = set()
-    for acct_name, acct_info in config.accounts.iteritems():
-        acct_id = "account!" + acct_info['id']
+    for acct_name, acct_info_all in config.accounts.iteritems():
+        acct_id = "account!" + acct_info_all['id']
         logger.debug("Checking account '%s'", acct_id)
         rd_key = ['raindrop-account', acct_id]
 
         infos = yield dm.open_schemas([(rd_key, 'rd.account')])
         assert len(infos) == 1
-        acct_info = acct_info.copy()
-        try:
-            del acct_info['password']
-        except KeyError:
-            pass
+        # We use a 'whitelist' of attributes - these are only written for
+        # convenience so queries can determine accounts of a particular
+        # protocol.
+        attrs = "username", "proto"
+        acct_info = {'id': acct_info_all.get('id'),
+                     'username': acct_info_all.get('username'),
+                     'proto': acct_info_all.get('proto'),
+                     }
         # Our account objects know how to turn this config info into the
         # 'identity' list stored with the accounts - so get that.
         try:

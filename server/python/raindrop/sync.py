@@ -48,11 +48,13 @@ source_schemas = ['rd.msg.outgoing.simple',
                   ]
 
 
-@defer.inlineCallbacks
 def get_conductor(pipeline):
   conductor = SyncConductor(pipeline)
-  _ = yield conductor.initialize()
-  defer.returnValue(conductor)
+  # We used to *need* a deferred here - but now initialize doesn't use
+  # deferred we don't.  However, we stick with returning a deferred for the
+  # sake of not yet adjusting the consumers of this (mainly in the tests)
+  conductor.initialize()
+  return defer.succeed(conductor)
 
 
 # XXX - rename this to plain 'Conductor' and move to a different file.
@@ -79,9 +81,8 @@ class SyncConductor(object):
   def _ohNoes(self, failure, *args, **kwargs):
     logger.error('OH NOES! failure! %s', failure)
 
-  @defer.inlineCallbacks
   def initialize(self):
-    _ = yield self._load_accounts()
+    self._load_accounts()
     # ask the pipeline to tell us when new source schemas arrive.
     def new_processor(src_id, src_rev):
       # but our processor doesn't actually process it - it just schedules
@@ -116,42 +117,38 @@ class SyncConductor(object):
                          }
     return {'accounts' : acct_infos}
 
-  @defer.inlineCallbacks
   def _load_accounts(self):
+    # We used to store account info (other than the password) in couch docs.
+    # This creates a hole whereby someone could replace the 'host' name in
+    # couchdb with a server under their control, then harvest the password
+    # as we attempt to login.
+    # We now use only the file-system for account info (and our entry-points
+    # for changing account info always updates the password when things are
+    # changed)
+    # XXX - this still needs work though, as the details are only read
+    # once and not updated.  This should be OK in the short-term though, as
+    # out sync process does it's job then terminates, so subsequent runs
+    # will get new details.
     # get all accounts from the couch.
-    key = ['rd.core.content', 'schema_id', 'rd.account']
-    result = yield self.doc_model.open_view(key=key, reduce=False,
-                                            include_docs=True)    
-    # Now see what account-info we have locally so we can merge missing
-    # data - particularly the password...
     assert self.all_accounts is None, "only call me once."
     self.all_accounts = []
-    config_accts = {}
     self.outgoing_handlers = {}
     for acct_name, acct_info in get_config().accounts.iteritems():
-      config_accts[acct_info['id']] = acct_info
-
-    for row in result['rows']:
-      account_details = row['doc']
-      acct_id = account_details['id']
-      if not account_details.get('enabled', True):
+      acct_id = acct_info['id']
+      if not acct_info.get('enabled', True):
         logger.info("account %r is disabled", acct_id)
         continue
       try:
-        account_details['password'] = config_accts[acct_id]['password']
-      except KeyError:
-        pass
-      try:
-          account_proto = account_details['proto']
+          account_proto = acct_info['proto']
           logger.debug("Found account using protocol %s", account_proto)
       except KeyError:
           logger.error("account %(id)r has no protocol specified - ignoring",
-                       account_details)
+                       acct_info)
           continue
       if account_proto in proto.protocols:
-        account = proto.protocols[account_proto](self.doc_model, account_details)
+        account = proto.protocols[account_proto](self.doc_model, acct_info)
         logger.debug('loaded %s account: %s', account_proto,
-                     account_details.get('name', '(un-named)'))
+                     acct_info.get('name', acct_id))
         self.all_accounts.append(account)
         # Can it handle any 'outgoing' schemas?
         out_schemas = account.rd_outgoing_schemas
