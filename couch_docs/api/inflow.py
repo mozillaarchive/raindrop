@@ -116,7 +116,11 @@ class ConversationAPI(API):
 
     def _fetch_messages(self, db, msg_keys, schemas):
         # Generate proper key for megaview lookup.
-        keys = [['rd.core.content', 'key', k] for k in msg_keys]
+        if schemas == ['*']:
+            keys = [['rd.core.content', 'key', k] for k in msg_keys]
+        else:
+            keys = [['rd.core.content', 'key-schema_id', [k, sid]]
+                    for k in msg_keys for sid in schemas]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
         message_results = []
         from_map = {}
@@ -171,6 +175,8 @@ class ConversationAPI(API):
 
             message_results.append((rd_key, bag))
 
+        assert len(message_results)==len(msg_keys) # else caller will get upset
+
         # Look up the IDs for the from identities. If they are real
         # identities, synthesize a schema to represent this.
         # TODO: this should probably be a back-end extension.
@@ -186,53 +192,46 @@ class ConversationAPI(API):
                     bag["rd.msg.ui.known"] = {
                         "rd_schema_id" : "rd.msg.ui.known"
                     }
-        # make "objects" as returned by the API
-        ret = []
         for rd_key, bag in message_results:
             attachments = []
             for schema_items in bag.itervalues():
                 if 'is_attachment' in schema_items:
                     attachments.append(schema_items)
-
-            ob = {"schemas": bag,
-                  "id": rd_key,
-                  }
-            if attachments:
-                ob['attachments'] = attachments
-            ret.append(ob)
-        return ret
+            yield (bag, attachments)
 
     def _build_conversations(self, db, conv_summaries, message_limit, schemas=None):
         # Takes a list of rd.conv.summary schemas and some request args,
         # and builds a list of conversation objects suitable for the result
         # of the API call.
 
-        # build parallel lists of msg_ids and the conv they belong with,
-        # while also building the result set we populate.
+        # xform the raw convo objects and build a list of msg_ids we need to fetch
         ret = []
         msg_keys = []
-        convs = []
         for cs in conv_summaries:
             rdkey = cs['rd_key']
             ret_conv = self._filter_user_fields(cs)
             ret_conv['id'] = rdkey
             ret.append(ret_conv)
             if schemas:
-                ret_conv['messages'] = []
                 these_ids = cs['message_ids']
                 if message_limit is not None:
+                    ret_conv['messages'] = ret_conv['messages'][:message_limit]
                     these_ids = these_ids[:message_limit]
-                for msg_key in these_ids:
-                    msg_keys.append(msg_key)
-                    convs.append(ret_conv)
+                msg_keys.extend(these_ids)
 
-        # If they want specific full schemas, then we override the 'messages'
+        # If they want specific full schemas, then we update the 'messages'
         # element accordingly.
         if msg_keys:
-            messages = self._fetch_messages(db, msg_keys, schemas)
-            assert len(messages)==len(msg_keys) # else our zip() will be wrong!
-            for ret_conv, msg in zip(convs, messages):
-                ret_conv['messages'].append(msg)
+            message_gen = self._fetch_messages(db, msg_keys, schemas)
+            # The message_infos are in the exact order of the messages of
+            # each convo - so loop in that order taking a message at a time.
+            for conv in ret:
+                for msg in conv['messages']:
+                    new_schemas, new_attach = message_gen.next()
+                    msg.setdefault('attachments', []).extend(new_attach)
+                    for new_schema_id, vals in new_schemas.iteritems():
+                        to_up = msg['schemas'].setdefault(new_schema_id, {})
+                        to_up.update(vals)
         return ret
 
     # The 'single' end-point for getting a single conversation.

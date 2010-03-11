@@ -82,9 +82,20 @@ class TestConvoSimple(APITestCase):
                 # check the 'rd_*' fields have been removed.
                 for schid, schvals in msg['schemas'].iteritems():
                     self.failIf('rd_key' in schvals, schvals)
-                
-            if schemas is not None and schemas != ['*']:
-                self.failUnlessEqual(sorted(schemas), sorted(msg['schemas'].keys()))
+
+                # at the moment we *always* return the summary schemas; we
+                # know rd.msg.body is one of these.
+                self.failUnless('rd.msg.body' in msg['schemas'], pformat(msg['schemas']))
+                if schemas is not None:
+                    if schemas != ['*']:
+                        for schema in schemas:
+                            self.failUnless(schema in msg['schemas'], pformat(msg['schemas']))
+                    if schemas == ['*'] or 'rd.msg.body' in schemas:
+                        # Here we test that the *full* body schema was returned,
+                        # not just the summary one. The 'body' field is not in the
+                        # summary, so check it was actually returned.
+                        body = msg['schemas']['rd.msg.body']
+                        self.failUnless('body' in body, pformat(body))
 
         self.failUnlessEqual(seen.intersection(known_msgs), known_msgs)
         unknown_msgs = self.get_known_msgs_not_from_identities()
@@ -99,7 +110,11 @@ class TestConvoSimple(APITestCase):
         _ = yield self.test_direct("inflow/conversations/personal", ['*'])
 
     @defer.inlineCallbacks
-    def test_personal_specific(self):
+    def test_personal_specific_conv(self):
+        _ = yield self.test_direct("inflow/conversations/personal",
+                                   ['rd.msg.conversation'])
+
+    def test_personal_specific_body(self):
         _ = yield self.test_direct("inflow/conversations/personal",
                                    ['rd.msg.body'])
 
