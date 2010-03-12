@@ -45,7 +45,7 @@ def handler(doc):
                 match = foursquare_venue_path_regex.search(path)
                 if match and match.group(1):
                     foursqs.append( (link, match.group(1)) )
-            except e:
+            except urllib2.HTTPError, e:
                 logger.error("link: %s error: %s",link['url'], e)
         elif link['domain'] == "foursquare.com":
             match = foursquare_venue_path_regex.search(link['path'])
