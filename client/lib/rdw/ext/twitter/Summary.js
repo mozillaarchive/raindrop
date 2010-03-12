@@ -26,8 +26,8 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Summary",
-["require", "rd", "dojo", "rdw/_Base", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
-function (require, rd, dojo, Base, QuickCompose, template) {
+        ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
+function (require,   rd,   dojo,   Base,        accountIds,      script,           QuickCompose,       template) {
 
     rd.addStyle("rdw/ext/twitter/Summary");
 
@@ -39,6 +39,24 @@ function (require, rd, dojo, Base, QuickCompose, template) {
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
             this.inherited("postCreate", arguments);
+
+            //Find twitter name in the accounts.
+            var name, i, id;
+            for (i = 0; (id = accountIds[i]); i++) {
+                if (id[0] === "twitter") {
+                    name = id[1];
+                    break;
+                }
+            }
+
+            //Fetch image from twitter.
+            script.get({
+                url: 'http://api.twitter.com/1/users/show/' + name + '.json',
+                jsonp: "callback",
+                load: dojo.hitch(this, function (data) {
+                    this.imgNode.src = data.profile_image_url;
+                })
+            })
         },
 
         /**

@@ -49,7 +49,7 @@ function (require, rd, dojo, dijit, string, Source, Base, contact) {
                           '        <li class="service ${serviceClass}">${service}: ${serviceName}</li>' +
                           '    </ul>' +
                           '</li>',
-    
+
         blankImgUrl: require.nameToUrl("rdw/resources/blank", ".png"),
 
         /** dijit lifecycle method, after template inserted in DOM */
