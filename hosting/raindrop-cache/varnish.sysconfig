@@ -1,0 +1,24 @@
+# Configuration file for varnish
+#
+# /etc/init.d/varnish expects the variable $DAEMON_OPTS to be set from this
+# shell script fragment.
+#
+
+# Maximum number of open files (for ulimit -n)
+NFILES=131072
+
+# Locked shared memory (for ulimit -l)
+# Default log size is 82MB + header
+MEMLOCK=82000
+
+# Maximum size of corefile (for ulimit -c). Default in Fedora is 0
+# DAEMON_COREFILE_LIMIT="unlimited"
+
+DAEMON_OPTS="-a :80 \
+             -T :82 \
+             -t 60 \
+             -f /etc/varnish/varnish.vcl \
+             -u varnish -g varnish \
+             -p session_linger=0 \
+             -s file,/mnt/varnish/varnish_storage.bin,32G"
+
