@@ -127,7 +127,7 @@ class ConversationAPI(API):
             keys = [['rd.core.content', 'key-schema_id', [k, sid]]
                     for k in msg_keys for sid in schemas]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
-        message_results = []
+        message_results = {}
         from_map = {}
         # itertools.groupby rocks :)
         for (rd_key, dociter) in itertools.groupby(
@@ -178,9 +178,7 @@ class ConversationAPI(API):
                     from_key = hashable_key(frm)
                     from_map.setdefault(from_key, []).append(bag)
 
-            message_results.append((rd_key, bag))
-
-        assert len(message_results)==len(msg_keys) # else caller will get upset
+            message_results[hashable_key(rd_key)] = bag
 
         # Look up the IDs for the from identities. If they are real
         # identities, synthesize a schema to represent this.
@@ -197,7 +195,13 @@ class ConversationAPI(API):
                     bag["rd.msg.ui.known"] = {
                         "rd_schema_id" : "rd.msg.ui.known"
                     }
-        for rd_key, bag in message_results:
+        # it is very important we keep the result list parallel with the
+        # input keys, so the caller can match things up correctly.
+        for rd_key in msg_keys:
+            try:
+                bag = message_results[hashable_key(rd_key)]
+            except KeyError:
+                bag = {}
             attachments = []
             for schema_items in bag.itervalues():
                 if 'is_attachment' in schema_items:

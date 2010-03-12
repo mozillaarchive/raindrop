@@ -71,7 +71,7 @@ class TestConvoSimple(APITestCaseWithCorpus):
 
     @defer.inlineCallbacks
     def test_direct(self, endpoint="inflow/conversations/direct",
-                    schemas=None):
+                    schemas=None, should_exist=True):
         known_msgs = self.get_known_msgs_to_identities()
         result = yield self.call_api(endpoint, schemas=schemas)
         seen = set()
@@ -87,7 +87,7 @@ class TestConvoSimple(APITestCaseWithCorpus):
                 # know rd.msg.body is one of these.
                 self.failUnless('rd.msg.body' in msg['schemas'], pformat(msg['schemas']))
                 if schemas is not None:
-                    if schemas != ['*']:
+                    if schemas != ['*'] and should_exist:
                         for schema in schemas:
                             self.failUnless(schema in msg['schemas'], pformat(msg['schemas']))
                     if schemas == ['*'] or 'rd.msg.body' in schemas:
@@ -114,9 +114,16 @@ class TestConvoSimple(APITestCaseWithCorpus):
         _ = yield self.test_direct("inflow/conversations/personal",
                                    ['rd.msg.conversation'])
 
+    @defer.inlineCallbacks
     def test_personal_specific_body(self):
         _ = yield self.test_direct("inflow/conversations/personal",
                                    ['rd.msg.body'])
+
+    @defer.inlineCallbacks
+    def test_personal_specific_bad_schema(self):
+        _ = yield self.test_direct("inflow/conversations/personal",
+                                   ['rd.this-doesnt-exist'],
+                                   False)
 
     @defer.inlineCallbacks
     def test_twitter(self):
