@@ -31,8 +31,8 @@ def handler(doc):
             'from_display': doc['twitter_user_name'],
             'body': body,
             'body_preview': body[:140],
-            # we shoved GetCreatedAtInSeconds inside the func tweet_to_raw 
-            # to fake having this property that doesn't come with AsDict
+            # we shoved create_at_in_seconds inside the func tweet_to_raw to
+            # fake a timestamp, even though it should probably be done here
             'timestamp': doc['twitter_created_at_in_seconds']
     }
     emit_schema('rd.msg.body', bdoc)

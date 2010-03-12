@@ -80,7 +80,7 @@ deps = [
     ('paisley', '', True),
     ('feedparser', '>=4.1', False),
     ('Skype4Py', '', False),
-    ('python-twitter', '>=0.6', False),
+    ('twitter', '', False),
     ('PIL', '', False),
 ]
 
