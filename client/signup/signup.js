@@ -26,8 +26,8 @@
 "use strict";
 
 require.def("signup",
-        ["require", "dojo", "rd", "rd/onHashChange"],
-function (require,   dojo, rd) {
+        ["require", "dojo", "dojo/DeferredList", "rd", "rd/api", "rd/onHashChange"],
+function (require,   dojo,   DeferredList,        rd,   api) {
 
     var validHashRegExp = /^\w+$/;
 
@@ -88,6 +88,80 @@ function (require,   dojo, rd) {
         }
     });
 
+
+    /**
+     * Sends the config info to the server to set up the accounts.
+     * @config {Object} the config object with properties: gmailName, gmailPassword,
+     * twitterName, twitterPassword
+     */
+    function send(config) {
+        //API is very granular, build up options for each call: twitter,
+        //gmail imap and gmail smtp.
+        var dfds = [], dfdList;
+        if (config.gmailName && config.gmailPassword) {
+            //Make sure name has an @ in it:
+            if (config.gmailName.indexOf("@") === -1) {
+                config.gmailName += "@gmail.com";
+            }
+
+            //Set up IMAP to Gmail
+            dfds.push(api({
+                url: 'inflow/account/set?id=' + encodeURIComponent('"imap-gmail-' + config.gmailName + '"'),
+                method: "POST",
+                bodyData: dojo.toJson({
+                    proto: "imap",
+                    kind: "gmail",
+                    host: "imap.gmail.com",
+                    port: 993,
+                    username: config.gmailName,
+                    password: config.gmailPassword,
+                    ssl: true
+                })
+            }).deferred());
+
+            //Set up SMTP to Gmail
+            dfds.push(api({
+                url: 'inflow/account/set?id=' + encodeURIComponent('"smtp-gmail-' + config.gmailName + '"'),
+                method: "POST",
+                bodyData: dojo.toJson({
+                    proto: "smtp",
+                    host: "smtp.gmail.com",
+                    port: 587,
+                    username: config.gmailName,
+                    password: config.gmailPassword,
+                    ssl: false
+                })
+            }).deferred());
+        }
+        
+        if (config.twitterName && config.twitterPassword) {
+            //Set up Twitter
+            dfds.push(api({
+                url: 'inflow/account/set?id=' + encodeURIComponent('"twitter-' + config.twitterName + '"'),
+                method: "POST",
+                bodyData: dojo.toJson({
+                    proto: "twitter",
+                    kind: "twitter",
+                    username: config.twitterName,
+                    password: config.twitterPassword
+                })
+            }).deferred());            
+        }
+
+        //Wait for all the deferreds to return.
+        dfdList = new DeferredList(dfds);
+        dfdList.addCallbacks(
+            dojo.hitch(this, function() {
+                //Success case.
+                location = '#three';
+            }),
+            dojo.hitch(this, function (err) {
+                //Error case.
+                alert(err);
+            })
+        );
+    }
+
     require.ready(function () {
 
         dojo.query("#credentials")
@@ -98,18 +172,20 @@ function (require,   dojo, rd) {
                 
                 //Make sure we have all the inputs.
                 var ids = ["gmailName", "gmailPassword", "twitterName", "twitterPassword"],
-                    i, id, value, node, isError = false;
+                    i, id, value, node, isError = false, config = {};
 
                 for (i = 0; (id = ids[i]) && (node = dojo.byId(id)); i++) {
-                    value = node.value;
-                    if (!dojo.trim(node.value) || node.getAttribute("placeholder") === value) {
+                    value = dojo.trim(node.value);
+                    if (!value || node.getAttribute("placeholder") === value) {
                         dojo.removeClass(dojo.byId(id + "Error"), "invisible");
                         isError = true;
+                    } else {
+                        config[node.id] = value;
                     }
                 }
 
                 if (!isError) {
-                    location = '#three';
+                    send(config);
                 }
 
                 dojo.stopEvent(evt);

@@ -98,7 +98,8 @@ a {
   color: #1a1a1a;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
   width: 100%;
   color: #333;
   border: 1px solid #e6e6e6;
@@ -112,7 +113,8 @@ input[type="text"] {
   line-height: 16px;
 }
 
-input[type="text"].placeholder {
+input[type="text"].placeholder,
+input[type="password"].placeholder {
   color: #888;
 }
 
