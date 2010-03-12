@@ -1,9 +1,9 @@
 from pprint import pformat
 
 from twisted.internet import defer
-from raindrop.tests.api import APITestCase
+from raindrop.tests.api import APITestCaseWithCorpus
 
-class TestConvoSimple(APITestCase):
+class TestConvoSimple(APITestCaseWithCorpus):
     # "my identity" in the context of these tests should give us
     # 'raindrop_test_user@mozillamessaging.com' - and we know he
     # participates in at least the following convos.

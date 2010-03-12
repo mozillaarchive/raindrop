@@ -5,6 +5,7 @@
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
         "endpoints" : [
+                       ["inflow", "account"],
                        ["inflow", "conversations"],
                        ["inflow", "message"],
                        ["inflow", "grouping"]

@@ -72,21 +72,26 @@ class API:
                 raise APIErrorResponse(400, "unknown request argument '%s'" % arg)
         return ret
 
-    def requires_get(self, req):
+    def _requires_verbs(self, req, verbs):
         try:
             method = req['method'] # couch 0.11+
         except KeyError:
             method = req['verb'] # 0.10
-        if method != 'GET':
-            raise APIErrorResponse(405, "GET required")
+        if method not in verbs:
+            if len(verbs)==1:
+                msg = "%s required" % (verbs[0])
+            else:
+                msg = "one of %s or %s required" % (",".join(verbs[:-1]), verb[-1])
+            raise APIErrorResponse(405, msg)
+
+    def requires_get(self, req):
+        self._requires_verbs(req, ['GET'])
+
+    def requires_post(self, req):
+        self._requires_verbs(req, ['POST'])
 
     def requires_get_or_post(self, req):
-        try:
-            method = req['method'] # couch 0.11+
-        except KeyError:
-            method = req['verb'] # 0.10
-        if method not in ['GET', 'POST']:
-            raise APIErrorResponse(405, "GET or POST required")
+        self._requires_verbs(req, ['GET', 'POST'])
 
     def _filter_user_fields(self, doc):
         ret = {}
@@ -481,6 +486,47 @@ class GroupingAPI(API):
             by_key[hashable_key(rd_key)].update(row['doc'])
         return by_key.values()
 
+class AccountAPI(API):
+    def _get_cfg_filename(self, req):
+        dbname = req['path'][0]
+        return "~/." + dbname
+        
+    def set(self, req):
+        self.requires_post(req)
+        body = req.get('body')
+        if not body or body == 'undefined':
+            raise APIErrorResponse(400, "account ID not specified")
+        del req['body'] # so get_args doesn't look in it.
+        args = self.get_args(req, 'id')
+        items = json.loads(body)
+
+        # now do the work.
+        from raindrop.config import Config
+        cfg = Config(self._get_cfg_filename(req))
+        acct_id = cfg.ACCOUNT_PREFIX + args['id']
+        cfg.save_account(acct_id, items)
+        return "ok"
+
+    def list(self, req):
+        self.requires_get(req)
+        args = self.get_args(req)
+        dbname = req['path'][0]
+        cfg_file = "~/." + dbname
+
+        from raindrop.config import Config
+        cfg = Config(cfg_file)
+        ret = []
+        for raw_acct in cfg.accounts.itervalues():
+            acct = raw_acct.copy()
+            # anything with certain words in the name get replaced with true to
+            # indicate we have something, but not what it is.
+            for name, val in acct.items():
+                for black in ['password', 'token']:
+                    if black in name:
+                        acct[name] = True
+            ret.append(acct)
+        return ret
+
 
 # A mapping of the 'classes' we expose.  Each value is a class instance, and
 # all 'public' methods (ie, those without leading underscores) on the instance
@@ -489,6 +535,7 @@ dispatch = {
     'conversations': ConversationAPI(),
     'message': MessageAPI(),
     'grouping' : GroupingAPI(),
+    'account' : AccountAPI(),
 }
 
 # The standard raindrop extension entry-point (which is responsible for

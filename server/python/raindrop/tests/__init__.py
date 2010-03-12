@@ -243,9 +243,10 @@ class TestCaseWithTestDB(TestCaseWithDB):
 
     def make_config(self):
         # change the name of the DB used.
-        config = raindrop.config.init_config()
+        dbname = 'raindrop_test_suite'
+        config = raindrop.config.init_config("~/." + dbname)
         dbinfo = config.couches['local']
-        dbinfo['name'] = 'raindrop_test_suite'
+        self.failUnlessEqual(dbinfo['name'], dbname)
         # We probably never want the user's accounts for auto testing.
         # setup a simple test one.
         config.accounts.clear()

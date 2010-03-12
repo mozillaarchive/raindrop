@@ -66,13 +66,13 @@ def handler(doc):
 }
 
 from twisted.internet import defer
-from raindrop.tests.api import APITestCase
+from raindrop.tests.api import APITestCaseWithCorpus
 from pprint import pformat
 
-class TestConfidencesBase(APITestCase):
+class TestConfidencesBase(APITestCaseWithCorpus):
     @defer.inlineCallbacks
     def prepare_test_db(self, config):
-        _ = yield APITestCase.prepare_test_db(self, config)
+        _ = yield APITestCaseWithCorpus.prepare_test_db(self, config)
         # add our test extension(s).
         _ = yield self.doc_model.create_schema_items([self.extension])
 

@@ -21,23 +21,34 @@
 # Contributor(s):
 #
 
+from __future__ import with_statement
+
 import ConfigParser, logging, os, os.path
 
 __all__ = ['get_config']
 
 class Config(object):
   COUCH_DEFAULTS = {'host': '127.0.0.1', 'port': 5984, 'name': 'raindrop'}
+  COUCH_PREFIX = 'couch-'
+  ACCOUNT_PREFIX = 'account-'
+  
   def __init__(self, filename=None):
+    if not filename:
+      filename = "~/.raindrop"
+    self.filename = os.path.expanduser(filename)
     self.parser = ConfigParser.SafeConfigParser()
 
     self.couches = {'local': self.COUCH_DEFAULTS.copy()}
+    # the default name of the DB if derived from the filename being used.
+    # This is so our API process, which works with many databases at once,
+    # can handle all these different DBs in a sane way.
+    base = os.path.split(filename)[-1]
+    dbname = base.strip(".")
+    self.couches['local']['name'] = dbname
+
     self.accounts = {}
 
-    # XXX - this seems wrong: most of the time the 'config' - particularly the
-    # list of accounts etc - will come from the DB.  The config file should only
-    # be used during bootstrapping.
-    self.load(filename)
-
+    self.load()
 
   def dictifySection(self, section_name, defaults=None, name=None):
     '''
@@ -65,28 +76,43 @@ class Config(object):
       results[name] = value
     return results
 
-  def load(self, filename=None):
-    if not filename:
-      filename = [os.path.expanduser('~/.raindrop')]
-    self.parser.read(filename)
+  def load(self):
+    filenames = [self.filename]
+    self.parser.read(filenames)
 
-    COUCH_PREFIX = 'couch-'
-    ACCOUNT_PREFIX = 'account-'
     for section_name in self.parser.sections():
-      if section_name.startswith(COUCH_PREFIX):
-        couch_name = section_name[len(COUCH_PREFIX):]
+      if section_name.startswith(self.COUCH_PREFIX):
+        couch_name = section_name[len(self.COUCH_PREFIX):]
         self.couches[couch_name] = self.dictifySection(section_name,
                                                        self.COUCH_DEFAULTS)
 
-      if section_name.startswith(ACCOUNT_PREFIX):
-        account_name = section_name[len(ACCOUNT_PREFIX):]
+      if section_name.startswith(self.ACCOUNT_PREFIX):
+        account_name = section_name[len(self.ACCOUNT_PREFIX):]
         acct = self.accounts[account_name] = \
                     self.dictifySection(section_name, None, account_name)
-        if 'id' not in acct:
-          acct['id'] = account_name
+        acct['id'] = account_name
 
     self.local_couch = self.couches['local']
     self.remote_couch = self.couches.get('remote') # may be None
+
+  def save_account(self, acct_name, acct_fields):
+    assert acct_name.startswith(self.ACCOUNT_PREFIX) # else it will not load!
+    if self.parser.has_section(acct_name):
+      self.parser.remove_section(acct_name)
+    self.parser.add_section(acct_name)
+    for name, val in acct_fields.iteritems():
+      self.parser.set(acct_name, name, str(val))
+
+    # first save to a temp filename
+    temp_name = self.filename + ".temp"
+    with open(temp_name, "w") as fp:
+      self.parser.write(fp)
+    try:
+      os.unlink(self.filename)
+    except os.error:
+      pass
+    os.rename(temp_name, self.filename)
+
 
 # Ack - this is hard - on one hand we want "global" as passing this as a param
 # everywhere is hard - on the other hand, the test suite etc makes this is a
