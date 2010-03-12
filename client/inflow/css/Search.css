@@ -90,6 +90,7 @@
   -moz-border-radius: 0px;
   -webkit-border-radius: 0px;
   background-color: transparent;
+  z-index: 1;
 }
 
 .rdwDataSelector.expanded .rdwDataSelectorFilters h3,

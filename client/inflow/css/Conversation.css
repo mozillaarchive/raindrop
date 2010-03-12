@@ -129,6 +129,7 @@
 .rdwConversation > .header {
   padding: 5px 5px 0;
   width: 100%;
+  min-height: 28px;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
 }
