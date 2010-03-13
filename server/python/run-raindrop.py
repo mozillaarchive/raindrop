@@ -73,6 +73,18 @@ def install_accounts(result, parser, options):
     return bootstrap.install_accounts(None)
 
 @defer.inlineCallbacks
+def _call_api(dbconfig, path):
+    from twisted.web.client import HTTPClientFactory
+    host = dbconfig['host']
+    port = dbconfig['port']
+    db = dbconfig['name']
+    uri = "http://%s:%s/%s/%s" % (host, port, db, path)
+    factory = HTTPClientFactory(uri)
+    reactor.connectTCP(host, port, factory)
+    resp = yield factory.deferred
+    defer.returnValue(json.loads(resp))
+
+@defer.inlineCallbacks
 def show_info(result, parser, options):
     """Print a list of all extensions, loggers etc"""
     dm = model.get_doc_model()
@@ -88,6 +100,24 @@ def show_info(result, parser, options):
                 group_level=3)
     print "  %d unique raindrop keys" % len(results['rows'])
 
+    print "API groupings:"
+    import twisted.web.error
+    from urllib import urlencode
+    dbconfig = get_config().couches['local']
+    try:
+        summaries = yield _call_api(dbconfig, "_api/inflow/grouping/summary")
+        print " %d groupings exist" % len(summaries)
+        for gs in summaries:
+            title = gs.get('title') or gs['rd_key']
+            opts = {'limit': 60, 'message_limit': 2,
+                    'keys': json.dumps([gs['rd_key']]),
+                    }
+            path = "_api/inflow/conversations/in_groups?" + urlencode(opts)
+            this = yield _call_api(dbconfig, path)
+            print "  %s: %d conversations" % (title, len(this))
+    except twisted.web.error.Error, exc:
+        print "Failed to call the API:", exc
+    
     print "Document counts by schema:"
     results = yield dm.open_view(
                 startkey=["rd.core.content", "schema_id"],
