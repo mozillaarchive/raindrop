@@ -192,14 +192,12 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 }
 
 #top button.composeButton {
-  position: absolute;
-  top: 17px;
-  left: 650px;
+  margin-left: 8px;
 }
 
 .composeIcon {
   display: block;
-  width: 30px;
+  width: 15px;
   color: transparent;
   background-image: url("i/rd_compose.png");
   background-repeat: no-repeat;
