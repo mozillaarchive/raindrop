@@ -119,9 +119,13 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                 /** Responds to requests to show all twitter messages */
                 twitter: function () {
                     api({
-                        url: 'inflow/conversations/twitter',
+                        url: 'inflow/conversations/in_groups',
                         limit: this.conversationLimit,
-                        message_limit: this.messageLimit
+                        schemas: this.personalSchemas,
+                        message_limit: this.messageLimit,
+                        keys: [
+                            ["display-group", "twitter"]
+                        ]
                     })
                     .ok(dojo.hitch(this, function (conversations) {
                         this.updateConversations("summary", conversations); 
