@@ -128,12 +128,12 @@ class Pipeline(object):
             if not procs:
                 raise RuntimeError("no processors could be found")
             assert self.incoming_processor is None # already initialized?
-            self.incoming_processor = IncomingItemProcessor(self.doc_model)
-            for proc in procs:
-                ext = proc.ext
-                self.incoming_processor.add_processor(proc, ext.source_schemas,
-                                                      ext.id)
-            _ = yield self.incoming_processor.initialize()
+            #self.incoming_processor = IncomingItemProcessor(self.doc_model)
+            #for proc in procs:
+            #    ext = proc.ext
+            #    self.incoming_processor.add_processor(proc, ext.source_schemas,
+            #                                          ext.id)
+            #_ = yield self.incoming_processor.initialize()
 
     @defer.inlineCallbacks
     def finalize(self):
@@ -187,8 +187,8 @@ class Pipeline(object):
         defer.returnValue(ret)
 
     @defer.inlineCallbacks
-    def start_backlog(self):
-        assert self.runner is None, "already doing a backlog process"
+    def start_processing(self, continuous, cont_stable_callback):
+        assert self.runner is None, "already doing a process"
         exts = yield self.get_extensions()
         pqrs = [get_pqr_for_extension(self.doc_model, ext, self.options)
                 for ext in exts]
@@ -197,6 +197,9 @@ class Pipeline(object):
                                            self.options)
         try:
             _ = yield self.runner.run()
+            if continuous:
+                _ = yield self.runner.run_continuous(cont_stable_callback)
+                
         finally:
             self.runner = None
         # count the number of errors - mainly for the test suite.
@@ -398,6 +401,25 @@ class DocsBySeqIteratorFactory(object):
         self.last_seq = None
 
     @defer.inlineCallbacks
+    def _get_rows_wait(self, doc_model, start_seq):
+        changes = []
+        db = doc_model.db
+        while not self.stopping and not changes:
+            try:
+                results = yield db.listChanges(since=start_seq,
+                                               feed='longpoll', timeout=600000)
+                changes = results.get('results')
+            except ValueError:
+                # A value error happens when we try and terminate the feed
+                # and the json module fails to parse an empty string.
+                # for now just assume it means we are being shut-down.
+                logger.debug("closing _changes due to premature eof")
+                break
+        logger.debug("found %d continuous changes", len(changes))
+        ret = [db._changes_row_to_old(c) for c in changes]
+        defer.returnValue(ret)
+
+    @defer.inlineCallbacks
     def initialize(self, doc_model, start_seq, limit=2000, stop_seq=None,
                    include_deps=False):
         if stop_seq is not None and start_seq >= stop_seq:
@@ -406,9 +428,12 @@ class DocsBySeqIteratorFactory(object):
         assert stop_seq is None or stop_seq > start_seq
         self.stop_seq = stop_seq
         self.stopping = False
-        result = yield doc_model.db.listDocsBySeq(limit=limit,
-                                                  startkey=start_seq)
-        rows = result['rows']
+        if limit is None:
+            rows = yield self._get_rows_wait(doc_model, start_seq)
+        else:
+            result = yield doc_model.db.listDocsBySeq(limit=limit,
+                                                      startkey=start_seq)
+            rows = result['rows']
         # We can only return False when there are no rows at all (ie, before
         # removing deleted items) else we will think we are at the very end.
         if not rows:
@@ -469,6 +494,8 @@ class DocsBySeqIteratorFactory(object):
             # This is a little evil - we should arrange to 'interleave'
             # the deps and use the sequence of the 'parent'.
             for src_id in self.dep_rows:
+                if self.stopping:
+                    return
                 yield src_id, None, None, None
 
         assert self.rows is not None, "not initialized"
@@ -617,28 +644,57 @@ class StatefulQueueManager(object):
         defer.maybeDeferred(doinc
             ).addCallback(dostart)
 
+    @defer.inlineCallbacks
+    def _start_q_continuous(self, q, q_state):
+        assert not q_state.running, q
+        q_state.running = True
+        while True:
+            _ = yield self._run_queue(q, q_state, None)
+
+    @defer.inlineCallbacks
     def _q_status(self):
+        current_end = (yield self.doc_model.db.infoDB())['update_seq']
         lowest = (0xFFFFFFFFFFFF, None)
-        highest = (0, None)
         nfailed = 0
+        all_at_end = True
         for qlook, qstate in zip(self.queues, self.queue_states):
             if qstate.failure:
                 nfailed += 1
                 continue
-            cs = qlook.current_seq
-            this = (cs or 0), qlook.queue_id
+            cs = qlook.current_seq or 0
+            this = cs, qlook.queue_id
             if this < lowest:
                 lowest = this
-            if this > highest:
-                highest = this
-        behind = highest[0] - lowest[0]
-        msg = "slowest queue is %r at %d (%d behind)" % \
-              (lowest[1], lowest[0], behind)
+            if cs != current_end:
+                all_at_end = False
+        if all_at_end:
+            msg = "all queues are up-to-date at sequence %s" % current_end
+        else:
+            behind = current_end - lowest[0]
+            msg = "slowest queue is %r at %d (%d behind)" % \
+                  (lowest[1], lowest[0], behind)
         if nfailed:
             msg += " - %d queues have failed" % nfailed
         if self.status_msg_last != msg:
             logger.info(msg)
             self.status_msg_last = msg
+
+    @defer.inlineCallbacks
+    def _q_check_stable(self, def_stop, stable_callback):
+        # if all queues are at the end of _changes, then
+        # fire the stable_callback.
+        current_end = (yield self.doc_model.db.infoDB())['update_seq']
+        all_at_end = True
+        for qlook, qstate in zip(self.queues, self.queue_states):
+            if qstate.failure:
+                continue
+            cs = qlook.current_seq or 0
+            if cs != current_end:
+                all_at_end = False
+        if all_at_end:
+            stop = yield defer.maybeDeferred(stable_callback, current_end)
+            if stop:
+                def_stop.callback(None)
 
     def _q_done(self, result, q, qstate, def_done):
         qstate.running = False
@@ -742,7 +798,7 @@ class StatefulQueueManager(object):
         except AttributeError:
             # hacky - not an 'extension' based queue (ie, the outgoing one)
             include_deps = False
-            
+
         iterfact = DocsBySeqIteratorFactory()
         more = yield iterfact.initialize(self.doc_model, start_seq,
                                          num_to_process, self.stop_seq,
@@ -783,14 +839,44 @@ class StatefulQueueManager(object):
         # start a looping call to report the status while we run.
         lc = task.LoopingCall(self._q_status)
         lc.start(10, False)
-        # and fire them off, waiting until all complete.
-        def_done = defer.Deferred()
-        for q, qs in zip(self.queues, self.queue_states):
-            self._start_q(q, qs, def_done)
-        _ = yield def_done
-        lc.stop()
+        try:
+            # and fire them off, waiting until all complete.
+            def_done = defer.Deferred()
+            for q, qs in zip(self.queues, self.queue_states):
+                self._start_q(q, qs, def_done)
+            _ = yield def_done
+        finally:
+            lc.stop()
         # update the views now...
         _ = yield self.doc_model._update_important_views()
+
+    @defer.inlineCallbacks
+    def run_continuous(self, stable_callback):
+        done = defer.Deferred()
+        # start a looping call to report the status while we run.
+        lc1 = task.LoopingCall(self._q_status)
+        lc1.start(10, False)
+        lc2 = None
+        if stable_callback is not None:
+            # and a hacky task so a caller can be told when the queue becomes
+            # "stable".
+            lc2 = task.LoopingCall(self._q_check_stable, done, stable_callback)
+            lc2.start(2, False)
+        try:
+            dm = self.doc_model
+            # load our queue states.
+            assert self.queue_states is not None
+            logger.info("backlog complete - waiting for further changes")
+            for q, qs in zip(self.queues, self.queue_states):
+                self._start_q_continuous(q, qs)
+            # and block until the 'stable_callback' says it is time to stop\
+            # (which will be never if no callback was passed - in which case
+            # Ctrl+C is the only way down)
+            _ = yield done
+        finally:
+            lc1.stop()
+            if lc2 is not None:
+                lc2.stop()
 
 
 class ProcessingQueueRunner(object):

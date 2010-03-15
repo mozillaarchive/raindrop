@@ -110,6 +110,9 @@ def get_request_options():
     yield Option("", "--no-process", action="store_true",
                 help="Don't process the work-queue.")
 
+    yield Option("", "--continuous", action="store_true",
+                help="Wait for more changes once the queue is complete.")
+
     yield NumSecondsOption("", "--max-age", type="int",
                 help="Maximum age of an item to fetch.  eg, '30 seconds', "
                      "'2weeks'.")

@@ -142,30 +142,62 @@ def show_info(result, parser, options):
     for name in logging.Logger.manager.loggerDict:
         print " ", name
 
-@defer.inlineCallbacks
-def sync_messages(result, parser, options):
+def sync_messages(result, parser, options, **kw):
     """Synchronize all messages from all accounts"""
-    _ = yield g_conductor.sync(options)
+    state = {'finished': False}
+    def stable(seq):
+        if state['finished']:
+            return True
 
-@defer.inlineCallbacks
+    @defer.inlineCallbacks
+    def _do_sync():
+        _ = yield g_conductor.sync(options, **kw)
+        state['finished'] = True
+
+    @defer.inlineCallbacks
+    def _do_process():
+        callback = None
+        # if 'continuous' is not specified we want to terminate as soon
+        # as the queue becomes 'stable' after syncing.
+        if not options.continuous:
+            callback = stable
+        _ = yield g_pipeline.start_processing(options.continuous, callback)
+        
+    # fire them up
+    ds = []
+    if not options.no_process:
+        ds.append(_do_process())
+    else:
+        if options.continuous:
+            parser.error("--no-process can't be used with --continuous")
+
+    ds.append(_do_sync())
+    return defer.DeferredList(ds)
+
 def sync_incoming(result, parser, options):
     """Synchronize all incoming messages from all accounts"""
-    _ = yield g_conductor.sync(options, incoming=True, outgoing=False)
+    return sync_messages(result, parser, options, incoming=True, outgoing=False)
 
-@defer.inlineCallbacks
 def sync_outgoing(result, parser, options):
     """Synchronize all outgoing messages from all accounts"""
-    _ = yield g_conductor.sync(options, incoming=False, outgoing=True)
+    return sync_messages(result, parser, options, incoming=False, outgoing=True)
 
-def process_backlog(result, parser, options):
+@defer.inlineCallbacks
+def process(result, parser, options):
     """Process all messages to see if any extensions need running"""
-    def done(result):
-        print "Message pipeline has finished - created", result, "docs"
-    return g_pipeline.start_backlog().addCallback(done)
+    _ = yield g_pipeline.start_processing(options.continuous, None)
+    print "Message pipeline has finished - created", result, "docs"
+
+@defer.inlineCallbacks
+def process_backlog(result, parser, options):
+    "deprecated - please use 'process'"
+    logger.warn("The 'process-backlog' command is deprecated.  Please use 'process'.")
+    return process(result, parser, options)
 
 def process_incoming(result, parser, options):
-    """Waits forever for new items to arrive and processes them.  Stop with ctrl+c.
-    """
+    # XXX - deprecated and should be removed.
+    #"""Waits forever for new items to arrive and processes them.  Stop with ctrl+c.
+    #"""
     if options.no_process:
         parser.error("--no-process can't be used to process incoming")
 

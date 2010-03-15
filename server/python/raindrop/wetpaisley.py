@@ -234,6 +234,20 @@ class CouchDB(paisley.CouchDB):
         return self.get(uri
             ).addCallback(self.parseResult)
 
+    def _changes_row_to_old(self, seq):
+        # Converts a row returned by _changes to a row that looks like
+        # it came from _all_docs_by_seq
+        last_change = seq['changes'][-1]
+        row = {'id': seq['id'],
+               'key': seq['seq'],
+               'value': last_change, # has 'rev'
+              }
+        # 'deleted' was in the value
+        if 'deleted' in seq:
+            row['value']['deleted'] = seq['deleted']
+        if 'doc' in seq:
+            row['doc'] = seq['doc']
+        return row
 
     @defer.inlineCallbacks
     def listDocsBySeq_Changes(self, dbName, **kw):
@@ -253,16 +267,7 @@ class CouchDB(paisley.CouchDB):
         # convert it back to the 'old' format.
         rows = []
         for seq in result['results']:
-            last_change = seq['changes'][-1]
-            row = {'id': seq['id'],
-                   'key': seq['seq'],
-                   'value': last_change, # has 'rev'
-                  }
-            # 'deleted' was in the value
-            if 'deleted' in seq:
-                row['value']['deleted'] = seq['deleted']
-            if 'doc' in seq:
-                row['doc'] = seq['doc']
+            row = self._changes_row_to_old(seq)
             rows.append(row)
         defer.returnValue({'rows': rows})
 

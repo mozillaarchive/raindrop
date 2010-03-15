@@ -73,6 +73,7 @@ class FakeOptions:
     no_process = False
     repeat_after = 0
     folders = []
+    continuous = False
 
 class TestCase(unittest.TestCase):
     def setUp(self):
