@@ -48,10 +48,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.check_all_worked(ndocs)
 
 
-class TestSimpleCorpusBacklog(TestSimpleCorpus):
-    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor
-
-
 # Test that given our collection of malformed messages, none of the extensions
 # fail.  They might log warnings and otherwise skip the processing of a
 # message, but nothing should fail.
@@ -79,7 +75,3 @@ class TestMalformedCorpus(TestCaseWithCorpus):
         self.failUnless(ndocs, "failed to load any corpus docs")
         _ = yield self.ensure_pipeline_complete()
         _ = yield self.check_all_worked(ndocs)
-
-
-class TestMalformedCorpusBacklog(TestMalformedCorpus):
-    use_incoming_processor = not TestMalformedCorpus.use_incoming_processor

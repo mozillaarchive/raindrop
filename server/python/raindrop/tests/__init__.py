@@ -99,8 +99,6 @@ class TestCase(unittest.TestCase):
         return unittest.TestCase.tearDown(self)
 
 class TestCaseWithDB(TestCase):
-    use_incoming_processor = True
-
     @defer.inlineCallbacks
     def tearDown(self):
         if self.pipeline is not None:
@@ -109,26 +107,13 @@ class TestCaseWithDB(TestCase):
 
     def get_options(self):
         opts = FakeOptions()
-        opts.no_process = not self.use_incoming_processor
         return opts
 
     @defer.inlineCallbacks
     def ensure_pipeline_complete(self, n_expected_errors=0):
         # later we will support *both* backlog and incoming at the
         # same time, but currently the test suite done one or the other...
-        if self.use_incoming_processor:
-            assert self.pipeline.incoming_processor is not None
-            ip = self.pipeline.incoming_processor 
-            # We have an 'incoming processor' running.
-            # we call this twice - first time it may be on the way out of the
-            # loop while a few new ones are arriving.
-            _ = yield ip.ensure_done()
-            _ = yield ip.ensure_done()
-            # manually count the errors.
-            nerr = sum([getattr(r.processor, 'num_errors', 0) for r in ip.runners])
-        else:
-            assert self.pipeline.incoming_processor is None
-            nerr = yield self.pipeline.start_backlog()
+        nerr = yield self.pipeline.start_processing(False, None)
         self.failUnlessEqual(n_expected_errors, nerr)
 
     """A test case that is setup to work with a temp database"""
@@ -233,6 +218,7 @@ class TestCaseWithTestDB(TestCaseWithDB):
     """
     @defer.inlineCallbacks
     def setUp(self):
+        self._conductor = None
         _ = yield TestCaseWithDB.setUp(self)
         raindrop.config.CONFIG = None
         self.config = self.make_config()
@@ -259,8 +245,11 @@ class TestCaseWithTestDB(TestCaseWithDB):
         acct['id'] = 'test'
         return config
 
+    @defer.inlineCallbacks
     def get_conductor(self):
-        return sync.get_conductor(self.pipeline)
+        if self._conductor is None:
+            self._conductor = yield sync.get_conductor(self.pipeline)
+        defer.returnValue(self._conductor)
 
     @defer.inlineCallbacks
     def deferMakeAnotherTestMessage(self, _):

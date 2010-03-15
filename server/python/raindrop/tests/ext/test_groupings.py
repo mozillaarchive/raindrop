@@ -126,10 +126,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.check_groupings(ex_tag, ex_grouping_key)
 
 
-class TestSimpleCorpusBacklog(TestSimpleCorpus):
-    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor
-
-
 class TestCustom(TestCaseWithTestDB):
     msg_template = """\
 Delivered-To: raindrop_test_user@mozillamessaging.com
@@ -285,10 +281,6 @@ Hello everyone
         return self.check_grouping(self.bulk_addy, [], self.bulk_addy, True)
 
 
-class TestCustomBacklog(TestCustom):
-    use_incoming_processor = not TestCustom.use_incoming_processor
-
-
 class TestGroupingSummaries(TestCaseWithTestDB):
     msg_template = """\
 Delivered-To: raindrop_test_user@mozillamessaging.com
@@ -338,7 +330,3 @@ Hello everyone
         self.failUnlessEqual(doc['rd_key'], grouping_key)
         # both messages should show in the summary.
         self.failUnlessEqual(doc['num_unread'], 2)
-
-
-class TestGroupingSummariesBacklog(TestGroupingSummaries):
-    use_incoming_processor = not TestGroupingSummaries.use_incoming_processor

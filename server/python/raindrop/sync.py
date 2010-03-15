@@ -57,6 +57,19 @@ def get_conductor(pipeline):
   return defer.succeed(conductor)
 
 
+class OutgoingProcessor:
+  def __init__(self, conductor):
+    self.conductor = conductor
+    self.num_errors = 0
+
+  @defer.inlineCallbacks
+  def __call__(self, src_id, src_rev):
+    # XXX - we need a queue here!
+    logger.debug("saw new document %r (%s) - kicking outgoing process",
+                 src_id, src_rev)
+    self.conductor._process_outgoing_row(src_id, src_rev)
+    defer.returnValue(([], False))
+
 # XXX - rename this to plain 'Conductor' and move to a different file.
 # This 'conducts' synchronization, the work queues and the interactions with
 # the extensions and database.
@@ -72,7 +85,7 @@ class SyncConductor(object):
 
     self.accounts_syncing = []
     self.accounts_listening = set()
-    self.outgoing_handlers = None
+    self.outgoing_handlers = {}
     self.all_accounts = None
     self.calllaters_waiting = {} # keyed by ID, value is a IDelayedCall
     self.deferred = None
@@ -83,23 +96,13 @@ class SyncConductor(object):
 
   def initialize(self):
     self._load_accounts()
-    # ask the pipeline to tell us when new source schemas arrive.
-    def new_processor(src_id, src_rev):
-      # but our processor doesn't actually process it - it just schedules
-      # another 'check outgoing'.
-      logger.debug("saw new document %r (%s) - kicking outgoing check",
-                   src_id, src_rev)
-      self.reactor.callLater(0, self._do_sync_outgoing)
-      return [], False
-
-    # we start listening on all accounts - this needs to be optional
-    # or explicitly triggered?
-    for accts in self.outgoing_handlers.itervalues():
-      for acct in accts:
-        self.accounts_listening.add(acct)
-    inc = self.pipeline.incoming_processor
-    if self.accounts_listening and inc is not None:
-      inc.add_processor(new_processor, source_schemas, 'outgoing')
+    # ask the pipeline to tell us when new outgoing schemas arrive.
+    # Note we add a new extension per schema, so each sender can procede
+    # (or fail) at its own pace.
+    for sch_id in self.outgoing_handlers.iterkeys():
+      ext_id = "outgoing-" + sch_id
+      proc = OutgoingProcessor(self)
+      self.pipeline.add_processor(proc, sch_id, ext_id)
 
   def get_status_ob(self):
     acct_infos = {}
@@ -132,7 +135,6 @@ class SyncConductor(object):
     # get all accounts from the couch.
     assert self.all_accounts is None, "only call me once."
     self.all_accounts = []
-    self.outgoing_handlers = {}
     for acct_name, acct_info in get_config().accounts.iteritems():
       acct_id = acct_info['id']
       if not acct_info.get('enabled', True):
@@ -172,38 +174,42 @@ class SyncConductor(object):
     return ret
 
   @defer.inlineCallbacks
-  def _process_outgoing_row(self, row):
-    if not self.outgoing_handlers:
-      logger.warn("ignoring outgoing row - no handlers")
+  def _process_outgoing_row(self, src_id, src_rev):
+    # XXX - should we check 'outgoing' state here?
+    out_doc = (yield self.doc_model.open_documents_by_id([src_id]))[0]
+    if out_doc['_rev'] != src_rev:
+      # strange...
+      logger.warn('the outgoing document changed since it was processed.')
       return
-
-    val = row['value']
-    # push it through the pipeline.
-    new_items = [(row['id'], val['_rev'], val['rd_schema_id'], None)]
-    out_id, out_rev, out_sch = yield self.pipeline.process_until(new_items,
-                                                   self.outgoing_handlers)
-    if out_id is None:
-      logger.warn("doc %r didn't create any outgoing schema items", row['id'])
+    logger.info('processing outgoing message with schema %s',
+                out_doc['rd_schema_id'])
+    # locate the 'source' row - this will be the item with the same rd_key
+    # but with a rd_source of None.  Must be exactly 1.
+    key=['rd.core.content', 'key-source', [out_doc['rd_key'], None]]
+    results = yield self.doc_model.open_view(key=key, reduce=False, limit=2,
+                                             include_docs=True)
+    rows = results['rows']
+    if not rows:
+      logger.error("found outgoing row '%(_id)s' but failed to find a source",
+                   outdoc)
       return
+    if len(rows) != 1:
+      logger.error("found multiple source rows for doc '%s': '%s' and '%s'",
+                   outdoc['_id'], rows[0]['doc']['_id'], rows[1]['doc']['_id'])
+      return
+    src_doc = rows[0]['doc']
 
-    logger.info('found outgoing message with schema %s', out_sch)
-    # open the original source doc and the outgoing schema we just found.
-    dids = [row['id'], out_id]
-    src_doc, out_doc = yield self.doc_model.open_documents_by_id(dids)
-    if src_doc['_rev'] != val['_rev']:
-      raise RuntimeError('the document changed since it was processed.')
-    senders = self.outgoing_handlers[out_sch]
+    senders = self.outgoing_handlers[out_doc['rd_schema_id']]
     # There may be multiple senders, but first one to process it wins
     # (eg, outgoing imap items have one per account, but each account may be
     # passed one for a different account - it just ignores it, so we continue
     # the rest of the accounts until one says "yes, it is mine!")
     for sender in senders:
-      if sender in self.accounts_listening:
-        d = sender.startSend(self, src_doc, out_doc)
-        if d is not None:
-          # This sender accepted the item...
-          _ = yield d
-          break
+      d = yield sender.startSend(self, src_doc, out_doc)
+      if d is not None:
+        # This sender accepted the item...
+        d()
+        break
 
   @defer.inlineCallbacks
   def _do_sync_outgoing(self):
@@ -238,6 +244,7 @@ class SyncConductor(object):
 
   @defer.inlineCallbacks
   def sync_outgoing(self, options):
+      return ###############
       # start looking for outgoing schemas to sync...
       dl = (yield self._do_sync_outgoing())
       _ = yield defer.DeferredList(dl)

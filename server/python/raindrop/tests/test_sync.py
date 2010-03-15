@@ -3,9 +3,14 @@ from twisted.internet import defer
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
 from raindrop.model import get_doc_model
 from raindrop.proto import test as test_proto
+from raindrop.sync import SyncConductor
 
 import logging
 logger = logging.getLogger(__name__)
+
+class StubSMTP:
+    def startSend(self, conductor, src_doc, out_doc):
+        pass
 
 class TestSyncing(TestCaseWithTestDB):
     def make_config(self):
@@ -17,6 +22,14 @@ class TestSyncing(TestCaseWithTestDB):
         acct['id'] = 'smtp_test'
         acct['ssl'] = False
         return config
+
+    def get_conductor(self):
+        if self._conductor is None:
+            self._conductor = SyncConductor(self.pipeline)
+            self._conductor.initialize()
+            # clobber the 'real' SMTP account with a stub.
+            self._conductor.outgoing_handlers['rd.msg.outgoing.smtp'] = [StubSMTP()]
+        return defer.succeed(self._conductor)
 
     @defer.inlineCallbacks
     def test_sync_state_doc(self, expected_num_syncs=1):

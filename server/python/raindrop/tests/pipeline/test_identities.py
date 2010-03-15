@@ -165,6 +165,3 @@ class TestIDPipeline(TestIDPipelineBase):
                 ).addCallback(check_it,
                 ).addCallback(self.deferVerifyCounts, 2, 3
                 )
-
-class TestIDPipelineBacklog(TestIDPipeline):
-    use_incoming_processor = not TestIDPipeline.use_incoming_processor

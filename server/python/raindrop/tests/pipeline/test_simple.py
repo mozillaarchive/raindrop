@@ -10,7 +10,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TestPipelineBase(TestCaseWithTestDB):
-    use_incoming_processor = False
     extensions = None # default extensions for test.
     simple_extensions = [
             'rd.test.core.test_converter',
@@ -100,9 +99,6 @@ class TestPipeline(TestPipelineBase):
                 ).addCallback(reprocess
                 )
 
-class TestPipelineSync(TestPipeline):
-    use_incoming_processor = not TestPipelineBase.use_incoming_processor
-
 class TestErrors(TestPipelineBase):
     extensions = ['rd.test.core.test_converter']
 
@@ -167,6 +163,3 @@ class TestErrors(TestPipelineBase):
                 ).addCallback(lambda whateva: self.get_last_by_seq(2)
                 ).addCallback(check_last_doc
                 )
-
-class TestErrorsSync(TestErrors):
-    use_incoming_processor = not TestPipelineBase.use_incoming_processor

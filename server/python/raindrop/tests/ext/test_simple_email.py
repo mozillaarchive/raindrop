@@ -251,6 +251,3 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         got_tags = sorted(row['doc']['tag'] for row in rows)
         expected = ['facebook-comment', 'facebook-message', 'facebook-notification']
         self.failUnlessEqual(got_tags, expected)
-
-class TestSimpleCorpusBacklog(TestSimpleCorpus):
-    use_incoming_processor = not TestSimpleCorpus.use_incoming_processor

@@ -194,28 +194,6 @@ def process_backlog(result, parser, options):
     logger.warn("The 'process-backlog' command is deprecated.  Please use 'process'.")
     return process(result, parser, options)
 
-def process_incoming(result, parser, options):
-    # XXX - deprecated and should be removed.
-    #"""Waits forever for new items to arrive and processes them.  Stop with ctrl+c.
-    #"""
-    if options.no_process:
-        parser.error("--no-process can't be used to process incoming")
-
-    @defer.inlineCallbacks
-    def report():
-        dm = model.get_doc_model()
-        info = yield dm.db.infoDB()
-        db_seq = info['update_seq']
-        proc_seq = g_pipeline.incoming_processor.current_seq
-        left = db_seq - proc_seq
-        print "still waiting for new raindrops (%d items to be processed) ..." \
-              % (left)
-
-    # just return a deferred that never fires!
-    lc = task.LoopingCall(report)
-    return lc.start(30, False)
-
-
 def reprocess(result, parser, options):
     """Reprocess all messages even if they are up to date."""
     def done(result):
@@ -228,9 +206,8 @@ def retry_errors(result, parser, options):
     def done_errors(result):
         return result
     _ = yield g_pipeline.start_retry_errors()
-    print "Error retry pipeline has finished - waiting for work-queue..."
-    if g_pipeline.incoming_processor:
-        _ = yield g_pipeline.incoming_processor.ensure_done()
+    print "Error retry pipeline has finished..."
+    # XXX - should do the 'process' thing now...
 
 @allargs_command
 def show_view(result, parser, options, args):
