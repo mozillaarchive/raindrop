@@ -41,12 +41,16 @@
   font-family: Droid-sans, Helvetica, Arial, Sans-serif;
   font-size: 12px;
   line-height: 18px;
-  color: #888;
+  color: #333333;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   padding: 4px;
   height: 48px;
+}
+
+.rdwExtTwitterSummary .twitterText.placeholder {
+    color: #888;
 }
 
 .rdwExtTwitterSummary .twitterText:focus {

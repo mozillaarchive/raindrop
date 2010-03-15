@@ -26,9 +26,10 @@
 "use strict";
 
 require.def("rdw/Conversation",
-["require", "rd", "dojo", "dojo/string", "rd/api", "rd/api/identity", "rd/friendly", "rd/hyperlink", "rdw/_Base", "rdw/Message",
- "text!rdw/templates/Conversation!html", "text!rdw/templates/impersonal!html"],
-function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, Message, template, impersonalTemplate) {
+        ["require", "rd", "dojo", "dojo/string", "rd/api", "rd/api/identity", "rd/friendly",
+         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation!html", "text!rdw/templates/impersonal!html"],
+function (require,   rd,   dojo,   string,        api,      identity,          friendly,
+          hyperlink,      Base,        Message,       placeholder,       template,          impersonalTemplate) {
 
     return dojo.declare("rdw.Conversation", [Base], {
         //Holds the conversatino object fetched from the API.
@@ -91,6 +92,7 @@ function (require, rd, dojo, string, api, identity, friendly, hyperlink, Base, M
         /** dijit lifecycle method, after template in DOM */
         postCreate: function () {
             this.inherited("postCreate", arguments);
+            placeholder(this.domNode);
             if (this.displayOnCreate) {
                 this.display();
             }

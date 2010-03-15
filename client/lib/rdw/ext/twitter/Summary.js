@@ -26,8 +26,10 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Summary",
-        ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
-function (require,   rd,   dojo,   Base,        accountIds,      script,           QuickCompose,       template) {
+        ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script",
+         "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
+function (require,   rd,   dojo,   Base,        accountIds,      script,
+          placeholder,      QuickCompose,       template) {
 
     rd.addStyle("rdw/ext/twitter/Summary");
 
@@ -57,6 +59,9 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,        
                     this.imgNode.src = data.profile_image_url;
                 })
             })
+            
+            //Set up placeholder behavior for textarea.
+            placeholder(this.domNode);
         },
 
         /**

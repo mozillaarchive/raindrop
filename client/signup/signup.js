@@ -26,29 +26,10 @@
 "use strict";
 
 require.def("signup",
-        ["require", "dojo", "dojo/DeferredList", "rd", "rd/api", "rd/onHashChange"],
-function (require,   dojo,   DeferredList,        rd,   api) {
+        ["require", "dojo", "dojo/DeferredList", "rd", "rd/api", "rdw/placeholder", "rd/onHashChange"],
+function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
 
     var validHashRegExp = /^\w+$/;
-
-    /**
-     * Set the input value to use placeholder value if HTML5 placeholder
-     * attribute is not supported.
-     * @param {DOMNode} input an input element.
-     */
-    function setPlaceholder(input) {
-        //If no native support for placeholder then JS to the rescue!
-        var missingNative = !("placeholder" in input);
-
-        if (!dojo.trim(input.value)) {
-            dojo.addClass(input, "placeholder");
-            if (missingNative) {
-                input.value = input.getAttribute("placeholder");
-            }
-        } else {
-            dojo.removeClass(input, "placeholder");
-        }
-    }
 
     //Set up hashchange listener
     rd.sub("rd/onHashChange", function (value) {
@@ -164,7 +145,7 @@ function (require,   dojo,   DeferredList,        rd,   api) {
 
     require.ready(function () {
 
-        dojo.query("#credentials")
+        var formNodes = dojo.query("#credentials")
             .onsubmit(function (evt) {
                 //Handle form submissions for the credentials.
                 //First clear old errors
@@ -189,25 +170,8 @@ function (require,   dojo,   DeferredList,        rd,   api) {
                 }
 
                 dojo.stopEvent(evt);
-            })
-            .query('input[type="text"]')
-                //Set up initial state.
-                .forEach(setPlaceholder)
+            });
 
-                .onfocus(function (evt) {
-                    //Clear out placeholder, change the style.
-                    var input = evt.target;
-                    if (input.value === input.getAttribute("placeholder")) {
-                        if (!("placeholder" in input)) {
-                            input.value = "";
-                        }
-                        dojo.removeClass(input, "placeholder");
-                    }
-                })
-
-                .onblur(function (evt) {
-                    //Reset placeholder text if necessary.
-                    setPlaceholder(evt.target);
-                });
+        placeholder(formNodes[0]);
     });
 });
