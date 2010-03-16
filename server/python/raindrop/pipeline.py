@@ -358,9 +358,15 @@ class DocsBySeqIteratorFactory(object):
         db = doc_model.db
         while not self.stopping and not changes:
             try:
-                results = yield db.listChanges(since=start_seq,
-                                               feed='longpoll', timeout=600000)
-                changes = results.get('results')
+                # The extra logging here is to help see a bug whereby couch
+                # gets "stuck" and doesn't deliver changes that happen
+                # concurrently - ie, a call here will block reading from
+                # change xyz, even though the DB is at xyz+1
+                logger.debug("%s opening _changes from seq %s", self, start_seq)
+                results = yield db.listChanges(since=start_seq, feed='longpoll')
+                changes = results.get('results', [])
+                logger.debug("%s _changes from seq %s got %s results",
+                             self, start_seq, len(changes))
             except ValueError:
                 # A value error happens when we try and terminate the feed
                 # and the json module fails to parse an empty string.
@@ -490,8 +496,11 @@ class StatefulQueueManager(object):
     def _start_q_continuous(self, q, q_state):
         assert not q_state.running, q
         q_state.running = True
-        while True:
+        while q_state.running and not q_state.failure:
             _ = yield self._run_queue(q, q_state, None)
+        logger.debug("continuous processing of %r terminate: running=%s, failed=%s",
+                     q.queue_id, q_state.running, bool(q_state.failure))
+        q_state.running = False
 
     @defer.inlineCallbacks
     def _q_status(self):
@@ -526,16 +535,30 @@ class StatefulQueueManager(object):
         # if all queues are at the end of _changes, then
         # fire the stable_callback.
         current_end = (yield self.doc_model.db.infoDB())['update_seq']
+        logger.debug("checking is queue is stable - seq=%s", current_end)
         all_at_end = True
         for qlook, qstate in zip(self.queues, self.queue_states):
             if qstate.failure:
                 continue
             cs = qlook.current_seq or 0
-            if cs != current_end:
+            # There seems to be a subtle timing problem with couchdb - if
+            # I ask for changes since 'rev', in some cases things do not
+            # return when rev+1 happens - as a result some queues can get
+            # "stuck" at one *before* the end and are happily waiting for
+            # a _changes notification that never comes (well - not before the
+            # next external change causes us to see them.)
+            # XXX - this is likely to cause a problem - if it can get 1 change
+            # behind it can probably get more changes behind depending on the
+            # level of concurrency...
+            if cs != current_end and cs+1 != current_end:
+                logger.debug("queue isn't yet stable - %r is at %s (end=%s)",
+                             qlook.queue_id, cs, current_end)
                 all_at_end = False
         if all_at_end:
             stop = yield defer.maybeDeferred(stable_callback, current_end)
             if stop:
+                for q in self.queues:
+                    q.running = False
                 def_stop.callback(None)
 
     def _q_done(self, result, q, qstate, def_done):
@@ -635,6 +658,7 @@ class StatefulQueueManager(object):
     @defer.inlineCallbacks
     def _run_queue(self, q, qstate, num_to_process=2000):
         start_seq = qstate.schema_item['items']['seq']
+        assert q.current_seq is None or q.current_seq == start_seq, (q.current_seq, start_seq)
         logger.debug("starting queue %r at sequence %s", q.queue_id, start_seq)
         # There is quite a performance penalty involved in getting the
         # dependencies for extensions which don't need them...
@@ -645,13 +669,17 @@ class StatefulQueueManager(object):
             include_deps = False
 
         iterfact = DocsBySeqIteratorFactory()
+        assert self.stop_seq is None
         more = yield iterfact.initialize(self.doc_model, start_seq,
                                          num_to_process, self.stop_seq,
                                          include_deps=include_deps)
+        logger.debug("queue %r has iterator with more=%s", q.queue_id, more)
         if not more:
-            logger.debug('queue %r is at the end of _changes (stop_seq=%s)',
-                         q.queue_id, self.stop_seq)
             # queue is done (at the end)
+            q.current_seq = iterfact.last_seq
+            logger.debug('queue %r is at the end of _changes (stop_seq=%s)',
+                         q.queue_id, q.current_seq)
+            _ = yield self._save_queue_state(qstate, q.current_seq, 0)
             defer.returnValue(True)
 
         assert q.queue_id not in self.queue_iters
@@ -667,7 +695,10 @@ class StatefulQueueManager(object):
         # make sure we use the iterator factory's last_seq as the extensions
         # current_seq may not be correct if all items in the _changes feed
         # were deleted...
-        _ = yield self._save_queue_state(qstate, iterfact.last_seq, num_created)
+        q.current_seq = iterfact.last_seq
+        _ = yield self._save_queue_state(qstate, q.current_seq, num_created)
+        logger.debug("Work queue %r finished batch at sequence %s",
+                     q.queue_id, q.current_seq)
         defer.returnValue(False)
 
     @defer.inlineCallbacks
@@ -985,7 +1016,11 @@ class ExtensionProcessor(object):
         # it is quite possible that the doc was deleted since we read that
         # view.  It could even have been updated - so if its not the exact
         # revision we need we just skip it - it will reappear later...
-        if src_doc is None or (src_rev != None and src_doc['_rev'] != src_rev):
+        if src_doc is None:
+            logger.debug("skipping document %r - it's been deleted since we read the queue",
+                         src_id)
+            defer.returnValue((None, None))
+        elif src_rev != None and src_doc['_rev'] != src_rev:
             logger.debug("skipping document %(_id)r - it's changed since we read the queue",
                          src_doc)
             defer.returnValue((None, None))
