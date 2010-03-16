@@ -161,7 +161,7 @@ def sync_messages(result, parser, options, **kw):
         # as the queue becomes 'stable' after syncing.
         if not options.continuous:
             callback = stable
-        _ = yield g_pipeline.start_processing(options.continuous, callback)
+        _ = yield g_pipeline.start_processing(True, callback)
         
     # fire them up
     ds = []
