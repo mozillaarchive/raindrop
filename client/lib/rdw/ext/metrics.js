@@ -113,6 +113,13 @@ function (require, rd, dojo, traverse, api, pref) {
     //Only hook in to rd.api for the inflow app, do not burden other apps
     //with these metrics.
     require.modify("inflow", "rdw/ext/metrics-inflow", ["inflow"], function (inflow) {
+
+        //In a build inflow is present but not defined on other pages besides inflow.
+        //TODO: work out a better system for this.
+        if (!inflow) {
+            return;
+        }
+
         //Register extension for API calls.
         rd.applyExtension("rdw/ext/metrics", "rd/api", {
             after: {
@@ -206,6 +213,7 @@ function (require, rd, dojo, traverse, api, pref) {
                                 '</div>',
                         node = dojo._toDom(html),
                         nodes;
+
                     inflow.addNotice(node);
 
                     //Wire up events
