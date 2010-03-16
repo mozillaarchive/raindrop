@@ -396,12 +396,13 @@ def main():
     d.addCallback(mutter)
     d.addCallback(model.fab_db)
     # See if accounts are up-to-date.
-    d.addCallback(bootstrap.check_accounts)
-    # Check if the files on the filesystem need updating.
-    d.addCallback(bootstrap.install_client_files, options)
-    d.addCallback(bootstrap.insert_default_docs, options)
-    d.addCallback(bootstrap.install_views, options)
-    d.addCallback(bootstrap.update_apps)
+    if not options.no_bootstrap:
+        d.addCallback(bootstrap.check_accounts)
+        # Check if the files on the filesystem need updating.
+        d.addCallback(bootstrap.install_client_files, options)
+        d.addCallback(bootstrap.insert_default_docs, options)
+        d.addCallback(bootstrap.install_views, options)
+        d.addCallback(bootstrap.update_apps)
 
     @defer.inlineCallbacks
     def setup_pipeline(whateva):

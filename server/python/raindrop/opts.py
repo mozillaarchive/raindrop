@@ -110,6 +110,9 @@ def get_request_options():
     yield Option("", "--no-process", action="store_true",
                 help="Don't process the work-queue.")
 
+    yield Option("", "--no-bootstrap", action="store_true",
+                help="Don't attempt to 'bootstrap' the database.")
+
     yield Option("", "--continuous", action="store_true",
                 help="Wait for more changes once the queue is complete.")
 
