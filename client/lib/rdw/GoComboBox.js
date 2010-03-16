@@ -45,6 +45,7 @@ function    (rd,   dojo,   GoMatchMenu,       dijit) {
         open: function(){
             dojo.style(this.matchContainerNode, "display", "");
             this._isShowingNow = true;
+            return this.matchContainerNode;
         },
 
         /**
@@ -64,6 +65,25 @@ function    (rd,   dojo,   GoMatchMenu,       dijit) {
          * Required method for use in this widget's base class/mixin
          */
         _refreshState: function() {
+        },
+
+        /**
+         * Copied from ComboBoxMixin, but removed the "best" reference code.
+         */
+        _showResultList: function(){
+            this._hideResultList();
+            this._arrowPressed();
+            // hide the tooltip
+            this.displayMessage("");
+
+            // natural size of the list has changed, so erase old
+            // width/height settings, which were hardcoded in a previous
+            // call to this function (via dojo.marginBox() call)
+            dojo.style(this._popupWidget.domNode, {width: "", height: ""});
+
+            //JRB: removed the "best" code from ComboBoxMixin
+
+            dijit.setWaiState(this.comboNode, "expanded", "true");
         },
 
         _openResultList: function(results, dataObject) {
