@@ -229,6 +229,10 @@
   border-right: none;
 }
 
+.rdwConversation .replyTextArea.placeholder {
+  color: #888;
+}
+
 .rdwConversation .replyTextArea:focus {
   color: #333;
   height: 60px;

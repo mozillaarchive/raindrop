@@ -113,28 +113,6 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
     
             if (href && (href = href.split("#")[1])) {
                 if (href === "reply" || href === "forward") {
-                    //Dynamically load the module that will handle
-                    //the Reply/Forward action.
-                    module = this[href + "Widget"];
-                    require([module], dojo.hitch(this, function (Ctor) {
-                        //If we have an existing response widget, despose of it properly.
-                        if (this.responseWidget) {
-                            this.removeSupporting(this.responseWidget);
-                            this.responseWidget.destroy();
-                        }
-
-                        //Create the new response widget.
-                        this.responseWidget = new Ctor({
-                            owner: this,
-                            replyType: href,
-                            msg: this.lastDisplayedMsg
-                        });
-
-                        this.addSupporting(this.responseWidget);
-
-                        //Put the response widget in the toolDisplay
-                        this.responseWidget.placeAt(this.toolDisplayNode);
-                    }));
                     evt.preventDefault();
                 } else if (href === "archive" || href === "delete" || href === "spam") {
                     rd.pub("rdw/Conversation/" + href, this, this.conversation);
