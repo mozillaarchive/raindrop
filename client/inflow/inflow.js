@@ -43,6 +43,13 @@ require.def("inflow",
     "rd/conversation"
 ],
 function (require, dojo, dijit, rd, parser, accountIds) {
+    //Do not do this work if inflow is not the main app.
+    //This code can get loaded in other pages once an optimization
+    //buld is done.
+    if (rd.appName !== "inflow") {
+        return null;
+    }
+
     //If no account IDs, then just redirect to signup.
     if (!accountIds || !accountIds.length) {
         location.replace("../signup/index.html");
