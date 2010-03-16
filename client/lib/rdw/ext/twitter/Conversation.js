@@ -26,9 +26,9 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Conversation",
-["rd", "dojo", "dojo/fx", "rdw/Conversation", "rdw/ext/twitter/Message",
+["rd", "dojo", "rdw/Conversation", "rdw/ext/twitter/Message",
  "text!rdw/ext/twitter/Conversation!html", "text!rdw/ext/twitter/quickReply!html"],
-function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
+function (rd, dojo, Conversation, Message, template, replyTemplate) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
@@ -53,14 +53,17 @@ function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
         /**
          * Shows twitter reply area if not already visible.
          */
-        showReply: function(evt) {
+        showReply: function (evt) {
             if (!dojo.hasClass(this.replyNode, "active")) {
                 if (!this.quickReplySectionNode) {
                     //Inject the reply section into the DOM, then get the root
                     //element for the reply section.
                     dojo.place(rd.template(replyTemplate, this), this.domNode);
                     this.quickReplySectionNode = dojo.query(".quickReply", this.domNode)[0];
-    
+
+                    //Make sure opacity is set to 0
+                    dojo.style(this.quickReplySectionNode, "opacity", 0);
+
                     //Parse the reply section for dojoAttachEvent/dojoAttachPoint items.
                     this._attachTemplateNodes(this.quickReplySectionNode);
     
@@ -72,12 +75,14 @@ function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
                     this.replySenderText = this.conversation.messages[this.conversation.messages.length - 1].schemas["rd.msg.body"].from[1];
                 }
 
+                this.quickReplySectionNode.style.display = "";
+
                 //Set reply text
                 this.replyTextNode.value = "@" + this.replySenderText;
 
-                fx.wipeIn({
+                dojo.fadeIn({
                     node: this.quickReplySectionNode,
-                    duration: 400
+                    duration: 1000
                 }).play();
                 dojo.addClass(this.replyNode, "active");
             }
@@ -85,14 +90,15 @@ function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
             dojo.stopEvent(evt);
         },
 
-        hideReply: function() {
+        hideReply: function () {
             if (dojo.hasClass(this.replyNode, "active")) {
-                fx.wipeOut({
+                dojo.fadeOut({
                     node: this.quickReplySectionNode,
-                    duration: 400,
-                    onEnd: function(node) {
+                    duration: 1000,
+                    onEnd: dojo.hitch(this, function (node) {
                         dojo.removeClass(this.replyNode, "active");
-                    }
+                        node.style.display = "none";
+                    })
                 }).play();
             }
         },
@@ -101,7 +107,7 @@ function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
          * Handles key ups in the reply area. If the text is just @username
          * or empty, then send button needs to be a close button.
          */
-        onReplyKeyUp: function(evt) {
+        onReplyKeyUp: function (evt) {
             var text = this.replySendText, value = dojo.trim(this.replyTextNode.value);
             if (!value || value.length <= this.replySenderText.length + 1) {
                 text = this.replyCloseText;
@@ -115,12 +121,13 @@ function (rd, dojo, fx, Conversation, Message, template, replyTemplate) {
          * of the field is empty or just the @username, then it is a close
          * action
          */
-        onReplySendClick: function(evt) {
+        onReplySendClick: function (evt) {
             if (this.replySendNode.innerHTML === this.replySendText) {
                 alert("TODO: send reply");
             }
 
             this.hideReply();
+            dojo.stopEvent(evt);
         }
     });
 });
