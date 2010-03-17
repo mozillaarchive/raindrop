@@ -230,6 +230,7 @@ class SMTPAccount(base.AccountBase):
     @defer.inlineCallbacks
     def startSend(self, conductor, src_doc, dest_doc):
         # do it...
+        assert src_doc['outgoing_state'] == 'outgoing', src_doc # already sent?
         factory = SMTPClientFactory(self, conductor, src_doc, dest_doc)
         client = yield factory.connect()
         # apparently all done!
