@@ -78,7 +78,7 @@ function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
     function send(config) {
         //API is very granular, build up options for each call: twitter,
         //gmail imap and gmail smtp.
-        var dfds = [], dfdList;
+        var dfds = [], dfdList, options;
         if (config.gmailName && config.gmailPassword) {
             //Make sure name has an @ in it:
             if (config.gmailName.indexOf("@") === -1) {
@@ -86,18 +86,25 @@ function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
             }
 
             //Set up IMAP to Gmail
+            options = {
+                proto: "imap",
+                kind: "gmail",
+                host: "imap.gmail.com",
+                port: 993,
+                username: config.gmailName,
+                password: config.gmailPassword,
+                ssl: true
+            };
+
+            //Only add addresses if entered.
+            if (config.gmailAddresses) {
+                options.addresses = config.gmailAddresses;
+            }
+
             dfds.push(api({
                 url: 'inflow/account/set?id=' + encodeURIComponent('"imap-gmail-' + config.gmailName + '"'),
                 method: "POST",
-                bodyData: dojo.toJson({
-                    proto: "imap",
-                    kind: "gmail",
-                    host: "imap.gmail.com",
-                    port: 993,
-                    username: config.gmailName,
-                    password: config.gmailPassword,
-                    ssl: true
-                })
+                bodyData: dojo.toJson(options)
             }).deferred());
 
             //Set up SMTP to Gmail
@@ -152,17 +159,26 @@ function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
                 dojo.query(".error").addClass("invisible");
                 
                 //Make sure we have all the inputs.
-                var ids = ["gmailName", "gmailPassword", "twitterName", "twitterPassword"],
+                var ids = ["gmailName", "gmailPassword", "twitterName", "twitterPassword", "gmailAddresses"],
+                    optional = {
+                        "gmailAddresses": true
+                    },
                     i, id, value, node, isError = false, config = {};
 
                 for (i = 0; (id = ids[i]) && (node = dojo.byId(id)); i++) {
                     value = dojo.trim(node.value);
-                    if (!value || node.getAttribute("placeholder") === value) {
+                    if (!value || node.getAttribute("placeholder") === value && !optional[id]) {
                         dojo.removeClass(dojo.byId(id + "Error"), "invisible");
                         isError = true;
                     } else {
                         config[node.id] = value;
                     }
+                }
+
+                //Make sure addresses are just comma separated, no spaces
+                //around the commas.
+                if (config.gmailAddresses) {
+                    config.gmailAddresses = config.gmailAddresses.split(/\s*,\s*/).join(",");
                 }
 
                 if (!isError) {
