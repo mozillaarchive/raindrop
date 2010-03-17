@@ -175,11 +175,12 @@ class SyncConductor(object):
 
   @defer.inlineCallbacks
   def _process_outgoing_row(self, src_id, src_rev):
-    # XXX - should we check 'outgoing' state here?
     out_doc = (yield self.doc_model.open_documents_by_id([src_id]))[0]
     if out_doc['_rev'] != src_rev:
-      # strange...
-      logger.warn('the outgoing document changed since it was processed.')
+      # this can happen if the 'src_doc' is the same doc as the 'outgoing'
+      # doc - the outgoing process modified the document to record it was
+      # sent.
+      logger.debug('the outgoing document changed since it was processed.')
       return
     logger.info('processing outgoing message with schema %s',
                 out_doc['rd_schema_id'])
@@ -198,6 +199,11 @@ class SyncConductor(object):
                    outdoc['_id'], rows[0]['doc']['_id'], rows[1]['doc']['_id'])
       return
     src_doc = rows[0]['doc']
+    out_state = src_doc.get('outgoing_state')
+    if out_state != 'outgoing':
+      logger.info('skipping outgoing doc %r - outgoing state is %r',
+                  src_doc['_id'], out_state)
+      return
 
     senders = self.outgoing_handlers[out_doc['rd_schema_id']]
     # There may be multiple senders, but first one to process it wins

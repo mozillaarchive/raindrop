@@ -244,6 +244,8 @@ class TwitterProcessor(object):
 
 
 class TwitterAccount(base.AccountBase):
+  rd_outgoing_schemas = ['rd.msg.outgoing.tweet']
+
   def startSync(self, conductor, options):
     return TwitterProcessor(self, conductor, options).attach()
 
