@@ -58,7 +58,11 @@
   border: 1px solid #ccc;
 }
 
-.twitterCount {
+.rdwExtTwitterSummary .error {
+  color: red;
+}
+
+.rdwExtTwitterSummary .twitterCount {
   color: #888888;
   font-size: 12px;
   vertical-align: text-bottom;

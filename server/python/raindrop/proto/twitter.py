@@ -102,6 +102,7 @@ class TwitterProcessor(object):
                                      email=username, password=pw
                                      ).addCallback(self.attached)
 
+
     @defer.inlineCallbacks
     def attached(self, twit):
         logger.info("attached to twitter - fetching timeline")
@@ -244,10 +245,58 @@ class TwitterProcessor(object):
 
 
 class TwitterAccount(base.AccountBase):
-  rd_outgoing_schemas = ['rd.msg.outgoing.tweet']
+    rd_outgoing_schemas = ['rd.msg.outgoing.tweet']
 
-  def startSync(self, conductor, options):
-    return TwitterProcessor(self, conductor, options).attach()
+    @defer.inlineCallbacks
+    def startSend(self, conductor, src_doc, dest_doc):
+        logger.info("Sending tweet from TwitterAccount...")
 
-  def get_identities(self):
-    return [('twitter', self.details['username'])]
+        username = self.details['username']
+        pw = self.details['password']
+        self.src_doc = src_doc
+        _ = yield threads.deferToThread(twitter.api.Twitter,
+                                     email=username, password=pw
+                                     ).addCallback(self.attached)
+
+    @defer.inlineCallbacks
+    def attached(self, twitter_api):
+        logger.info("attached to twitter - sending tweet")
+
+        _ = yield self._update_sent_state(self.src_doc, 'sending')
+
+        in_reply_to = None
+        if (in_reply_to in self.src_doc):
+            in_reply_to = self.src_doc['in_reply_to']
+
+        # Do the actual twitter send.
+        try:
+            status = yield threads.deferToThread(twitter_api.statuses.update,
+                                   status=self.src_doc['body'], in_reply_to_status_id=in_reply_to, source='Raindrop')
+
+            # If status has an ID, then it saved. Otherwise,
+            # assume an error
+            if ("id" in status):
+                # Success
+                _ = yield self._update_sent_state(self.src_doc, 'sent')
+            else:
+                # Log error
+                logger.error("Twitter API status update failed: %s", status)
+                _ = yield self._update_sent_state(self.src_doc, 'error',
+                                              'Twitter API status update failed', status,
+                                              # reset to 'outgoing' if temp error.
+                                              # or set to 'error' if permanent.
+                                              outgoing_state='error')
+
+        except Exception, e:
+            logger.error("Twitter API status update failed: %s", str(e))
+            _ = yield self._update_sent_state(self.src_doc, 'error',
+                                          'Twitter API failed', str(e),
+                                          # reset to 'outgoing' if temp error.
+                                          # or set to 'error' if permanent.
+                                          outgoing_state='error')
+
+    def startSync(self, conductor, options):
+        return TwitterProcessor(self, conductor, options).attach()
+
+    def get_identities(self):
+        return [('twitter', self.details['username'])]

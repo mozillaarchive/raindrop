@@ -27,9 +27,9 @@
 
 require.def("rdw/ext/twitter/Summary",
         ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script",
-         "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
+         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
 function (require,   rd,   dojo,   Base,        accountIds,      script,
-          placeholder,      QuickCompose,       template) {
+          twitterApi,            placeholder,      QuickCompose,       template) {
 
     rd.addStyle("rdw/ext/twitter/Summary");
 
@@ -46,6 +46,7 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
             var name, i, id;
             for (i = 0; (id = accountIds[i]); i++) {
                 if (id[0] === "twitter") {
+                    this.twitterId = id;
                     name = id[1];
                     break;
                 }
@@ -58,7 +59,7 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
                 load: dojo.hitch(this, function (data) {
                     this.imgNode.src = data.profile_image_url;
                 })
-            })
+            });
             
             //Set up placeholder behavior for textarea.
             placeholder(this.domNode);
@@ -68,6 +69,24 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
          * Handles form submits, makes sure text is not too long.
          */
         onSubmit: function (evt) {
+            var body = dojo.trim(this.textAreaNode.value);
+            this.errorNode.innerHTML = "";
+
+            //Only send if there is a message less than 140 and only
+            //if the textarea is not in "placeholder text" mode.
+            if (body && body.length < 140 && !dojo.hasClass(this.textAreaNode, "placeholder")) {
+                twitterApi.send(this.twitterId, body, this.inReplyTo)
+                .ok(this, function () {
+                    //TODO do more here, put the tweet in the flow?
+                    //How to get it to conform to data structure?
+                    this.textAreaNode.value = "";
+                    this.inReplyTo = null;
+                })
+                .error(this, function (err) {
+                    rd.escapeHtml(err + "", this.errorNode, "only");
+                });
+            }
+
             dojo.stopEvent(evt);
         },
 
