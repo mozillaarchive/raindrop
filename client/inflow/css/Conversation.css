@@ -73,8 +73,7 @@
 
 .rdwConversation.read {
   background-image: none;
-  background-color: #fefefe;
-  opacity: 0.95;
+  background-color: #fafafa;
 }
 
 .rdwConversationFullConversation.read {
@@ -108,7 +107,7 @@
 }
 
 .rdwConversation.read > .messages .message > .content {
-  opacity: 0.7;
+  opacity: 0.5;
   margin-right: 10px;
   white-space: nowrap;
   overflow: hidden;

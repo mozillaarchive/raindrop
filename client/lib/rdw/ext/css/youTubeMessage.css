@@ -29,7 +29,8 @@
 .rdwMessage > .message > .rdwAttachments .youTube > .thumbnail,
 .rdwMessage > .message > .rdwAttachments .vimeo > .thumbnail { 
   display: inline-block;
-  background-image: url("../../../../inflow/i/rd_attachments_video.png");
+  background-image: url("../../../../inflow/i/x.png");
+  background-position: left -367px;
   background-repeat: no-repeat;
   width: 110px;
   height: 65px;
@@ -66,14 +67,14 @@
 .rdwMessage > .message > .rdwAttachments .youTube > .thumbnail .play,
 .rdwMessage > .message > .rdwAttachments .vimeo > .thumbnail .play { 
   width: 22px;
-  height: 22px;
+  height: 13px;
   display: inline-block;
   position: absolute;
-  top: 17px;
+  top: 21px;
   left: 44px;
-  background-image: url("../../../../inflow/i/rd_play_icon.png");
+  background-image: url("../../../../inflow/i/x.png");
   background-repeat: no-repeat;
-  background-position: center center;
+  background-position: left -267px;
   z-index: 1;
   cursor: pointer;
 } 

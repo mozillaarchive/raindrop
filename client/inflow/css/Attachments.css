@@ -18,6 +18,10 @@
   padding-left: 21px;*/
 }
 
+.rdwConversation.read .rdwAttachments .attachDisplay {
+  opacity: 0.5;
+}
+
 .rdwAttachments .link a:hover {
   text-decoration: underline;
 }
