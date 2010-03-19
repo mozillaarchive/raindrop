@@ -70,14 +70,14 @@
 }
 
 .WidgetBox .wipeToggle {
-  visibility: hidden;
-  pointer: cursor;
+  opacity: 0.5;
+  cursor: pointer;
   width: 24px;
   font-size: 12px;
 }
 
 .WidgetBox:hover .wipeToggle {
-  visibility: visible;
+  opacity: 1; 
 }
 
 .WidgetBox > .WidgetHeader {
@@ -288,8 +288,7 @@
 .rdwWidgets.start .rdwMessage > .message > .header {
   margin: 4px 0 0 0;
   padding: 4px 0 0 0;
-  background-image: url("../i/rd_widget_header_bg.png");
-  background-repeat: repeat-x;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .rdwWidgets.start .rdwMessage > .message > .content {
