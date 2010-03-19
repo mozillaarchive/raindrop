@@ -27,96 +27,14 @@
 
 require.def("rdw/ext/twitter/Summary",
         ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script",
-         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Summary!html"],
+         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/ext/twitter/Compose", "text!rdw/ext/twitter/Summary!html"],
 function (require,   rd,   dojo,   Base,        accountIds,      script,
-          twitterApi,            placeholder,      QuickCompose,       template) {
+          twitterApi,            placeholder,       Compose,         template) {
 
     rd.addStyle("rdw/ext/twitter/Summary");
 
     return dojo.declare("rdw.ext.twitter.Summary", [Base], {
         templateString: template,
-
-        blankImgUrl: require.nameToUrl("rdw/resources/blank", ".png"),
-
-        /** Dijit lifecycle method after template insertion in the DOM. */
-        postCreate: function () {
-            this.inherited("postCreate", arguments);
-
-            //Find twitter name in the accounts.
-            var name, i, id;
-            for (i = 0; (id = accountIds[i]); i++) {
-                if (id[0] === "twitter") {
-                    this.twitterId = id;
-                    name = id[1];
-                    break;
-                }
-            }
-
-            //Fetch image from twitter.
-            script.get({
-                url: 'http://api.twitter.com/1/users/show/' + name + '.json',
-                jsonp: "callback",
-                load: dojo.hitch(this, function (data) {
-                    this.imgNode.src = data.profile_image_url;
-                })
-            });
-            
-            //Set up placeholder behavior for textarea.
-            placeholder(this.domNode);
-        },
-
-        /**
-         * Handles form submits, makes sure text is not too long.
-         */
-        onSubmit: function (evt) {
-            var body = dojo.trim(this.textAreaNode.value);
-            this.errorNode.innerHTML = "";
-
-            //Only send if there is a message less than 140 and only
-            //if the textarea is not in "placeholder text" mode.
-            if (body && body.length < 140 && !dojo.hasClass(this.textAreaNode, "placeholder")) {
-                twitterApi.send(this.twitterId, body, this.inReplyTo)
-                .ok(this, function () {
-                    //TODO do more here, put the tweet in the flow?
-                    //How to get it to conform to data structure?
-                    this.textAreaNode.value = "";
-                    this.inReplyTo = null;
-                })
-                .error(this, function (err) {
-                    rd.escapeHtml(err + "", this.errorNode, "only");
-                });
-            }
-
-            dojo.stopEvent(evt);
-        },
-
-        twitterLimit: 140,
-
-        /** Check the character count in the textarea. */
-        checkCount: function () {
-            var count = this.twitterLimit - this.textAreaNode.value.length;
-            if (count < 0) {
-                dojo.addClass(this.countNode, "error");
-                this._isTwitterOver = true;
-            } else if (this._isTwitterOver) {
-                dojo.removeClass(this.countNode, "error");
-                this._isTwitterOver = false;
-            }
-            this.countNode.innerHTML = count === this.twitterLimit ? "" : count;
-        },
-
-        /**
-         * Handles clearing of default message
-         */
-        onFocus: function (evt) {
-            
-        },
-
-        /**
-         * Handles resetting default message if need be
-         */
-        onBlur: function (evt) {
-            
-        }
+        widgetsInTemplate: true
     });
 });

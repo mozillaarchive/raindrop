@@ -265,7 +265,7 @@ class TwitterAccount(base.AccountBase):
         _ = yield self._update_sent_state(self.src_doc, 'sending')
 
         in_reply_to = None
-        if (in_reply_to in self.src_doc):
+        if ('in_reply_to' in self.src_doc):
             in_reply_to = self.src_doc['in_reply_to']
 
         # Do the actual twitter send.

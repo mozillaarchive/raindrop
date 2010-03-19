@@ -6,11 +6,11 @@
   margin-bottom: 10px;
 }
 
-.rdwExtTwitterSummary .twitterCompose {
+.rdwExtTwitterCompose {
   width: 100%;
 }
 
-.rdwExtTwitterSummary .twitterIcon {
+.rdwExtTwitterCompose .twitterIcon {
   width: 48px;
   height: 48px;
   margin: 0 5px 0 0;
@@ -21,7 +21,7 @@
   -webkit-border-radius: 2px;
 }
 
-.rdwExtTwitterSummary .twitterForm {
+.rdwExtTwitterCompose .twitterForm {
   background-image: url("../../../../inflow/i/rd_message_bg.png");
   background-repeat: repeat-x;
   text-align: right;
@@ -32,7 +32,7 @@
   -webkit-border-radius: 2px;
 }
 
-.rdwExtTwitterSummary .twitterText {
+.rdwExtTwitterCompose .twitterText {
   display: block;
   width: 100%;
   margin-bottom: 5px;
@@ -49,20 +49,20 @@
   height: 48px;
 }
 
-.rdwExtTwitterSummary .twitterText.placeholder {
+.rdwExtTwitterCompose .twitterText.placeholder {
     color: #888;
 }
 
-.rdwExtTwitterSummary .twitterText:focus {
+.rdwExtTwitterCompose .twitterText:focus {
   color: #1a1a1a;
   border: 1px solid #ccc;
 }
 
-.rdwExtTwitterSummary .error {
+.rdwExtTwitterCompose .error {
   color: red;
 }
 
-.rdwExtTwitterSummary .twitterCount {
+.rdwExtTwitterCompose .twitterCount {
   color: #888888;
   font-size: 12px;
   vertical-align: text-bottom;

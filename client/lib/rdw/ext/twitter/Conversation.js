@@ -22,13 +22,13 @@
  * */
 
 /*jslint plusplus: false, nomen: false */
-/*global require: false */
+/*global require: false, alert: false */
 "use strict";
 
 require.def("rdw/ext/twitter/Conversation",
-["rd", "dojo", "rdw/Conversation", "rdw/ext/twitter/Message",
- "text!rdw/ext/twitter/Conversation!html", "text!rdw/ext/twitter/quickReply!html"],
-function (rd, dojo, Conversation, Message, template, replyTemplate) {
+["require", "rd", "dojo", "rd/api", "rdw/Conversation", "rdw/ext/twitter/Message",
+ "text!rdw/ext/twitter/Conversation!html", "rdw/ext/twitter/Compose"],
+function (require, rd, dojo, api, Conversation, Message, template) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
@@ -37,6 +37,11 @@ function (rd, dojo, Conversation, Message, template, replyTemplate) {
         //The name of the constructor function (module) that should be used
         //to show individual messages.
         messageCtorName: "rdw/ext/twitter/Message",
+
+        /**
+         * Name of widget to use for replies.
+         */
+        replyCtorName: "rdw/ext/twitter/Compose",
 
         templateString: template,
 
@@ -50,70 +55,55 @@ function (rd, dojo, Conversation, Message, template, replyTemplate) {
             return !this.conversation && conversation.message_ids[0][0] === "tweet";
         },
 
+        /** Widget lifecycle method. */
+        destroy: function () {
+            if (this.twitterReplyWidget) {
+                delete this.twitterReplyWidget;
+            }
+        },
+
         /**
          * Shows twitter reply area if not already visible.
          */
-        showReply: function (evt) {
-            if (!dojo.hasClass(this.replyNode, "active")) {
-                if (!this.quickReplySectionNode) {
-                    //Inject the reply section into the DOM, then get the root
-                    //element for the reply section.
-                    dojo.place(rd.template(replyTemplate, this), this.domNode);
-                    this.quickReplySectionNode = dojo.query(".quickReply", this.domNode)[0];
-
-                    //Make sure opacity is set to 0
-                    dojo.style(this.quickReplySectionNode, "opacity", 0);
-
-                    //Parse the reply section for dojoAttachEvent/dojoAttachPoint items.
-                    this._attachTemplateNodes(this.quickReplySectionNode);
-    
-                    //Hold on to button values for reply send
-                    this.replyCloseText = this.replySendNode.getAttribute("data-close");
-                    this.replySendText = this.replySendNode.getAttribute("data-send");
-    
-                    //Hold on to the name to reply to
-                    this.replySenderText = this.conversation.messages[this.conversation.messages.length - 1].schemas["rd.msg.body"].from[1];
-                }
-
-                this.quickReplySectionNode.style.display = "";
-
-                //Set reply text
-                this.replyTextNode.value = "@" + this.replySenderText;
-
-                dojo.fadeIn({
-                    node: this.quickReplySectionNode,
-                    duration: 1000
-                }).play();
-                dojo.addClass(this.replyNode, "active");
-            }
-            
-            dojo.stopEvent(evt);
-        },
-
-        hideReply: function () {
+        toggleReply: function (evt) {
             if (dojo.hasClass(this.replyNode, "active")) {
                 dojo.fadeOut({
-                    node: this.quickReplySectionNode,
-                    duration: 1000,
+                    node: this.twitterReplyWidget.domNode,
+                    duration: 700,
                     onEnd: dojo.hitch(this, function (node) {
                         dojo.removeClass(this.replyNode, "active");
+                        this.replyNode.innerHTML = this.i18n.reply;
                         node.style.display = "none";
                     })
+                }).play();                
+            } else {
+                if (!this.twitterReplyWidget) {
+                    //Get the reply text and inReplyTo value.
+                    var msg = this.conversation.messages[this.conversation.messages.length - 1],
+                        replyName = msg.schemas["rd.msg.body"].from[1],
+                        inReplyTo = msg.id[1];
+
+                    this.twitterReplyWidget = new (require(this.replyCtorName))({
+                        inReplyTo: inReplyTo,
+                        inReplyToName: replyName
+                    }, dojo.create("div"));
+                    dojo.style(this.twitterReplyWidget.domNode, "opacity", 0);
+                    this.twitterReplyWidget.placeAt(this.domNode);
+                }
+
+                this.twitterReplyWidget.domNode.style.display = "";
+                dojo.fadeIn({
+                    node: this.twitterReplyWidget.domNode,
+                    duration: 700,
+                    onEnd: dojo.hitch(this, function () {
+                        this.twitterReplyWidget.focus();
+                    })
                 }).play();
+    
+                //Set state of reply button
+                dojo.addClass(this.replyNode, "active");
+                this.replyNode.innerHTML = this.i18n.closeIcon;
             }
-        },
-
-        /**
-         * Handles key ups in the reply area. If the text is just @username
-         * or empty, then send button needs to be a close button.
-         */
-        onReplyKeyUp: function (evt) {
-            var text = this.replySendText, value = dojo.trim(this.replyTextNode.value);
-            if (!value || value.length <= this.replySenderText.length + 1) {
-                text = this.replyCloseText;
-            }
-
-            this.replySendNode.innerHTML = text;
         },
 
         /**

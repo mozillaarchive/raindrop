@@ -1,17 +1,4 @@
 <div class="rdwExtTwitterSummary">
     <h4 class="twitterTitle">Twitter Timeline</h4>
-    <div class="twitterCompose hbox">
-        <div class="twitterIconSection">
-            <img class="twitterIcon" src="${blankImgUrl}" dojoAttachPoint="imgNode">
-        </div>
-        <form class="twitterForm boxFlex" dojoAttachEvent="onsubmit: onSubmit">
-            <textarea class="twitterText"
-                      dojoAttachPoint="textAreaNode"
-                      dojoAttachEvent="onkeyup: checkCount, onfocus: onFocus, onblur: onBlur"
-                      placeholder="What's happening?"></textarea>
-            <span class="error" dojoAttachPoint="errorNode"></span>
-            <span class="twitterCount" dojoAttachPoint="countNode"></span>
-            <button type="submit">tweet</button>
-        </form>
-    </div>
+    <div dojoType="rdw.ext.twitter.Compose"></div>
 </div>
