@@ -90,6 +90,7 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
                     jsonp: "callback",
                     load: dojo.hitch(this, function (data) {
                         Compose.profileImageUrl = data.profile_image_url;
+                        Compose.twitterName = data.name;
                         this.setProfileImage();
                     })
                 });
@@ -107,8 +108,18 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
          * Utility method for focusing in the text area, for use by
          * outside callers.
          */
-        focus: function() {
+        focus: function () {
             this.textAreaNode.focus();
+        },
+
+        /**
+         * Resets the widget to be empty and in starting state.
+         */
+        reset: function ()  {
+            this.textAreaNode.value = this.tweetText;
+            this.checkCount();
+            placeholder(this.domNode);
+            this.inReplyTo = null;
         },
 
         /**
@@ -123,10 +134,12 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
             if (body && body.length < 140 && !dojo.hasClass(this.textAreaNode, "placeholder")) {
                 twitterApi.send(this.twitterId, body, this.inReplyTo)
                 .ok(this, function () {
-                    //TODO do more here, put the tweet in the flow?
-                    //How to get it to conform to data structure?
-                    this.textAreaNode.value = "";
-                    this.inReplyTo = null;
+                    //Use a DOM event to communicate a tweet was sent.
+                    //This avoids cleanup concerns with publish/subscribe or connect.
+                    rd.trigger(this.domNode, "tweet", {
+                        tweet: this.synthesizeModel(body)
+                    });
+                    this.reset();
                 })
                 .error(this, function (err) {
                     rd.escapeHtml(err + "", this.errorNode, "only");
@@ -152,17 +165,24 @@ function (require,   rd,   dojo,   Base,        accountIds,      script,
         },
 
         /**
-         * Handles clearing of default message
+         * Synthesize an API model for this tweet, so it can be used by FE code.
+         * @param {String} body the tweet text
+         * 
+         * @returns {Object}
          */
-        onFocus: function (evt) {
-            
-        },
-
-        /**
-         * Handles resetting default message if need be
-         */
-        onBlur: function (evt) {
-            
+        synthesizeModel: function (body) {
+            return {
+                attachments: [],
+                id: ["tweet", "FAKE"],
+                schemas: {
+                    "rd.msg.body": {
+                        body_preview: body,
+                        from: this.twitterId,
+                        from_display: Compose.twitterName,
+                        timestamp: (new Date()).getTime() / 1000
+                    }
+                }
+            };
         }
     });
 

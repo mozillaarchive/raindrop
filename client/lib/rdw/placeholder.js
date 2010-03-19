@@ -87,15 +87,15 @@ function (require, rd, dojo) {
         dojo.query('input[type="text"], textarea', domNode).forEach(function (node) {
             //Skip nodes that have already been bound
             if (node.getAttribute("data-rdwPlaceholder") !== "set") {
-                //Set up initial state.
-                setPlaceholder(node);
-    
                 var obj = widget || dojo;
                 handles.push(obj.connect(node, "onfocus", onfocus));
                 handles.push(obj.connect(node, "onblur", onblur));
 
                 node.setAttribute("data-rdwPlaceholder", "set");
             }
+
+            //Set up initial state.
+            setPlaceholder(node);
         });
 
         return handles;

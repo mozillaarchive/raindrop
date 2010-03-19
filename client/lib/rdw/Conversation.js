@@ -182,9 +182,10 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
                 showUnreadReplies = this.unreadReplyLimit > -1,
                 msgLimit = showUnreadReplies ? this.unreadReplyLimit + 1 : limit,
                 toShow = [0], i, msg, seen, len, refIndex, index,
-                notShownCount, lastWidget, html, ctorArgs,
-                Ctor = require(this.messageCtorName),
+                notShownCount, lastWidget, html,
                 unreadCount = (this.conversation.unread_ids && this.conversation.unread_ids.length) || 0;
+
+            this.Ctor = require(this.messageCtorName);
 
             //Set the state as displayed, in case widgets are refreshed for extensions.
             this.displayOnCreate = true;
@@ -265,16 +266,7 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
 
             //Now render widgets for all the messages that want to be shown.
             for (i = 0; ((index = toShow[i]) > -1) && (msg = this.msgs[index]); i++) {
-                this.lastDisplayedMsg = msg;
-                ctorArgs = {
-                    msg: msg,
-                    type: index === 0 ? "" : this.replyStyle,
-                    tabIndex: index === 0 || this.allowReplyMessageFocus ? 0 : -1
-                };
-                if (this.messageCtorArgs) {
-                    dojo._mixin(ctorArgs, this.messageCtorArgs);
-                }
-                this.addSupporting(new Ctor(ctorArgs, dojo.create("div", null, this.containerNode)));
+                this.addMessage(i, msg);
             }
 
             //If any left over messages, then show that info.
@@ -298,6 +290,24 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
                     dojo.place(html, lastWidget.actionsNode, 2);
                 }
             }
+        },
+
+        /**
+         * Adds a message to be displayed by the message widget.
+         * @param {Number} index the index of the message in the list of messages.
+         * @param {Object} msg the message object from the API.
+         */
+        addMessage: function (index, msg) {
+            this.lastDisplayedMsg = msg;
+            var ctorArgs = {
+                msg: msg,
+                type: index === 0 ? "" : this.replyStyle,
+                tabIndex: index === 0 || this.allowReplyMessageFocus ? 0 : -1
+            };
+            if (this.messageCtorArgs) {
+                dojo._mixin(ctorArgs, this.messageCtorArgs);
+            }
+            this.addSupporting(new this.Ctor(ctorArgs, dojo.create("div", null, this.containerNode)));
         },
 
         /**

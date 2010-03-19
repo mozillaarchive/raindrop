@@ -107,7 +107,11 @@ function (require, dojo, dijit, dojox) {
         extSubs = {}, subObj,
         extSubHandles = {},
         empty = {},
-        topic, ext;
+        topic, ext,
+        leaveRe = /mouse(enter|leave)/, 
+        _fix = function(_, p){
+            return "mouse" + (p == "enter" ? "over" : "out"); 
+        };
 
     dojo.mixin(rd, {
         //Set path to the raindrop database
@@ -117,6 +121,25 @@ function (require, dojo, dijit, dojox) {
         appName: require.config.rd.appName,
 
         uiExtId: "rd.ui.rd",
+
+
+        /**
+         * Triggers an event on a node. Only works in modern (non-IE) browsers.
+         * Borrowed from http://code.google.com/p/plugd/source/browse/trunk/trigger.js
+         
+         * @param {DOMNode} node
+         * @param {String} evtName the event name, like "click". Do not include
+         * "on" as part of the event name.
+         * @param {Object} [data] optional data to mix into the event object.
+         */
+        trigger: function(node, evtName, data) {
+            // the sane branch
+            var evt = node.ownerDocument.createEvent("HTMLEvents");
+            evtName = evtName.replace(leaveRe, _fix);
+            evt.initEvent(evtName, true, true);
+            data && dojo._mixin(evt, data);
+            node.dispatchEvent(evt);
+        },
 
         /**
          * applies a binary function to an array from left

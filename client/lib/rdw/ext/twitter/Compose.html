@@ -5,7 +5,7 @@
     <form class="twitterForm boxFlex" dojoAttachEvent="onsubmit: onSubmit">
         <textarea class="twitterText"
                   dojoAttachPoint="textAreaNode"
-                  dojoAttachEvent="onkeyup: checkCount, onfocus: onFocus, onblur: onBlur"
+                  dojoAttachEvent="onkeyup: checkCount"
                   placeholder="What's happening?">${tweetText}</textarea>
         <span class="error" dojoAttachPoint="errorNode"></span>
         <span class="twitterCount" dojoAttachPoint="countNode"></span>

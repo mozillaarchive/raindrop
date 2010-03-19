@@ -65,17 +65,17 @@ function (require, rd, dojo, api, Conversation, Message, template) {
         /**
          * Shows twitter reply area if not already visible.
          */
-        toggleReply: function (evt) {
+        toggleReply: function (evt, skipAnim) {
             if (dojo.hasClass(this.replyNode, "active")) {
-                dojo.fadeOut({
-                    node: this.twitterReplyWidget.domNode,
-                    duration: 700,
-                    onEnd: dojo.hitch(this, function (node) {
-                        dojo.removeClass(this.replyNode, "active");
-                        this.replyNode.innerHTML = this.i18n.reply;
-                        node.style.display = "none";
-                    })
-                }).play();                
+                if (skipAnim) {
+                    this.resetReply();
+                } else {
+                    dojo.fadeOut({
+                        node: this.twitterReplyWidget.domNode,
+                        duration: 700,
+                        onEnd: dojo.hitch(this, "resetReply")
+                    }).play();
+                }
             } else {
                 if (!this.twitterReplyWidget) {
                     //Get the reply text and inReplyTo value.
@@ -99,7 +99,7 @@ function (require, rd, dojo, api, Conversation, Message, template) {
                         this.twitterReplyWidget.focus();
                     })
                 }).play();
-    
+
                 //Set state of reply button
                 dojo.addClass(this.replyNode, "active");
                 this.replyNode.innerHTML = this.i18n.closeIcon;
@@ -107,16 +107,28 @@ function (require, rd, dojo, api, Conversation, Message, template) {
         },
 
         /**
+         * Resets display after hiding the reply.
+         */
+        resetReply: function () {
+            dojo.removeClass(this.replyNode, "active");
+            this.replyNode.innerHTML = this.i18n.reply;
+            this.twitterReplyWidget.domNode.style.display = "none"; 
+        },
+
+        /**
          * Handles clicks to the send/close button for reply. If the text
          * of the field is empty or just the @username, then it is a close
          * action
          */
-        onReplySendClick: function (evt) {
-            if (this.replySendNode.innerHTML === this.replySendText) {
-                alert("TODO: send reply");
-            }
+        onTweet: function (evt) {
+            var msg = evt.tweet;
 
-            this.hideReply();
+            //Show the message in the widget
+            this.msgs.push(msg);
+            this.addMessage(this.msgs.length - 1, msg);
+
+            //Clean up reply widget and stop the event from going higher.
+            this.toggleReply({}, true);
             dojo.stopEvent(evt);
         }
     });
