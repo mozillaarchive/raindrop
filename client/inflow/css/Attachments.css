@@ -18,10 +18,6 @@
   padding-left: 21px;*/
 }
 
-.rdwConversation.read .rdwAttachments .attachDisplay {
-  opacity: 0.5;
-}
-
 .rdwAttachments .link a:hover {
   text-decoration: underline;
 }
@@ -40,7 +36,7 @@
   display: inline-block;
   margin: 0 1px -2px -16px;
   padding: 0 10px;
-  -moz-border-image: url("../i/rd_tab.png") 1 12 1 12;
+  -moz-border-image: url("../i/rd_tab.png") 1 12 1 12; 
   -webkit-border-image: url("../i/rd_tab.png") 1 12 1 12;
   border-width: 1px 12px 1px 12px;
   height: 16px;

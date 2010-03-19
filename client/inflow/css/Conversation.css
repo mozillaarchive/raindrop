@@ -301,3 +301,17 @@
   -webkit-border-bottom-right-radius: 2px;
   -webkit-border-top-right-radius: 2px;
 }
+
+/*### Twitter reply ###*/
+
+.rdwExtTwitterConversation .rdwExtTwitterCompose .twitterIcon {
+  display: none;
+}
+
+.rdwExtTwitterConversation .rdwExtTwitterCompose .twitterForm {
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  background: none;
+  border: none;
+  padding: 5px;
+}
