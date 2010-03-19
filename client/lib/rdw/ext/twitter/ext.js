@@ -27,8 +27,8 @@
 
 //Just a collection of require.modify calls.
 require.modify("rdw/Summary", "rdw/ext/twitter/ext-rdw/Summary",
-    ["rd", "rdw/ext/twitter/Summary", "rdw/Summary"],
-    function (rd, Summary) {
+    ["rd", "dojo", "rdw/ext/twitter/Summary", "rdw/Summary"],
+    function (rd, dojo, Summary) {
         rd.applyExtension("rdw/ext/twitter/ext", "rdw/Summary", {
             addToPrototype: {
                 twitter: function () {
@@ -99,6 +99,14 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
     ["rd", "dojo", "rd/api", "rdw/Conversations", "rdw/ext/twitter/Conversation"],
     function (rd, dojo, api) {
         rd.applyExtension("rdw/ext/twitter/ext", "rdw/Conversations", {
+            after: {
+                postCreate: function () {
+                    //Bind an onTweet handler so new tweets can be inserted
+                    //into the flow.
+                    this.connect(this.domNode, "ontweet", "onTweet");
+                }
+            },
+
             addToPrototype: {
                 convoModules: [
                     "rdw/ext/twitter/Conversation"
@@ -115,7 +123,7 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                 topicConversationCtorNames: {
                     "rd-protocol-twitter": "rdw/ext/twitter/Conversation"
                 },
-    
+
                 /** Responds to requests to show all twitter messages */
                 twitter: function () {
                     api({
@@ -133,6 +141,38 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                             this.summaryWidget.twitter();
                         }
                     }));
+                },
+
+                onTweet: function (evt) {
+                    //Called when the twitter compose has tweeted a new
+                    //message. Insert it at the top of the conversations.
+                    var msg = evt.tweet,
+                        body = msg.schemas["rd.msg.body"],
+
+                        //Construct a fake conversation.
+                        convo = {
+                            from_display: body.from_display,
+                            id: msg.id,
+                            identities: [body.from],
+                            message_ids: [msg.id],
+                            messages: [msg],
+                            subject: null,
+                            unread_ids: [msg.id]
+                        },
+
+                        widget = this.createConvoWidget(convo, this.listNode, "first");
+
+                    //Animate showing it. Use a setTimeout so the DOM
+                    //can update to show the empty space and make anim smoother.
+                    dojo.style(widget.domNode, "opacity", 0);
+                    setTimeout(function() {
+                        dojo.fadeIn({
+                            node: widget.domNode,
+                            duration: 700
+                        }).play();
+                    }, 15);
+
+                    dojo.stopEvent(evt);
                 }
             }
         });

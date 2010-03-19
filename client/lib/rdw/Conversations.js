@@ -454,12 +454,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 //and load up each conversation widget in there.
                 frag = dojo.doc.createDocumentFragment();
                 for (i = 0; (conv = this.conversations[i]); i++) {
-                    Ctor = this._getConvoWidget(conv, this.convoWidgets) ||
-                                         require(this.topicConversationCtorNames[this.currentTopic] ||
-                                         this.conversationCtorName);
-                    this.addSupporting(new Ctor({
-                        conversation: conv
-                    }, dojo.create("div", null, frag)));                
+                    this.createConvoWidget(conv, frag);
                 }
 
                 //Inject nodes all at once for best performance.
@@ -469,6 +464,18 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             }
 
             this.transition(viewType);
+        },
+
+        createConvoWidget: function(conv, refNode, position) {
+            var Ctor = this._getConvoWidget(conv, this.convoWidgets) ||
+                                         require(this.topicConversationCtorNames[this.currentTopic] ||
+                                         this.conversationCtorName),
+                widget = new Ctor({
+                    conversation: conv
+                }, dojo.create("div", null, refNode, position));
+
+            this.addSupporting(widget);
+            return widget;
         },
 
         /**
