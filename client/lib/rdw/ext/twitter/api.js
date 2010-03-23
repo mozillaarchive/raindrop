@@ -30,6 +30,39 @@ require.def("rdw/ext/twitter/api",
 function (rd, dojo, api) {
 
     var tapi = {
+        /**
+         * Aww yeah, make out.
+         */
+        _makeOutSchema: function (data) {
+            //Needed by back-end to correctly process the schema.
+            var schemaItems = {}, doc, i, field, fields = [
+                "from", "body", "in_reply_to", "retweet_id"
+            ];
+
+            schemaItems[rd.uiExtId] = {
+                rd_source: null,
+                schema: null
+            };
+
+            doc = {
+                //NOTE these rd_keys are different from the ones received
+                //from the twitter API.
+                rd_key: ["tweet", "out-" + (new Date()).getTime()],
+                rd_schema_id: "rd.msg.outgoing.tweet",
+                rd_schema_provider: rd.uiExtId,
+                rd_schema_items: schemaItems,
+
+                outgoing_state: 'outgoing'
+            };
+
+            for (i = 0; (field = fields[i]); i++) {
+                if (data[field]) {
+                    doc[field] = data[field];
+                }
+            }
+
+            return doc;
+        },
 
         /**
          * Sends a tweet via the Raindrop backend.
@@ -44,7 +77,7 @@ function (rd, dojo, api) {
          * to success and error states respectively.
          */
         send: function (from, body, inReplyTo) {
-            var dfd = new dojo.Deferred(), schemaItems = {}, doc;
+            var dfd = new dojo.Deferred();
 
             //Valid character limit
             if (!body) {
@@ -54,33 +87,13 @@ function (rd, dojo, api) {
             } else if (inReplyTo && body.indexOf("@") === -1) {
                 dfd.errback(new Error("rdw/ext/twitter:replyToMissingUserName"));
             } else {
-                //Needed by back-end to correctly process the schema.
-                schemaItems = {};
-
-                schemaItems[rd.uiExtId] = {
-                    rd_source: null,
-                    schema: null
-                };
-                doc = {
-                    //NOTE these rd_keys are different from the ones received
-                    //from the twitter API.
-                    rd_key: ["tweet", "out-" + (new Date()).getTime()],
-                    rd_schema_id: "rd.msg.outgoing.tweet",
-                    rd_schema_provider: rd.uiExtId,
-                    rd_schema_items: schemaItems,
-
-                    outgoing_state: 'outgoing',
-
-                    from: from,
-                    body: body
-                };
-
-                if (inReplyTo) {
-                    doc.in_reply_to = inReplyTo;
-                }
 
                 api().put({
-                    doc: doc
+                    doc: this._makeOutSchema({
+                        from: from,
+                        body: body,
+                        in_reply_to: inReplyTo
+                    })
                 })
                 .ok(dfd)
                 .error(dfd);
@@ -89,8 +102,23 @@ function (rd, dojo, api) {
             return dfd;
         },
 
-        retweet: function () {
-            
+        /**
+         * Sends a retweet request to the backend, which will then take it
+         * on to twitter.
+         * @param {String} retweetId the ID of the tweet that is being retweeted.
+         */
+        retweet: function (retweetId) {
+            var dfd = new dojo.Deferred(), schemaItems = {}, doc;
+
+            api().put({
+                doc: this._makeOutSchema({
+                    retweet_id: retweetId
+                })
+            })
+            .ok(dfd)
+            .error(dfd);
+
+            return dfd;
         }
     };
     

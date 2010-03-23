@@ -26,14 +26,19 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Conversation",
-["require", "rd", "dojo", "rd/api", "rdw/Conversation", "rdw/ext/twitter/Message",
- "text!rdw/ext/twitter/Conversation!html", "rdw/ext/twitter/Compose"],
-function (require, rd, dojo, api, Conversation, Message, template) {
+["require", "rd", "dojo", "dijit", "rd/api", "rdw/ext/twitter/api", "rdw/Conversation", "rdw/ext/twitter/Message",
+ "rd/friendly",
+ "text!rdw/ext/twitter/Conversation!html",
+ "text!rdw/ext/twitter/retweet!html",
+ "text!rdw/ext/twitter/retweetDone!html",
+ "rdw/ext/twitter/Compose"],
+function (require, rd, dojo, dijit, api, tapi, Conversation, Message, friendly,
+          template, retweetTemplate, retweetDoneTemplate) {
 
     /**
      * Groups twitter broadcast messages into one "conversation"
      */
-    return dojo.declare("rdw.ext.twitter.Conversation", [Conversation], {
+    var TwitterConversation = dojo.declare("rdw.ext.twitter.Conversation", [Conversation], {
         //The name of the constructor function (module) that should be used
         //to show individual messages.
         messageCtorName: "rdw/ext/twitter/Message",
@@ -130,6 +135,40 @@ function (require, rd, dojo, api, Conversation, Message, template) {
             //Clean up reply widget and stop the event from going higher.
             this.toggleReply({}, true);
             dojo.stopEvent(evt);
+        },
+
+        /**
+         * When retweet buttons are clicked, show a confirm before doing the work
+         */
+        onRetweetClick: function (evt) {
+            this.retweetButtonNode = evt.target;
+            dijit.showTooltip(rd.template(retweetTemplate, this), this.retweetButtonNode, ["below"]);
+        },
+
+        /**
+         * Does the actual retweet. It chooses the *first* message in the
+         * conversation and retweets that one.
+         */
+        retweet: function (evt) {
+            console.log("retweeted!");
+            var tweetId = this.conversation.messages[0].id[1];
+            tapi.retweet(tweetId).ok(this, function () {
+                dojo.place(rd.template(retweetDoneTemplate, {
+                    time: friendly.date(new Date()).friendly
+                }), this.domNode);
+                dojo.addClass(this.domNode, "retweet");
+            });
+
+            this.onRetweetClose(evt);
+        },
+
+        /**
+         * Closes the retweet confirmation tooltip
+         */
+        onRetweetClose: function (evt) {
+            dijit.hideTooltip(this.retweetButtonNode);
         }
     });
+
+    return TwitterConversation;
 });

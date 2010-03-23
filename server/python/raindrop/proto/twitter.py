@@ -47,6 +47,8 @@ from ..proc import base
 # So for now we are going with the blocking twitter package used via
 # deferToThread for all blocking operations...
 import twitter
+twitter.twitter_globals.POST_ACTIONS.append('retweet')
+
 import calendar, rfc822
 
 logger = logging.getLogger(__name__)
@@ -264,17 +266,25 @@ class TwitterAccount(base.AccountBase):
 
         _ = yield self._update_sent_state(self.src_doc, 'sending')
 
-        in_reply_to = None
-        if ('in_reply_to' in self.src_doc):
-            in_reply_to = self.src_doc['in_reply_to']
-
         # Do the actual twitter send.
         try:
-            status = yield threads.deferToThread(twitter_api.statuses.update,
+            if ('retweet_id' in self.src_doc):
+                # A retweet
+                retweet_id = str(self.src_doc['retweet_id'])
+                status = yield threads.deferToThread(twitter_api.statuses.retweet, id=retweet_id, source='Raindrop')
+            else:
+                # A status update or a reply
+                in_reply_to = None
+                if ('in_reply_to' in self.src_doc):
+                    in_reply_to = self.src_doc['in_reply_to']
+
+                status = yield threads.deferToThread(twitter_api.statuses.update,
                                    status=self.src_doc['body'], in_reply_to_status_id=in_reply_to, source='Raindrop')
 
             # If status has an ID, then it saved. Otherwise,
-            # assume an error
+            # assume an error. TODO: store the result as a real incoming
+            # schema? Probably will need to differentiate between tweets,
+            # replies and retweets in those cases?
             if ("id" in status):
                 # Success
                 _ = yield self._update_sent_state(self.src_doc, 'sent')
