@@ -65,6 +65,7 @@ function (require, rd, dojo, dijit, api, tapi, Conversation, Message, friendly,
             if (this.twitterReplyWidget) {
                 delete this.twitterReplyWidget;
             }
+            this.inherited("destroy", arguments);
         },
 
         /**
