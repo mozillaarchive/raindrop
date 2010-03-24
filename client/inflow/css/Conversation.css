@@ -260,14 +260,14 @@
   right: 0;
   float: right;
   width: auto;
-  visibility: hidden;
+  opacity: 0.5;
 }
 
 /*### end twitter actions ###*/
 
 .rdwConversation.rdwExtTwitterConversation:hover > .actions,
 .rdwConversation:hover > .actions {
-  visibility: visible;
+  opacity: 1;
 }
 
 .rdwConversationFullMessage > .message > .actions button,
