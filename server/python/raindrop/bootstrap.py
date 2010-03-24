@@ -414,6 +414,21 @@ def insert_default_docs(whateva, options):
     if updates:
         _ = yield dm.create_schema_items(updates)
 
+    #Use the dids to compare with UI extensions, if there is a UI extension
+    #that is in the couch, but not on disk, delete it. In the long run,
+    #this is hazardous because it may wipe out user-installed extensions,
+    #but our more immediate need is to remove cruft as we continue development.
+    #All the FE extensions are checked into the trunk at the moment.
+    results = yield dm.open_view(key=["rd.core.content", "schema_id", "rd.ext.uiext"], include_docs=True, reduce=False)
+    all_rows = results['rows']
+    deletes = []
+    for row in all_rows:
+        if not row['doc']['_id'] in dids:
+            logger.debug("deleting UI extension %s", row['doc']['rd_key']);
+            deletes.append(row['doc'])
+
+    if deletes:
+        _ = yield dm.delete_documents(deletes)
 
 @defer.inlineCallbacks
 def update_apps(whateva):
