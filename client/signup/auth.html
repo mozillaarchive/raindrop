@@ -52,6 +52,9 @@ body {
 a {
   color: #1a1a1a;
 }
+p {
+  margin-bottom: 10px;
+}
 
 input[type="text"].placeholder {
   color: #888;
@@ -173,7 +176,8 @@ button:hover {
         <div class="c1">
             <form action="/openid/login" id="login" method="POST">
                 <input type="hidden" name="identity" value="https://www.google.com/accounts/o8/id">
-                <p>Hey there. Before we can create your account we need to verify your identity.</p>
+                <p>Please sign in using your Google account before accessing Raindrop.</p>
+                <p>This is done for your protection, to make sure other people cannot see your messages in Raindrop.</p>
                 <button class="zero" onclick="document.byId('login').submit()">sign in using <div class="google"></div> account</button>
             </form>
         </div>
