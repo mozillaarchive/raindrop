@@ -75,7 +75,7 @@ function (require, rd, dojo, DeferredList, api) {
                                              /*attribute-name-string*/ attribute,
                                              /*value?*/ defaultValue) {
             //console.log("getValue", item, attribute, defaultValue);
-            return attribute in item ? item[attribute] : defaultValue;
+            return item && (attribute in item) ? item[attribute] : defaultValue;
         },
     
         getValues: function (/*item*/ item, /*attribute-name-string*/ attribute) {

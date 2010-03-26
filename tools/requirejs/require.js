@@ -9,9 +9,9 @@
 setTimeout: false, traceDeps: true, clearInterval: false, self: false,
 setInterval: false */
 
-//>>excludeStart("dojoConvert", pragmas.dojoConvert);
+//>>includeStart("useStrict", pragmas.useStrict);
 "use strict";
-//>>excludeEnd("dojoConvert");
+//>>includeEnd("useStrict");
 
 var require;
 (function () {
@@ -19,7 +19,7 @@ var require;
     var version = "0.8.0",
             empty = {}, s,
             i, defContextName = "_", contextLoads = [],
-            scripts, script, rePkg, src, m, cfg,
+            scripts, script, rePkg, src, m, cfg, setReadyState,
             readyRegExp = /^(complete|loaded)$/,
             isBrowser = !!(typeof window !== "undefined" && navigator && document),
             ostring = Object.prototype.toString, scrollIntervalId;
@@ -67,10 +67,14 @@ var require;
         if (plugin) {
             plugin[obj.name].apply(null, obj.args);
         } else {
-            //Load the module and add the call to waitin queue.
-            context.defined.require(["require/" + prefix]);
+            //Put the call in the waiting call BEFORE requiring the module,
+            //since the require could be synchronous in some environments,
+            //like builds
             waiting = s.plugins.waiting[prefix] || (s.plugins.waiting[prefix] = []);
             waiting.push(obj);
+
+            //Load the module
+            context.defined.require(["require/" + prefix]);
         }
     }
     //>>excludeEnd("requireExcludePlugin");
@@ -1037,23 +1041,27 @@ var require;
     if (require.isBrowser && (!s.baseUrl || !s.head)) {
         //Figure out baseUrl. Get it from the script tag with require.js in it.
         scripts = document.getElementsByTagName("script");
-        //>>includeStart("jquery", pragmas.jquery);
-        rePkg = /(requireplugins-|require-)?jquery[\-\d\.]*(min)?\.js(\W|$)/i;
-        //>>includeEnd("jquery");
+        if (cfg && cfg.baseUrlMatch) {
+            rePkg = cfg.baseUrlMatch;
+        } else {
+            //>>includeStart("jquery", pragmas.jquery);
+            rePkg = /(requireplugins-|require-)?jquery[\-\d\.]*(min)?\.js(\W|$)/i;
+            //>>includeEnd("jquery");
 
-        //>>includeStart("dojoConvert", pragmas.dojoConvert);
-        rePkg = /dojo\.js(\W|$)/i;
-        //>>includeEnd("dojoConvert");
+            //>>includeStart("dojoConvert", pragmas.dojoConvert);
+            rePkg = /dojo\.js(\W|$)/i;
+            //>>includeEnd("dojoConvert");
 
-        //>>excludeStart("dojoConvert", pragmas.dojoConvert);
+            //>>excludeStart("dojoConvert", pragmas.dojoConvert);
 
-        //>>excludeStart("jquery", pragmas.jquery);
-        rePkg = /(allplugins-)?require\.js(\W|$)/i;
-        //>>excludeEnd("jquery");
+            //>>excludeStart("jquery", pragmas.jquery);
+            rePkg = /(allplugins-)?require\.js(\W|$)/i;
+            //>>excludeEnd("jquery");
 
-        //>>excludeEnd("dojoConvert");
+            //>>excludeEnd("dojoConvert");
+        }
 
-        for (i = scripts.length - 1; (script = scripts[i]); i--) {
+        for (i = scripts.length - 1; i > -1 && (script = scripts[i]); i--) {
             //Set the "head" where we can append children by
             //using the script's parent.
             if (!s.head) {
@@ -1085,6 +1093,17 @@ var require;
             if (scrollIntervalId) {
                 clearInterval(scrollIntervalId);
             }
+
+            //Part of a fix for FF < 3.6 where readyState was not set to
+            //complete so libraries like jQuery that check for readyState
+            //after page load where not getting initialized correctly.
+            //Original approach suggested by Andrea Giammarchi:
+            //http://webreflection.blogspot.com/2009/11/195-chars-to-help-lazy-loading.html
+            //see other setReadyState reference for the rest of the fix.
+            if (setReadyState) {
+                document.readyState = "complete";
+            }
+
             require.callReady();
         }
     };
@@ -1123,6 +1142,11 @@ var require;
             //it knows about DOMContentLoaded.
             document.addEventListener("DOMContentLoaded", require.pageLoaded, false);
             window.addEventListener("load", require.pageLoaded, false);
+            //Part of FF < 3.6 readystate fix (see setReadyState refs for more info)
+            if (!document.readyState) {
+                setReadyState = true;
+                document.readyState = "loading";
+            }
         } else if (window.attachEvent) {
             window.attachEvent("onload", require.pageLoaded);
 

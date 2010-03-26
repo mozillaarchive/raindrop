@@ -26,7 +26,7 @@
 "use strict";
 
 (function () {
-    require.rdCouch = {
+    var rdCouch = {
         safeProps: {
             "id": 1, //technically not view compatible, but desirable for our server API
             "message_limit": 1, // also not part of views, but part of our API.
@@ -81,7 +81,7 @@
         xhr: function (args, callback) {
             var url = args.url, xhr, bodyData = args.bodyData || null,
                 content = args.content || {}, empty = {}, prop, method, value,
-                safe = require.rdCouch.safeProps;
+                safe = rdCouch.safeProps;
 
             //Pull out CouchDB-safe parameters.
             for (prop in args) {
@@ -115,7 +115,7 @@
             //convert content to an URL.
             //Note that even for POST urls to couch, couch only wants certain
             //things in the POST, but expects other params in the querystring.
-            url = url + (url.indexOf("?") === -1 ? "?" : "&") + require.rdCouch.objectToQuery(content);
+            url = url + (url.indexOf("?") === -1 ? "?" : "&") + rdCouch.objectToQuery(content);
             //You make the call!
             xhr = new XMLHttpRequest();
             xhr.open(method, url, true);
@@ -155,9 +155,9 @@
                 rdCouchWaiting: []
             });
 
-            //Set up the require.rdCouch as a module in the context,
+            //Set up the rdCouch as a module in the context,
             //so its methods can be used by modules.
-            context.defined["require/rdCouch"] = require.rdCouch;
+            context.defined["require/rdCouch"] = rdCouch;
         },
 
         /**
@@ -191,7 +191,7 @@
 
                 //Set up the success action and make the XHR call.
                 context.loaded[name] = false;
-                require.rdCouch.xhr(args, function (obj) {
+                rdCouch.xhr(args, function (obj) {
                     context.rdCouch[name] = obj;
                     context.loaded[name] = true;
                     require.checkLoaded(contextName);
@@ -227,4 +227,6 @@
             }
         }
     });
+
+    require.def("require/rdCouch", rdCouch);
 }());

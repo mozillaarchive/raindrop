@@ -35,12 +35,15 @@ var require;
         backSlashRegExp = /\\/g,
         cssImportRegExp = /\@import\s+(url\()?\s*([^);]+)\s*(\))?([\w, ]*)(;)?/g,
         cssUrlRegExp = /\url\(\s*([^\)]+)\s*\)?/g,
-        context, doClosure, requireContents, specified, delegate, baseConfig, override,
+        context, doClosure, requireContents, pluginContents, pluginBuildFileContents,
+        currContents, needPause, reqIndex, specified, delegate, baseConfig, override,
         JSSourceFilefromCode, placeHolderModName, url, builtRequirePath,
 
         //Set up defaults for the config.
         config = {
-            pragmas: {},
+            pragmas: {
+                useStrict: true
+            },
             paths: {},
             optimize: "closure",
             optimizeCss: "standard.keepLines",
@@ -422,6 +425,7 @@ var require;
 
     load(requireBuildPath + "/jslib/logger.js");
     load(requireBuildPath + "/jslib/fileUtil.js");
+    load(requireBuildPath + "/jslib/parse.js");
 
     //Find the build file, and make sure it exists.
     buildFile = new java.io.File(args[1]).getAbsoluteFile();
@@ -569,11 +573,7 @@ var require;
             layer = layers[layerName];
 
             //Reset some state set up in requirePatch.js
-            require.buildPathMap = {};
-            require.buildFileToModule = {};
-            require.buildFilePaths = [];
-            require.loadedFiles = {};
-            require.modulesWithNames = {};
+            require._buildReset();
 
             logger.trace("\nFiguring out dependencies for: " + layerName);
             deps = [layerName];
@@ -599,9 +599,9 @@ var require;
                     url = require.buildPathMap[prop];
                     if (!require.loadedFiles[url]) {
                         require.buildFileToModule[url] = prop;
-                        //Only add require plugins to build file paths if
-                        //require is not included in the layer
-                        if (prop.indexOf("require/") !== 0 || !layer.includeRequire) {
+                        //Do not add plugins to build file paths since they will
+                        //be added later, near the top of the layer.
+                        if (prop.indexOf("require/") !== 0) {
                             require.buildFilePaths.push(url);
                         }
                         require.loadedFiles[url] = true;
@@ -619,27 +619,58 @@ var require;
 
             //If the file wants require.js added to the layer, add it now
             requireContents = "";
+            pluginContents = "";
+            pluginBuildFileContents = "";
             if (layer.includeRequire) {
                 requireContents = this.processPragmas(config.requireUrl, fileUtil.readFile(config.requireUrl), context.config);
+                if (require.buildFilePaths.length) {
+                    requireContents += "require.pause();\n";
+                }
                 buildFileContents += "require.js\n";
-    
-                //Check for any plugins loaded.
-                specified = context.specified;
-                for (prop in specified) {
-                    if (specified.hasOwnProperty(prop)) {
-                        if (prop.indexOf("require/") === 0) {
-                            path = require.buildPathMap[prop];
-                            buildFileContents += path.replace(config.dir, "") + "\n";
-                            requireContents += this.processPragmas(path, fileUtil.readFile(path), context.config);
-                        }
+            }
+
+            //Check for any plugins loaded, and hoist to the top, but below
+            //the require() definition.
+            specified = context.specified;
+            for (prop in specified) {
+                if (specified.hasOwnProperty(prop)) {
+                    if (prop.indexOf("require/") === 0) {
+                        path = require.buildPathMap[prop];
+                        pluginBuildFileContents += path.replace(config.dir, "") + "\n";
+                        pluginContents += this.processPragmas(path, fileUtil.readFile(path), context.config);
                     }
                 }
+            }
+            if (layer.includeRequire) {
+                //require.js will be included so the plugins will appear right after it.
+                buildFileContents += pluginBuildFileContents;
+            }
+
+            //If there was an existing file with require in it, hoist to the top.
+            if (!layer.includeRequire && require.existingRequireUrl) {
+                reqIndex = require.buildFilePaths.indexOf(require.existingRequireUrl);
+                if (reqIndex !== -1) {
+                    require.buildFilePaths.splice(reqIndex, 1);
+                }
+                require.buildFilePaths.unshift(require.existingRequireUrl);
             }
 
             //Write the build layer to disk, and build up the build output.
             fileContents = "";
             for (i = 0; (path = require.buildFilePaths[i]); i++) {
-                fileContents += fileUtil.readFile(path);
+                //Add the contents but remove any pragmas and require.pause/resume calls.
+                currContents = this.processPragmas(path, fileUtil.readFile(path), context.config);
+                needPause = resumeRegExp.test(currContents);
+
+                fileContents += currContents;
+
+                //If the file contents had a require.resume() we need to now pause
+                //dependency resolution for the rest of the files. Multiple require.pause()
+                //calls are OK.
+                if (needPause) {
+                    fileContents += "require.pause();\n";
+                }
+
                 buildFileContents += path.replace(config.dir, "") + "\n";
                 //Some files may not have declared a require module, and if so,
                 //put in a placeholder call so the require does not try to load them
@@ -649,22 +680,27 @@ var require;
                 if (placeHolderModName && !require.modulesWithNames[placeHolderModName]) {
                     fileContents += 'require.def("' + placeHolderModName + '", function(){});\n';
                 }
+
+                //If we have plugins but are not injecting require.js,
+                //then need to place the plugins after the require definition,
+                //if it was found.
+                if (require.existingRequireUrl === path && !layer.includeRequire) {
+                    fileContents += pluginContents;
+                    buildFileContents += pluginBuildFileContents;
+                    pluginContents = "";
+                    fileContents += "require.pause();\n";
+                }
             }
 
-            //Remove any require.resume calls, then add one at the end of
-            //the whole file, but only if there were files written out, besides
-            //the require.js and plugin files. Include a require.pause() call at
-            //the top, but in some cases when require.js is not added to the file
-            //in this build pass, it may already be there. So always add it with a
-            //guard around the pause() call. Multiple pause() calls are OK, but
-            //there should only be one resume() call at the end of the file.
+            //Resume dependency resolution
             if (require.buildFilePaths.length) {
-                fileContents = fileContents.replace(resumeRegExp, "");
-                fileContents = "if (typeof require !== 'undefined' && require.pause) {require.pause();}\n" + fileContents + "\nrequire.resume();\n";
+                fileContents += "\nrequire.resume();\n";
             }
 
             //Add the require file contents to the head of the file.
-            fileContents = (requireContents ? requireContents + "\n" : "") + fileContents;
+            fileContents = (requireContents ? requireContents + "\n" : "") +
+                           (pluginContents ? pluginContents + "\n" : "") +
+                           fileContents;
 
             fileUtil.saveUtf8File(layer._buildPath, fileContents);
         }

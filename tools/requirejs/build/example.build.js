@@ -58,8 +58,23 @@ require(
         //mode to minify the code.
         //- "closure.keepLines": Same as closure option, but keeps line returns
         //in the minified files.
+        //- "none": no minification will be done.
         optimize: "closure",
-        
+
+        //Allow CSS optimizations. Allowed values:
+        //- "standard": @import inlining, comment removal and line returns.
+        //Removing line returns may have problems in IE, depending on the type
+        //of CSS.
+        //- "standard.keepLines": like "standard" but keeps line returns.
+        //- "none": skip CSS optimizations.
+        optimizeCss: "standard.keepLines",
+
+        //If optimizeCss is in use, a list of of files to ignore for the @import
+        //inlining. The value of this option should be a comma separated list
+        //of CSS file names to ignore. The file names should match whatever
+        //strings are used in the @import calls.
+        cssImportIgnore: null,
+
         //Inlines the text for any text! dependencies, to avoid the separate
         //async XMLHttpRequest calls to load those dependencies.
         inlineText: true,
@@ -73,6 +88,12 @@ require(
         //is evaluated to see if the code between the Start and End pragma
         //lines should be included or excluded.
         pragmas: {
+            //Should "use strict"; be included in the RequireJS files.
+            //You may want to turn this off for legacy code. This is to
+            //kick the JS interpreter in to ES5 strict mode which does not like
+            //some constructs, like "with". Default is true.
+            useStrict: true,
+
             //Indicates require will be included with jquery.
             jquery: true,
             //Remove require.modify() code
@@ -92,11 +113,11 @@ require(
 
         //If execModules is true, each script is execute in
         //full to find the require calls/dependencies, but the code is executed
-        //in the Rhino JavaScript environment. Set this value to false
-        //if the code does not follow the strict require pattern of wrapping all
-        //code in a require callback. If you are using jQuery, you should set
-        //this value explicitly to false.
-        execModules: true,
+        //in the Rhino JavaScript environment. Set this value to true only
+        //if the code follows the strict require pattern of wrapping all
+        //code in a require callback. If you are using jQuery, Prototype or MooTools
+        //you should not set this value to true. Default is false.
+        execModules: false,
 
         //For build profiles that contain more than one require() call for build
         //layers, normally the first call's require() configuration options are used

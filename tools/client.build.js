@@ -4,10 +4,10 @@ require(
         baseUrl: "./",
         requireUrl: "requirejs/require.js",
         dir: "clientbuild",
-        execModules: false,
+        locale: "en-us",
 
         //Uncomment the next line to turn off Closure Compiler minification.
-        //optimize: "none",
+        optimize: "none",
 
         //Paths are relative to baseUrl.
         paths: {
@@ -19,7 +19,12 @@ require(
             "rd": "lib/rd",
             "rdw": "lib/rdw",
             "couch": "lib/couch",
+            "require": "../requirejs/require",
             "require/rdCouch": "lib/require/rdCouch"
+        },
+
+        pragmas: {
+            useStrict: false
         }
     },
     "dojo",
