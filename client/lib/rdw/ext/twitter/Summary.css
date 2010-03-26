@@ -65,6 +65,52 @@
 .rdwExtTwitterCompose .twitterCount {
   color: #888888;
   font-size: 12px;
-  vertical-align: text-bottom;
+  vertical-align: middle;
   font-weight: bold;
+}
+
+/*### retweets ###*/
+
+.dijitTooltipContainer {
+  background-color: #fafafa;
+  border: 1px solid #ccc;
+  padding: 10px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  font-size: 12px;
+  color: #1a1a1a;
+  position: relative;
+  left: -236px;
+  margin: 10px 0 0 0;
+}
+
+.dijitTooltipContainer .arrowBorder {
+  width:0;
+  height:0;
+  border-width:8px;
+  border-color: transparent transparent #ccc transparent;
+  border-style: solid;
+  position: absolute;
+  right: 15px;
+  top: -16px;
+}
+
+.dijitTooltipContainer .arrow {
+  width:0;
+  height:0;
+  border-width:8px;
+  border-color: transparent transparent #fafafa transparent;
+  border-style: solid;
+  position: absolute;
+  right: 15px;
+  top: -15px;
+}
+
+.retweetDone {
+  position: relative;
+  font-size: 10px;
+  color: #888;
+  display: block;
+  width: 100%;
+  padding: 5px;
 }
