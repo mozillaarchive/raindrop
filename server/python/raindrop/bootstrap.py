@@ -566,7 +566,7 @@ def check_accounts(whateva, config=None):
         # Our account objects know how to turn this config info into the
         # 'identity' list stored with the accounts - so get that.
         try:
-            acct = proto.protocols[acct_info['proto']](dm, acct_info)
+            acct = proto.protocols[acct_info['proto']](dm, acct_info_all)
             ids = acct.get_identities()
             for idid in ids:
                 all_idids.add(dm.hashable_key(idid))
