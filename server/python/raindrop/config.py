@@ -35,7 +35,13 @@ class Config(object):
   def __init__(self, filename=None):
     if not filename:
       filename = "~/.raindrop"
-    self.filename = os.path.expanduser(filename)
+    filename = os.path.expanduser(filename)
+    # resolve links now so that when we save back to the file we don't
+    # clobber the link but instead update the new file.
+    if os.path.islink(filename):
+      filename = os.readlink(filename)
+    self.filename = filename
+
     self.parser = ConfigParser.SafeConfigParser()
 
     self.couches = {'local': self.COUCH_DEFAULTS.copy()}
