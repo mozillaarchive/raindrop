@@ -155,8 +155,9 @@ class AccountBase(Rat):
     """Return a sequence of 'identity ids' for each identity associated with
     this account.
 
-    This is just a helper for the 'bootstrap' process - the 'official'
-    location of this list is inside the couch doc holding the account info.
+    The 'official' location of this list is inside the couch doc holding the
+    account info - This is just a helper for the 'bootstrap' process to
+    populate that list.
     """
     raise NotImplementedError
 
