@@ -36,6 +36,12 @@ function (require, rd, dojo, traverse, api, pref) {
         enabled: false,
         dbPath: '/raindrop-metrics/',
         id: "rdw/ext/metrics:inflow",
+
+        fetched: false,
+        onFetched: function () {
+            fetched = true;
+        },
+
         deleteDb: function () {
             dojo.xhrDelete({
                 url: this.dbPath
@@ -123,61 +129,26 @@ function (require, rd, dojo, traverse, api, pref) {
         //Register extension for API calls.
         rd.applyExtension("rdw/ext/metrics", "rd/api", {
             after: {
-                serverApi: function (url, args) {
-                    if (metrics.enabled) {
+                serverApi: function (urlObj, args) {
+                    if (metrics.enabled || !metrics.fetched) {
                         //Only track broadcast calls at the moment
                         //TODO: this should only be notification broadcasts, not any broadcast,
                         //but our data model story is incomplete for notifications right now.
-                        if (url === 'inflow/conversations/broadcast') {
+                        if (urlObj.url === 'inflow/grouping/summary') {
                             //Get the deferred returned by the serverApi call
                             var dfd = arguments.callee.targetReturn;
-                            dfd.ok(function (conversations) {
-                                //timeout to avoid blocking other things
-                                if (conversations && conversations.length) {
-                                    setTimeout(function () {
-                                        var totals = [], count = 0, oldKey = "", key, i,
-                                            froms = metrics.explode(conversations, function (conv) {
-                                            return metrics.explode(conv.messages, function (msg) {
-                                                var body = msg.schemas["rd.msg.body"],
-                                                    from = "", idx;
-                                                if (body && body.from && body.from[0] === "email") {
-                                                    from = body.from[1];
-                                                    idx = from.indexOf("@");
-                                                    if (idx !== -1) {
-                                                        return [from.substring(idx + 1, from.length)];
-                                                    }
-                                                }
-                                                return null;
-                                            });
-                                        });
-
-                                        froms.sort();
-
-                                        for (i = 0; i < froms.length; i++) {
-                                            key = froms[i];
-                                            if (!key) {
-                                                continue;
-                                            }
-                                            if (key !== oldKey) {
-                                                if (count) {
-                                                    totals.push(count);
-                                                }
-                                                oldKey = key;
-                                                count = 1;
-                                            } else {
-                                                count += 1;
-                                            }
-                                        }
-                                        if (count) {
-                                            totals.push(count);
-                                        }
-
+                            dfd.ok(function (summaries) {
+                                //timeout to avoid blocking other things,
+                                //and allow metrics prefs to be fetched.
+                                //Not very robust, but OK for now.
+                                setTimeout(function () {
+                                    if (metrics.enabled) {
                                         metrics.send({
-                                            type: "broadcast.domain.totalmessages",
-                                            totals: totals
+                                            type: "groupings.total",
+                                            total: (summaries && summaries.length) || 0
                                         });
-                                    }, 100);
-                                }
+                                    }
+                                }, 100);
                             });
                         }
                     }
@@ -231,11 +202,13 @@ function (require, rd, dojo, traverse, api, pref) {
                 });
             } else {
                 metrics.enabled = prefDoc.enabled;
+                metrics.onFetched();
             }
         })
         .error(function (err) {
             //If an error, just assume disabled.
             metrics.enabled = false;
+            metrics.onFetched();
         });
     });
 
