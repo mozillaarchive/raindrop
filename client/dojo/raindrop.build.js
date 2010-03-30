@@ -1,0 +1,50 @@
+//A build file that builds require in different configurations via pragmas.
+({
+    baseUrl: "./dojorequire",
+    locale: "en-us",
+    optimize: "none",
+    out: "raindropbuild/dojo.js",
+    pragmas: {
+        useStrict: false,
+        dojoConvert: true
+    },
+
+    name: "dojo",
+    includeRequire: true,
+    include: [
+        "require/text",
+        "require/i18n",
+        "dojo/string",
+        "dojo/dnd/Source",
+        "dojo/dnd/Selector",
+        "dojo/dnd/common",
+        "dojo/dnd/Container",
+        "dojo/dnd/Manager",
+        "dojo/dnd/autoscroll",
+        "dojo/dnd/Avatar",
+        "dojo/cache",
+        "dojo/io/script",
+        "dojo/regexp",
+        "dijit/dijit",
+        "dojo/data/ItemFileReadStore",
+        "dojox/encoding/base64",
+        "dojo/parser",
+        "dojo/DeferredList",
+        "dojox/encoding/digests/MD5",
+        "dojox/date/posix",
+        "dojo/date",
+        "dojo/date/locale",
+        "dojo/fx",
+        "dojox/fx/_core",
+        "dojox/fx/scroll",
+        "dijit/TitlePane",
+        "dijit/Tooltip",
+        "dijit/form/FilteringSelect",
+        "dijit/form/ComboBox",
+        "dijit/layout/ContentPane",
+        "dojo/html",
+        "dijit/Dialog",
+        "dojo/NodeList-traverse",
+        "dojo/NodeList-manipulate"
+    ]
+})
