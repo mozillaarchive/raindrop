@@ -509,6 +509,9 @@ var require;
             for (i = 0; (dep = deps[i]); i++) {
                 //If it is a string, then a plain dependency
                 if (typeof dep === "string") {
+if (dep === "dijit") {
+    debugger;
+}
                     if (!context.specified[dep]) {
                         context.specified[dep] = true;
 

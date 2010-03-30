@@ -251,50 +251,6 @@ def install_client_files(whateva, options):
             dfd.addErrback(_update_failed, f)
             dl.append(dfd)
 
-    # Unpack dojo and install it if necessary. Only do the work if the
-    # zip file has changed since the last time dojo was installed, or
-    # if there is no dojo couch doc.
-    def _maybe_update_dojo(design_doc):
-        fp = Fingerprinter()
-
-        # we cannot go in a zipped egg...
-        root_dir = path_part_nuke(model.__file__, 4)
-        client_dir = get_client_dir()
-        zip_path = os.path.join(client_dir, 'dojo.zip')
-        finger = fp.get_finger('client/dojo.zip')
-        # .zip files might be large, so update in chunks...
-        with open(zip_path, 'rb') as f:
-            for chunk in f:
-                finger.update(chunk)
-
-        new_prints = fp.get_prints()
-        if options.force or design_doc.get('fingerprints') != new_prints:
-            logger.info("updating dojo...")
-            dojo_top_dir = tempfile.mktemp('-raindrop-temp')
-            os.mkdir(dojo_top_dir)
-            dojo_dir = os.path.join(dojo_top_dir, "dojo")
-            try:
-                # unpack dojo
-                extract(zip_path, dojo_top_dir)
-                # insert attachments into couch doc
-                attachments = design_doc['_attachments'] = {}
-                _check_dir(dojo_dir, "", attachments, Fingerprinter())
-            finally:
-                shutil.rmtree(dojo_top_dir)
-
-            # save couch doc
-            design_doc['fingerprints'] = new_prints
-            return d.saveDoc(design_doc, "dojo")
-        else:
-            return None
-
-    #Add the dojo doc checking to the deferred list.
-    dfd = d.openDoc("dojo")
-    dfd.addCallbacks(_opened_ok, _open_not_exists)
-    dfd.addCallback(_maybe_update_dojo)
-    dfd.addErrback(_update_failed, "dojo")
-    dl.append(dfd)
-
     return defer.DeferredList(dl)
 
 @defer.inlineCallbacks
