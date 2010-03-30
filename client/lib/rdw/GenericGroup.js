@@ -27,7 +27,7 @@
 
 require.def("rdw/GenericGroup",
 ["require", "rd", "dojo", "dojo/string", "rd/api", "rdw/_Base", "rdw/fx/wiper",
- "text!rdw/templates/GenericGroup!html",
+ "text!rdw/templates/GenericGroup.html",
  "rdw/conversation/Broadcast"],
 function (require, rd, dojo, string, api, Base, wiper, template) {
     /**

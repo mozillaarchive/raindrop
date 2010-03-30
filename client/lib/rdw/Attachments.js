@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/Attachments",
-["rd", "dojo", "dojox", "rdw/_Base", "text!rdw/templates/Attachments!html", "dojox/fx/scroll"], function (
+["rd", "dojo", "dojox", "rdw/_Base", "text!rdw/templates/Attachments.html", "dojox/fx/scroll"], function (
   rd,   dojo,   dojox,   Base,        template,                              fxScroll) {
 
     //Reassign fxScroll to be the real function, that module does something non-standard.

@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Message",
-["require", "rd", "dojo", "rdw/Message", "rd/contact", "text!rdw/ext/twitter/Message!html"],
+["require", "rd", "dojo", "rdw/Message", "rd/contact", "text!rdw/ext/twitter/Message.html"],
 function (require, rd, dojo, Message, contact, template) {
 
     return dojo.declare("rdw.ext.twitter.Message", [Message], {

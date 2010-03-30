@@ -28,7 +28,7 @@ location: true */
 
 require.def("extender/BackEndEditor",
 ["require", "rd", "dojo", "dijit", "couch", "rdw/_Base", "dojox/encoding/base64",
-  "text!extender/templates/BackEndEditor!html"],
+  "text!extender/templates/BackEndEditor.html"],
 function (require, rd, dojo, dijit, couch, Base, base64, template) {
 
     //Uses script-added styles to allow loading on demand at the cost of a

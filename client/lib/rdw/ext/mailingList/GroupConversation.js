@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/mailingList/GroupConversation",
-["rd", "dojo", "rdw/_Base", "text!rdw/ext/mailingList/GroupConversation!html"],
+["rd", "dojo", "rdw/_Base", "text!rdw/ext/mailingList/GroupConversation.html"],
 function (rd, dojo, Base, template) {
 
     return dojo.declare("rdw.ext.mailingList.GroupConversation", [Base], {

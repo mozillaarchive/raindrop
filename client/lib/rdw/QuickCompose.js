@@ -27,7 +27,7 @@
 
 require.def("rdw/QuickCompose",
 ["require", "rd", "dojo", "rdw/_Base", "dijit/form/FilteringSelect", "rdw/DataSelector",
- "rd/api", "rd/api/me", "text!rdw/templates/QuickCompose!html"],
+ "rd/api", "rd/api/me", "text!rdw/templates/QuickCompose.html"],
 function (require, rd, dojo, Base, FilteringSelect, DataSelector, api, me, template) {
 
     return dojo.declare("rdw.QuickCompose", [Base], {

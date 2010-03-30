@@ -27,7 +27,7 @@
 
 require.def("rdw/Conversation",
         ["require", "rd", "dojo", "dojo/string", "rd/api", "rd/api/identity", "rd/friendly",
-         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation!html", "text!rdw/templates/impersonal!html"],
+         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation.html", "text!rdw/templates/impersonal.html"],
 function (require,   rd,   dojo,   string,        api,      identity,          friendly,
           hyperlink,      Base,        Message,       placeholder,       template,          impersonalTemplate) {
 

@@ -27,7 +27,7 @@
 require.def("rdw/conversation/Broadcast",
 ["rd", "dojo", "dojo/string", "rdw/Conversation", "rd/accountIds",
  "rdw/conversation/BroadcastMessage",
- "text!rdw/conversation/templates/Broadcast!html"],
+ "text!rdw/conversation/templates/Broadcast.html"],
 function (rd, dojo, string, Conversation, accountIds, BroadcastMessage, template) {
     var Broadcast, idMap = {}, i, id;
 

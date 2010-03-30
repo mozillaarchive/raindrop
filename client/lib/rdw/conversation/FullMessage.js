@@ -25,7 +25,7 @@
 "use strict";
 
 require.def("rdw/conversation/FullMessage",
-["dojo", "rdw/Message", "text!rdw/conversation/templates/FullMessage!html"],
+["dojo", "rdw/Message", "text!rdw/conversation/templates/FullMessage.html"],
 function (dojo, Message, template) {
     return dojo.declare("rdw.conversation.FullMessage", [Message], {
         templateString: template,

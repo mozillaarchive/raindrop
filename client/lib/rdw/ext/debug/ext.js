@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/debug/ext",
-["require", "rd", "dojo", "dijit", "text!rdw/ext/debug/template!html"], function (
+["require", "rd", "dojo", "dijit", "text!rdw/ext/debug/template.html"], function (
   require,   rd,   dojo, dijit, template) {
 
     rd.addStyle("rdw/ext/debug/ext");

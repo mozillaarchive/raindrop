@@ -28,7 +28,7 @@ confirm: false, location: true */
 
 require.def("extender/Editor",
 ["require", "rd", "dojo", "dijit", "rdw/_Base", "rd/api", "extender/util",
- "text!extender/templates/Editor!html"],
+ "text!extender/templates/Editor.html"],
 function (require, rd, dojo, dijit, Base, api, util, template) {
 
     //Uses script-added styles to allow loading on demand at the cost of a

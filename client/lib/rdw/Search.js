@@ -27,7 +27,7 @@
 
 require.def("rdw/Search",
 ["rd", "dojo", "rdw/_Base", "rdw/DataSelector", "rd/api", "rd/api/pref",
- "text!rdw/templates/Search!html"],
+ "text!rdw/templates/Search.html"],
 function (rd, dojo, Base, DataSelector, api, pref, template) {
 
     return dojo.declare("rdw.Search", [Base], {

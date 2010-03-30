@@ -27,7 +27,7 @@
 
 require.def("settings/Account",
 ["require", "dojo", "rd", "rd/api", "dijit/_Widget", "dijit/_Templated",
- "text!settings/AccountSimple!html"],
+ "text!settings/AccountSimple.html"],
 function (require,   dojo,   rd,   api,      Widget,          Templated, template) {
 
     return dojo.declare("settings.Account", [Widget, Templated], {

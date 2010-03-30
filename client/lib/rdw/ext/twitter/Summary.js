@@ -27,7 +27,7 @@
 
 require.def("rdw/ext/twitter/Summary",
         ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script",
-         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/ext/twitter/Compose", "text!rdw/ext/twitter/Summary!html"],
+         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/ext/twitter/Compose", "text!rdw/ext/twitter/Summary.html"],
 function (require,   rd,   dojo,   Base,        accountIds,      script,
           twitterApi,            placeholder,       Compose,         template) {
 

@@ -27,7 +27,7 @@
 
 require.def("rdw/Message",
 ["require", "rd", "dojo", "rdw/_Base", "rd/friendly", "rd/hyperlink",
- "rd/api", "rdw/Attachments", "text!rdw/templates/Message!html", "text!rdw/templates/MessagePhotoAttach!html"], function (
+ "rd/api", "rdw/Attachments", "text!rdw/templates/Message.html", "text!rdw/templates/MessagePhotoAttach.html"], function (
   require,   rd,   dojo,   Base,        friendly,      hyperlink,
   api,      Attachments,       template,                          photoAttachTemplate) {
 

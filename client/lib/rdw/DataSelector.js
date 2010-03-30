@@ -27,7 +27,7 @@
 
 require.def("rdw/DataSelector",
 ["require", "rd", "dojo", "dojo/DeferredList", "rdw/_Base", "i18n!rdw/nls/i18n", "rd/MegaviewStore", "rdw/GoComboBox",
- "text!rdw/templates/DataSelector!html"],
+ "text!rdw/templates/DataSelector.html"],
 function (require, rd, dojo, DeferredList, Base, i18n, MegaviewStore, GoComboBox, template) {
 
     return dojo.declare("rdw.DataSelector", [Base], {

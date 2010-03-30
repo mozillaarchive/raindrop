@@ -102,8 +102,8 @@ var require;
      */
     require.def = function (name, deps, callback, contextName) {
         var config = null, context, newContext, contextRequire, loaded,
-            canSetContext, prop, newLength,
-            mods, pluginPrefix, paths, index;
+            canSetContext, prop, newLength, outDeps,
+            mods, pluginPrefix, paths, index, i;
 
         //Normalize the arguments.
         if (typeof name === "string") {
@@ -268,6 +268,17 @@ var require;
             //then return.
             if (!deps) {
                 return require;
+            }
+        }
+
+        //Normalize dependency strings: need to determine if they have
+        //prefixes and to also normalize any relative paths. Replace the deps
+        //array of strings with an array of objects.
+        if (deps) {
+            outDeps = deps;
+            deps = [];
+            for (i = 0; i < outDeps.length; i++) {
+                deps[i] = require.splitPrefix(outDeps[i], name);
             }
         }
 
@@ -467,7 +478,7 @@ var require;
         //Figure out if all the modules are loaded. If the module is not
         //being loaded or already loaded, add it to the "to load" list,
         //and request it to be loaded.
-        var i, dep, index, depPrefix;
+        var i, dep, index, depPrefix, split;
 
         if (pluginPrefix) {
                         callPlugin(pluginPrefix, context, {
@@ -476,27 +487,18 @@ var require;
             });
                     } else {
             for (i = 0; (dep = deps[i]); i++) {
-                //If it is a string, then a plain dependency
-                if (typeof dep === "string") {
-                    if (!context.specified[dep]) {
-                        context.specified[dep] = true;
+                if (!context.specified[dep.fullName]) {
+                    context.specified[dep.fullName] = true;
 
-                        //If a plugin, call its load method.
-                        index = dep.indexOf("!");
-                        if (index !== -1) {
-                                                        depPrefix = dep.substring(0, index);
-                            dep = dep.substring(index + 1, dep.length);
-
-                            callPlugin(depPrefix, context, {
-                                name: "load",
-                                args: [dep, context.contextName]
-                            });
-                                                    } else {
-                            require.load(dep, context.contextName);
-                        }
+                    //If a plugin, call its load method.
+                    if (dep.prefix) {
+                                                callPlugin(dep.prefix, context, {
+                            name: "load",
+                            args: [dep.name, context.contextName]
+                        });
+                                            } else {
+                        require.load(dep.name, context.contextName);
                     }
-                } else {
-                    throw new Error("Unsupported non-string dependency: " + dep);
                 }
             }
         }
@@ -625,6 +627,74 @@ var require;
 
     require.jsExtRegExp = /\.js$/;
 
+    
+    /**
+     * Given a relative module name, like ./something, normalize it to
+     * a real name that can be mapped to a path.
+     * @param {String} name the relative name
+     * @param {String} baseName a real name that the name arg is relative
+     * to.
+     * @returns {String} normalized name
+     */
+    require.normalizeName = function (name, baseName) {
+        //Adjust any relative paths.
+        var part;
+        if (name.charAt(0) === ".") {
+            //Convert baseName to array, and lop off the last part,
+            //so that . matches that "directory" and not name of the baseName's
+            //module. For instance, baseName of "one/two/three", maps to
+            //"one/two/three.js", but we want the directory, "one/two" for
+            //this normalization.
+            baseName = baseName.split("/");
+            baseName = baseName.slice(0, baseName.length - 1);
+
+            name = baseName.concat(name.split("/"));
+            for (i = 0; (part = name[i]); i++) {
+                if (part === ".") {
+                    name.splice(i, 1);
+                    i -= 1;
+                } else if (part === "..") {
+                    name.splice(i - 1, 2);
+                    i -= 2;
+                }
+            }
+            name = name.join("/");
+        }
+        return name;
+    };
+
+    /**
+     * Splits a name into a possible plugin prefix and
+     * the module name. If baseName is provided it will
+     * also normalize the name via require.normalizeName()
+     * 
+     * @param {String} name the module name
+     * @param {String} [baseName] base name that name is
+     * relative to.
+     *
+     * @returns {Object} with properties, 'prefix' (which
+     * may be null), 'name' and 'fullName', which is a combination
+     * of the prefix (if it exists) and the name.
+     */
+    require.splitPrefix = function (name, baseName) {
+        var index = name.indexOf("!"), prefix = null;
+        if (index !== -1) {
+            prefix = name.substring(0, index);
+            name = name.substring(index + 1, name.length);
+        }
+
+        //Account for relative paths if there is a base name.
+        if (baseName) {
+            name = require.normalizeName(name, baseName);
+        }
+
+        return {
+            prefix: prefix,
+            name: name,
+            fullName: prefix ? prefix + "!" + name : name
+        };
+    };
+
     /**
      * Converts a module name to a file path.
      */
@@ -638,6 +708,8 @@ var require;
         if (moduleName.indexOf(":") !== -1 || moduleName.charAt(0) === '/' || require.jsExtRegExp.test(moduleName)) {
             //Just a plain path, not module name lookup, so just return it.
             return moduleName;
+        } else if (moduleName.charAt(0) === ".") {
+            throw new Error("require.nameToUrl does not handle relative module names (ones that start with '.' or '..')");
         } else {
             //A module that needs to be converted to a path.
             paths = config.paths;
@@ -818,7 +890,7 @@ var require;
 
         var name = module.name, cb = module.callback, deps = module.deps, j, dep,
             defined = context.defined, ret, args = [], prefix, depModule,
-            usingExports = false;
+            usingExports = false, depName;
 
         //If already traced or defined, do not bother a second time.
         if (name) {
@@ -833,17 +905,12 @@ var require;
 
         if (deps) {
             for (j = 0; (dep = deps[j]); j++) {
-                //Adjust dependency for plugins.
-                prefix = dep.indexOf("!");
-                if (prefix !== -1) {
-                    dep = dep.substring(prefix + 1, dep.length);
-                }
-
-                if (dep === "exports") {
+                depName = dep.name;
+                if (depName === "exports") {
                     //CommonJS module spec 1.1
                     depModule = defined[name] = {};
                     usingExports = true;
-                } else if (dep === "module") {
+                } else if (depName === "module") {
                     //CommonJS module spec 1.1
                     depModule = {
                         id: name,
@@ -855,9 +922,9 @@ var require;
                     //require. Favor not throwing an error here if undefined because
                     //we want to allow code that does not use require as a module
                     //definition framework to still work -- allow a web site to
-                    //gradually update to contained modules. That is seen as more
+                    //gradually update to contained modules. That is more
                     //important than forcing a throw for the circular dependency case.
-                    depModule = dep in defined ? defined[dep] : (traced[dep] ? undefined : require.exec(waiting[waiting[dep]], traced, waiting, context));
+                    depModule = depName in defined ? defined[depName] : (traced[depName] ? undefined : require.exec(waiting[waiting[depName]], traced, waiting, context));
                 }
 
                 args.push(depModule);
@@ -1221,7 +1288,7 @@ require.pause();
             //removing the <?xml ...?> declarations so the content can be inserted
             //into the current doc without problems.
             //If text is present, it is the actual text of the file.
-            var strip = false, text = null, key, url, index = name.indexOf("!"),
+            var strip = false, text = null, key, url, index = name.indexOf("."),
                 modName = name.substring(0, index), fullKey,
                 ext = name.substring(index + 1, name.length),
                 context = require.s.contexts[contextName],
@@ -1234,7 +1301,7 @@ require.pause();
                 ext = ext.substring(0, index);
                 index = strip.indexOf("!");
                 if (index !== -1 && strip.substring(0, index) === "strip") {
-                    //Pul off the text.
+                    //Pull off the text.
                     text = strip.substring(index + 1, strip.length);
                     strip = "strip";
                 } else if (strip !== "strip") {
@@ -24651,7 +24718,7 @@ dojo.declare(
 });
 
 return dijit.layout.ContentPane; });
-require.def("dijit/TitlePane", ["require", "dojo", "dijit", "dojox", "dojo/fx", "dijit/_Templated", "dijit/layout/ContentPane", 'text!dijit/templates/TitlePane!html!<div class="${baseClass}">\n\t<div dojoAttachEvent="onclick:_onTitleClick, onkeypress:_onTitleKey, onfocus:_handleFocus, onblur:_handleFocus, onmouseenter:_onTitleEnter, onmouseleave:_onTitleLeave"\n\t\t\tclass="dijitTitlePaneTitle" dojoAttachPoint="titleBarNode,focusNode">\n\t\t<img src="${_blankGif}" alt="" dojoAttachPoint="arrowNode" class="dijitArrowNode" waiRole="presentation"\n\t\t><span dojoAttachPoint="arrowNodeInner" class="dijitArrowNodeInner"></span\n\t\t><span dojoAttachPoint="titleNode" class="dijitTitlePaneTextNode"></span>\n\t</div>\n\t<div class="dijitTitlePaneContentOuter" dojoAttachPoint="hideNode" waiRole="presentation">\n\t\t<div class="dijitReset" dojoAttachPoint="wipeNode" waiRole="presentation">\n\t\t\t<div class="dijitTitlePaneContentInner" dojoAttachPoint="containerNode" waiRole="region" tabindex="-1" id="${id}_pane">\n\t\t\t\t<!-- nested divs because wipeIn()/wipeOut() doesn\'t work right on node w/padding etc.  Put padding on inner div. -->\n\t\t\t</div>\n\t\t</div>\n\t</div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3) {
+require.def("dijit/TitlePane", ["require", "dojo", "dijit", "dojox", "dojo/fx", "dijit/_Templated", "dijit/layout/ContentPane", 'text!dijit/templates/TitlePane.html!<div class="${baseClass}">\n\t<div dojoAttachEvent="onclick:_onTitleClick, onkeypress:_onTitleKey, onfocus:_handleFocus, onblur:_handleFocus, onmouseenter:_onTitleEnter, onmouseleave:_onTitleLeave"\n\t\t\tclass="dijitTitlePaneTitle" dojoAttachPoint="titleBarNode,focusNode">\n\t\t<img src="${_blankGif}" alt="" dojoAttachPoint="arrowNode" class="dijitArrowNode" waiRole="presentation"\n\t\t><span dojoAttachPoint="arrowNodeInner" class="dijitArrowNodeInner"></span\n\t\t><span dojoAttachPoint="titleNode" class="dijitTitlePaneTextNode"></span>\n\t</div>\n\t<div class="dijitTitlePaneContentOuter" dojoAttachPoint="hideNode" waiRole="presentation">\n\t\t<div class="dijitReset" dojoAttachPoint="wipeNode" waiRole="presentation">\n\t\t\t<div class="dijitTitlePaneContentInner" dojoAttachPoint="containerNode" waiRole="region" tabindex="-1" id="${id}_pane">\n\t\t\t\t<!-- nested divs because wipeIn()/wipeOut() doesn\'t work right on node w/padding etc.  Put padding on inner div. -->\n\t\t\t</div>\n\t\t</div>\n\t</div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3) {
 dojo.provide("dijit.TitlePane");
 
 ;
@@ -24914,7 +24981,7 @@ dojo.declare(
 });
 
 return dijit.TitlePane; });
-require.def("dijit/Tooltip", ["require", "dojo", "dijit", "dojox", "dijit/_Widget", "dijit/_Templated", 'text!dijit/templates/Tooltip!html!<div class="dijitTooltip dijitTooltipLeft" id="dojoTooltip">\n\t<div class="dijitTooltipContainer dijitTooltipContents" dojoAttachPoint="containerNode" waiRole=\'alert\'></div>\n\t<div class="dijitTooltipConnector"></div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2) {
+require.def("dijit/Tooltip", ["require", "dojo", "dijit", "dojox", "dijit/_Widget", "dijit/_Templated", 'text!dijit/templates/Tooltip.html!<div class="dijitTooltip dijitTooltipLeft" id="dojoTooltip">\n\t<div class="dijitTooltipContainer dijitTooltipContents" dojoAttachPoint="containerNode" waiRole=\'alert\'></div>\n\t<div class="dijitTooltipConnector"></div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2) {
 dojo.provide("dijit.Tooltip");
 
 ;
@@ -25365,7 +25432,7 @@ require.def("i18n!dijit/form/nls/ComboBox",
 "zh": true,
 "zh-tw": true
 });
-require.def("dijit/form/TextBox", ["require", "dojo", "dijit", "dojox", "dijit/form/_FormWidget", 'text!dijit/form/templates/TextBox!html!<input class="dijit dijitReset dijitLeft" dojoAttachPoint=\'textbox,focusNode\'\n\tdojoAttachEvent=\'onmouseenter:_onMouse,onmouseleave:_onMouse\'\n\tautocomplete="off" type="${type}" ${nameAttrSetting}\n\t/>\n'], function(require, dojo, dijit, dojox, _R0, _R1) {
+require.def("dijit/form/TextBox", ["require", "dojo", "dijit", "dojox", "dijit/form/_FormWidget", 'text!dijit/form/templates/TextBox.html!<input class="dijit dijitReset dijitLeft" dojoAttachPoint=\'textbox,focusNode\'\n\tdojoAttachEvent=\'onmouseenter:_onMouse,onmouseleave:_onMouse\'\n\tautocomplete="off" type="${type}" ${nameAttrSetting}\n\t/>\n'], function(require, dojo, dijit, dojox, _R0, _R1) {
 dojo.provide("dijit.form.TextBox");
 
 ;
@@ -25703,7 +25770,7 @@ dijit.selectInputText = function(/*DomNode*/element, /*Number?*/ start, /*Number
 };
 
 return dijit.form.TextBox; });
-require.def("dijit/form/ValidationTextBox", ["require", "dojo", "dijit", "dojox", "dojo/i18n", "dijit/form/TextBox", "dijit/Tooltip", 'text!dijit/form/templates/ValidationTextBox!html!<div class="dijit dijitReset dijitInlineTable dijitLeft"\n\tid="widget_${id}"\n\tdojoAttachEvent="onmouseenter:_onMouse,onmouseleave:_onMouse,onmousedown:_onMouse" waiRole="presentation"\n\t><div style="overflow:hidden;"\n\t\t><div class="dijitReset dijitValidationIcon"><br></div\n\t\t><div class="dijitReset dijitValidationIconText">&Chi;</div\n\t\t><div class="dijitReset dijitInputField"\n\t\t\t><input class="dijitReset" dojoAttachPoint=\'textbox,focusNode\' autocomplete="off"\n\t\t\t${nameAttrSetting} type=\'${type}\'\n\t\t/></div\n\t></div\n></div>\n', "i18n!dijit/form/nls/validate"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4) {
+require.def("dijit/form/ValidationTextBox", ["require", "dojo", "dijit", "dojox", "dojo/i18n", "dijit/form/TextBox", "dijit/Tooltip", 'text!dijit/form/templates/ValidationTextBox.html!<div class="dijit dijitReset dijitInlineTable dijitLeft"\n\tid="widget_${id}"\n\tdojoAttachEvent="onmouseenter:_onMouse,onmouseleave:_onMouse,onmousedown:_onMouse" waiRole="presentation"\n\t><div style="overflow:hidden;"\n\t\t><div class="dijitReset dijitValidationIcon"><br></div\n\t\t><div class="dijitReset dijitValidationIconText">&Chi;</div\n\t\t><div class="dijitReset dijitInputField"\n\t\t\t><input class="dijitReset" dojoAttachPoint=\'textbox,focusNode\' autocomplete="off"\n\t\t\t${nameAttrSetting} type=\'${type}\'\n\t\t/></div\n\t></div\n></div>\n', "i18n!dijit/form/nls/validate"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4) {
 dojo.provide("dijit.form.ValidationTextBox");
 
 ;
@@ -26159,7 +26226,7 @@ dojo.declare(
 );
 
 return dijit.form.ValidationTextBox; });
-require.def("dijit/form/ComboBox", ["require", "dojo", "dijit", "dojox", "dijit/form/_FormWidget", "dijit/form/ValidationTextBox", "dojo/data/util/simpleFetch", "dojo/data/util/filter", "dojo/regexp", 'text!dijit/form/templates/ComboBox!html!<div class="dijit dijitReset dijitInlineTable dijitLeft"\n\tid="widget_${id}"\n\tdojoAttachEvent="onmouseenter:_onMouse,onmouseleave:_onMouse,onmousedown:_onMouse" dojoAttachPoint="comboNode" waiRole="combobox" tabIndex="-1"\n\t><div style="overflow:hidden;"\n\t\t><div class=\'dijitReset dijitRight dijitButtonNode dijitArrowButton dijitDownArrowButton\'\n\t\t\tdojoAttachPoint="downArrowNode" waiRole="presentation"\n\t\t\tdojoAttachEvent="onmousedown:_onArrowMouseDown,onmouseup:_onMouse,onmouseenter:_onMouse,onmouseleave:_onMouse"\n\t\t\t><div class="dijitArrowButtonInner">&thinsp;</div\n\t\t\t><div class="dijitArrowButtonChar">&#9660;</div\n\t\t></div\n\t\t><div class="dijitReset dijitValidationIcon"><br></div\n\t\t><div class="dijitReset dijitValidationIconText">&Chi;</div\n\t\t><div class="dijitReset dijitInputField"\n\t\t\t><input ${nameAttrSetting} type="text" autocomplete="off" class=\'dijitReset\'\n\t\t\tdojoAttachEvent="onkeypress:_onKeyPress,compositionend"\n\t\t\tdojoAttachPoint="textbox,focusNode" waiRole="textbox" waiState="haspopup-true,autocomplete-list"\n\t\t/></div\n\t></div\n></div>\n', "i18n!dijit/form/nls/ComboBox"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4, _R5, _R6) {
+require.def("dijit/form/ComboBox", ["require", "dojo", "dijit", "dojox", "dijit/form/_FormWidget", "dijit/form/ValidationTextBox", "dojo/data/util/simpleFetch", "dojo/data/util/filter", "dojo/regexp", 'text!dijit/form/templates/ComboBox.html!<div class="dijit dijitReset dijitInlineTable dijitLeft"\n\tid="widget_${id}"\n\tdojoAttachEvent="onmouseenter:_onMouse,onmouseleave:_onMouse,onmousedown:_onMouse" dojoAttachPoint="comboNode" waiRole="combobox" tabIndex="-1"\n\t><div style="overflow:hidden;"\n\t\t><div class=\'dijitReset dijitRight dijitButtonNode dijitArrowButton dijitDownArrowButton\'\n\t\t\tdojoAttachPoint="downArrowNode" waiRole="presentation"\n\t\t\tdojoAttachEvent="onmousedown:_onArrowMouseDown,onmouseup:_onMouse,onmouseenter:_onMouse,onmouseleave:_onMouse"\n\t\t\t><div class="dijitArrowButtonInner">&thinsp;</div\n\t\t\t><div class="dijitArrowButtonChar">&#9660;</div\n\t\t></div\n\t\t><div class="dijitReset dijitValidationIcon"><br></div\n\t\t><div class="dijitReset dijitValidationIconText">&Chi;</div\n\t\t><div class="dijitReset dijitInputField"\n\t\t\t><input ${nameAttrSetting} type="text" autocomplete="off" class=\'dijitReset\'\n\t\t\tdojoAttachEvent="onkeypress:_onKeyPress,compositionend"\n\t\t\tdojoAttachPoint="textbox,focusNode" waiRole="textbox" waiState="haspopup-true,autocomplete-list"\n\t\t/></div\n\t></div\n></div>\n', "i18n!dijit/form/nls/ComboBox"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4, _R5, _R6) {
 dojo.provide("dijit.form.ComboBox");
 
 ;
@@ -28817,7 +28884,7 @@ dojo.declare(
 );
 
 return dijit.DialogUnderlay; });
-require.def("dijit/TooltipDialog", ["require", "dojo", "dijit", "dojox", "dijit/layout/ContentPane", "dijit/_Templated", "dijit/form/_FormMixin", "dijit/_DialogMixin", 'text!dijit/templates/TooltipDialog!html!<div waiRole="presentation">\n\t<div class="dijitTooltipContainer" waiRole="presentation">\n\t\t<div class ="dijitTooltipContents dijitTooltipFocusNode" dojoAttachPoint="containerNode" tabindex="-1" waiRole="dialog"></div>\n\t</div>\n\t<div class="dijitTooltipConnector" waiRole="presentation"></div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4) {
+require.def("dijit/TooltipDialog", ["require", "dojo", "dijit", "dojox", "dijit/layout/ContentPane", "dijit/_Templated", "dijit/form/_FormMixin", "dijit/_DialogMixin", 'text!dijit/templates/TooltipDialog.html!<div waiRole="presentation">\n\t<div class="dijitTooltipContainer" waiRole="presentation">\n\t\t<div class ="dijitTooltipContents dijitTooltipFocusNode" dojoAttachPoint="containerNode" tabindex="-1" waiRole="dialog"></div>\n\t</div>\n\t<div class="dijitTooltipConnector" waiRole="presentation"></div>\n</div>\n'], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4) {
 dojo.provide("dijit.TooltipDialog");
 
 ;
@@ -28950,7 +29017,7 @@ dojo.declare(
 	);
 
 return dijit.TooltipDialog; });
-require.def("dijit/Dialog", ["require", "dojo", "dijit", "dojox", "dojo/dnd/move", "dojo/dnd/TimedMoveable", "dojo/fx", "dijit/_Widget", "dijit/_Templated", "dijit/form/_FormMixin", "dijit/_DialogMixin", "dijit/DialogUnderlay", "dijit/layout/ContentPane", "dijit/TooltipDialog", 'text!dijit/templates/Dialog!html!<div class="dijitDialog" tabindex="-1" waiRole="dialog" waiState="labelledby-${id}_title">\n\t<div dojoAttachPoint="titleBar" class="dijitDialogTitleBar">\n\t<span dojoAttachPoint="titleNode" class="dijitDialogTitle" id="${id}_title"></span>\n\t<span dojoAttachPoint="closeButtonNode" class="dijitDialogCloseIcon" dojoAttachEvent="onclick: onCancel, onmouseenter: _onCloseEnter, onmouseleave: _onCloseLeave" title="${buttonCancel}">\n\t\t<span dojoAttachPoint="closeText" class="closeText" title="${buttonCancel}">x</span>\n\t</span>\n\t</div>\n\t\t<div dojoAttachPoint="containerNode" class="dijitDialogPaneContent"></div>\n</div>\n', "i18n!dijit/nls/common"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4, _R5, _R6, _R7, _R8, _R9, _R10, _R11) {
+require.def("dijit/Dialog", ["require", "dojo", "dijit", "dojox", "dojo/dnd/move", "dojo/dnd/TimedMoveable", "dojo/fx", "dijit/_Widget", "dijit/_Templated", "dijit/form/_FormMixin", "dijit/_DialogMixin", "dijit/DialogUnderlay", "dijit/layout/ContentPane", "dijit/TooltipDialog", 'text!dijit/templates/Dialog.html!<div class="dijitDialog" tabindex="-1" waiRole="dialog" waiState="labelledby-${id}_title">\n\t<div dojoAttachPoint="titleBar" class="dijitDialogTitleBar">\n\t<span dojoAttachPoint="titleNode" class="dijitDialogTitle" id="${id}_title"></span>\n\t<span dojoAttachPoint="closeButtonNode" class="dijitDialogCloseIcon" dojoAttachEvent="onclick: onCancel, onmouseenter: _onCloseEnter, onmouseleave: _onCloseLeave" title="${buttonCancel}">\n\t\t<span dojoAttachPoint="closeText" class="closeText" title="${buttonCancel}">x</span>\n\t</span>\n\t</div>\n\t\t<div dojoAttachPoint="containerNode" class="dijitDialogPaneContent"></div>\n</div>\n', "i18n!dijit/nls/common"], function(require, dojo, dijit, dojox, _R0, _R1, _R2, _R3, _R4, _R5, _R6, _R7, _R8, _R9, _R10, _R11) {
 dojo.provide("dijit.Dialog");
 
 ;

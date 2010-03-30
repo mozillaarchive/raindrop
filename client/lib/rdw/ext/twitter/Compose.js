@@ -27,7 +27,7 @@
 
 require.def("rdw/ext/twitter/Compose",
         ["require", "rd", "dojo", "rdw/_Base", "rd/accountIds", "dojo/io/script",
-         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Compose!html"],
+         "rdw/ext/twitter/api", "rdw/placeholder", "rdw/QuickCompose", "text!rdw/ext/twitter/Compose.html"],
 function (require,   rd,   dojo,   Base,        accountIds,      script,
           twitterApi,            placeholder,      QuickCompose,       template) {
 

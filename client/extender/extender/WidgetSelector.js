@@ -27,7 +27,7 @@
 
 require.def("extender/WidgetSelector",
 ["rd", "dojo", "rdw/_Base", "extender/Editor",
-  "text!extender/templates/WidgetSelector!html", "text!extender/templates/sampleObjectExtension!js"],
+  "text!extender/templates/WidgetSelector.html", "text!extender/templates/sampleObjectExtension.js"],
 function (rd, dojo, Base, Editor, template, sampleTemplate) {
 
     //Uses script-added styles to allow loading on demand at the cost of a

@@ -27,7 +27,7 @@
 
 require.def("rdw/Organizer",
 ["rd", "dojo", "rdw/_Base", "rd/conversation", "rd/tag", "dojo/string",
- "dijit/TitlePane", "text!rdw/templates/Organizer!html"],
+ "dijit/TitlePane", "text!rdw/templates/Organizer.html"],
 function (rd, dojo, Base, conversation, tag, string, TitlePane, template) {
 
     return dojo.declare("rdw.Organizer", [Base], {

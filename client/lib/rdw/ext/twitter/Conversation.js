@@ -26,12 +26,9 @@
 "use strict";
 
 require.def("rdw/ext/twitter/Conversation",
-["require", "rd", "dojo", "dijit", "rd/api", "rdw/ext/twitter/api", "rdw/Conversation", "rdw/ext/twitter/Message",
- "rd/friendly",
- "text!rdw/ext/twitter/Conversation!html",
- "text!rdw/ext/twitter/retweet!html",
- "text!rdw/ext/twitter/retweetDone!html",
- "rdw/ext/twitter/Compose"],
+["require", "rd", "dojo", "dijit", "rd/api", "./api", "rdw/Conversation", "./Message",
+ "rd/friendly", "text!./Conversation.html", "text!./retweet.html", "text!./retweetDone.html",
+ "./Compose"],
 function (require, rd, dojo, dijit, api, tapi, Conversation, Message, friendly,
           template, retweetTemplate, retweetDoneTemplate) {
 

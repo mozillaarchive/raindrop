@@ -26,7 +26,7 @@
 
 require.def("rdw/conversation/FullConversation",
 ["dojo", "rdw/Conversation", "rdw/conversation/FullMessage",
- "text!rdw/conversation/templates/FullConversation!html"],
+ "text!rdw/conversation/templates/FullConversation.html"],
 function (dojo, Conversation, FullMessage, template) {
     return dojo.declare("rdw.conversation.FullConversation", [Conversation], {
         //The name of the constructor function (module) that should be used
