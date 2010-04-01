@@ -125,7 +125,7 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                 },
 
                 /** Responds to requests to show all twitter messages */
-                twitter: function () {
+                twitter: function (callType) {
                     api({
                         url: 'inflow/conversations/in_groups',
                         limit: this.conversationLimit,
@@ -133,12 +133,17 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                         message_limit: this.messageLimit,
                         keys: [
                             ["display-group", "twitter"]
-                        ]
+                        ],
+                        skip: this.skipCount
                     })
                     .ok(dojo.hitch(this, function (conversations) {
-                        this.updateConversations("summary", conversations); 
-                        if (this.summaryWidget.twitter) {
-                            this.summaryWidget.twitter();
+                        this.updateConversations(callType, "summary", conversations); 
+                        //Only set up summary widget if this is a fresh call
+                        //to the twitter timeline.
+                        if (!callType) {
+                            if (this.summaryWidget.twitter) {
+                                this.summaryWidget.twitter();
+                            }
                         }
                     }));
                 },

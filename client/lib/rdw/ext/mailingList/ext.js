@@ -41,11 +41,12 @@ require.modify("rd/conversation", "rdw/ext/mailingList/ext-rd/conversation",
                  * @param {Function} callback
                  * @param {Function} [errback]
                  */
-                mailingList: function (listId, limit, callback, errback) {
+                mailingList: function (listId, limit, skip, callback, errback) {
                     api().megaview({
                         key: ["rd.msg.email.mailing-list", "list_id", listId],
                         reduce: false,
-                        limit: limit
+                        limit: limit,
+                        skip: skip
                     })
                     .ok(this, function (json) {
                         //Get message keys
@@ -237,11 +238,16 @@ require.modify("rdw/Conversations", "rdw/ext/mailingList/ext-rdw/Conversations",
                  * Responds to rd-protocol-mailingList topic.
                  * @param {String} listId
                  */
-                mailingList: function (listId) {
-                    conversation.mailingList(listId, this.conversationLimit, dojo.hitch(this, function (conversations) {    
-                        this.updateConversations("summary", conversations);
-                        if (this.summaryWidget.mailingList) {
-                            this.summaryWidget.mailingList(listId);
+                mailingList: function (callType, listId) {
+                    conversation.mailingList(listId, this.conversationLimit, this.skipCount, dojo.hitch(this, function (conversations) {    
+                        this.updateConversations(callType, "summary", conversations);
+
+                        //Only set up summary widget if this is a fresh call
+                        //to the twitter timeline.
+                        if (!callType) {
+                            if (this.summaryWidget.mailingList) {
+                                this.summaryWidget.mailingList(listId);
+                            }
                         }
                     }));
                 }

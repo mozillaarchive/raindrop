@@ -26,9 +26,9 @@
 "use strict";
 
 require.def("rdw/Organizer",
-["rd", "dojo", "rdw/_Base", "rd/conversation", "rd/tag", "dojo/string",
+["rd", "dojo", "rdw/_Base", "rd/tag", "dojo/string",
  "dijit/TitlePane", "text!rdw/templates/Organizer.html"],
-function (rd, dojo, Base, conversation, tag, string, TitlePane, template) {
+function (rd, dojo, Base, tag, string, TitlePane, template) {
 
     return dojo.declare("rdw.Organizer", [Base], {
         // Mailing lists to which any messages in the datastore belong.

@@ -47,11 +47,12 @@ function (rd, dojo, api) {
         //Gets the most recent messages up to a limit for a given imap folder
         //location ID, then pulls the conversations associated with those messages.
         //Conversation with the most recent message will be first.
-        location: function (/*Array*/locationId, /*Number*/limit, /*Function*/callback, /*Function*/errback) {
+        location: function (/*Array*/locationId, /*Number*/limit, /*Number*/skip, /*Function*/callback, /*Function*/errback) {
             api().megaview({
                 key: ["rd.msg.location", "location", locationId],
                 reduce: false,
-                limit: limit
+                limit: limit,
+                skip: skip
             })
             .ok(this, function (json) {
                 //Get message keys

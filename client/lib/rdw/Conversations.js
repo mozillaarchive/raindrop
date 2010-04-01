@@ -49,6 +49,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         // conversation APIs.
         messageLimit: 3,
 
+        /** The number of records to skip in the API calls. This is basically
+         * the "paging" mechanism. */
+        skipCount: 0,
+
         /**
          * The list of additional schemas to fetch for the conversations/personal
          * call. Extensions can add to this array to fetch schemas on messages
@@ -75,10 +79,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             "rd-engine-sync-done": "checkUpdateInfo",
             "rd-protocol-home": "home",
             "rd-protocol-contact": "contact",
-            "rd-protocol-direct": "direct",
-            "rd-protocol-group": "group",
             "rd-protocol-locationTag": "locationTag",
-            "rd-protocol-starred": "starred",
             "rd-protocol-sent": "sent",
             "rd-protocol-conversation": "conversation",
             "rdw/Conversation/archive": "archive",
@@ -124,6 +125,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                         '    <div dojoType="rdw.Summary" dojoAttachPoint="summaryWidget"></div>' +
                         '    <div dojoAttachPoint="listNode"></div>' +
                         '    <div dojoAttachPoint="convoNode"></div>' +
+                        '    <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">${i18n.moreConversations}</button>' +
                         '</div>',
         widgetsInTemplate: true,
 
@@ -181,7 +183,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     break;
                 }
                 if (target.tabIndex > -1) {
-                    this._setActiveNode(target);
+                    //Skip the more button
+                    if (!dojo.hasClass(target, "more")) {
+                        this._setActiveNode(target);
+                    }
                     break;
                 } else if (dojo.hasClass(target, "rdwConversation")) {
                     //Went up to Conversation, so find first focusable node
@@ -359,19 +364,23 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          */
         _sub: function (/*String*/topicName, /*String*/funcName) {
             this.subscribe(topicName, dojo.hitch(this, function () {
+                var args = Array.prototype.slice.call(arguments);
                 if (topicName !== "rd-engine-sync-done") {
                     this._updateInfo = {
                         funcName: funcName,
-                        args: arguments
+                        //Convert to real array
+                        args: args
                     };
                 }
-    
+                
+                //Add in a call type of none, it is not a more or update call
+
                 //Store the topic name for future reference
                 this.currentTopic = topicName;
-    
+
                 //Clear out the summary widget
                 this.summaryWidget.clear();
-    
+
                 //If this is a back request or an action that is just a transition
                 //action (no new data to fetch), and there are conversations to show,
                 //just do the transition back.
@@ -379,17 +388,20 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     //Just transition back to summary view, do not fetch new data.
                     this.transition("summary");
                 } else if (this.transitionOnlyActions[funcName]) {
-                    this[funcName].apply(this, arguments);
+                    this[funcName].apply(this, args);
                 } else {
                     //Clear out info we were saving for back.
                     this.summaryActiveNode = null;
                     this.summaryScrollHeight = 0;
-                    this[funcName].apply(this, arguments);
+                    this.skipCount = 0;
+
+                    //Pass null for the callType argument
+                    this[funcName].apply(this, [null].concat(args));
                 }
                 this._isBack = false;
             }));
         },
-    
+
         /** Sees if last request should be updated. */
         checkUpdateInfo: function () {
             var info = this._updateInfo;
@@ -397,14 +409,31 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 this[info.funcName].apply(this, info.args);
             }
         },
-  
+
+        showMore: function() {
+            var info = this._updateInfo, args;
+            if (info) {
+                //Do not modify info.args, since we may need a pristine
+                //copy for other API actions, like update vs. more.
+                args = ["more"].concat(info.args);
+
+                //Update pagination.
+                this.skipCount = this.conversations.length;
+
+                this[info.funcName].apply(this, args);
+            }
+        },
+
         /**
          * Updates the display of conversations by updating the
          * rdw/Conversation objects.
-         * @param {String} viewType
+         * @param {String} callType either null for a regular call, "more"
+         * for a pagination request, or "update" for when just updating
+         * list of conversations.
+         * @param {String} viewType either "summary" or "conversation"
          * @param {Array} conversations
          */
-        updateConversations: function (viewType, conversations) {
+        updateConversations: function (callType, viewType, conversations) {
             //TODO: try to reuse a Conversation object instead of destroy/create
             //cycle. Could cause too much memory churn in the browser.
             var i, module, mod, Ctor, frag, conv;
@@ -427,7 +456,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     this.removeSupporting(this.convoWidget);
                     this.convoWidget.destroy();
                 }
-    
+
+                //Do not need the More button in the full conversation view
+                this.moreNode.style.display = "none";
+
                 //Make new convoWidget.
                 Ctor = this._getConvoWidget(this.oneConversation, this.fullConvoWidgets) ||
                                      require(this.fullConversationCtorName);
@@ -443,24 +475,37 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                         this.convoWidgets.push(mod);
                     }
                 }
+
+                if (!callType) {
+                    this.destroyAllSupporting(this.destroyIgnore);
     
-                this.destroyAllSupporting(this.destroyIgnore);
-    
-                //Showing summaries of a few conversations.
-                this.conversations = conversations;
-    
+                    //Showing summaries of a few conversations.
+                    this.conversations = conversations;
+                } else if (callType === "more") {
+                    this.conversations = this.conversations.concat(conversations);
+                }
+
                 //Create new widgets.
                 //Use a document fragment for best performance
                 //and load up each conversation widget in there.
                 frag = dojo.doc.createDocumentFragment();
-                for (i = 0; (conv = this.conversations[i]); i++) {
+                for (i = 0; (conv = conversations[i]); i++) {
                     this.createConvoWidget(conv, frag);
                 }
 
                 //Inject nodes all at once for best performance.
                 this.listNode.appendChild(frag);
 
-                this.configureFirstActiveItem();
+                //Update the More button, whether to show it or not.
+                if (!conversations || !conversations.length) {
+                    this.moreNode.style.display = "none";
+                } else {
+                    this.moreNode.style.display = "";
+                }
+
+                if (!callType) {
+                    this.configureFirstActiveItem();
+                }
             }
 
             this.transition(viewType);
@@ -772,30 +817,33 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 }), 10);
             }));
         },
-    
+
         //**************************************************
         //start topic subscription endpoints
         //**************************************************
         /** Responds to rd-protocol-home topic. */
-        home: function () {
+        home: function (callType) {
             api({
                 url: 'inflow/conversations/personal',
                 schemas: dojo.toJson(this.personalSchemas),
                 limit: this.conversationLimit,
-                message_limit: this.messageLimit
+                message_limit: this.messageLimit,
+                skip: this.skipCount
             })
             .ok(this, function (conversations) {
                 //Indicate this is a collection of home conversations.
                 this.conversations._rdwConversationsType = "home";
 
                 //Show the conversation.
-                this.updateConversations("summary", conversations);
+                this.updateConversations(callType, "summary", conversations);
     
-                //Update the summary.
-                this.summaryWidget.home();
+                //Update the summary, if this is a fresh call
+                if (!callType) {
+                    this.summaryWidget.home();
+                }
             });
         },
-  
+
         /** Determines if there is a home group that can handle the conversation. */
         _getConvoWidget: function (conversation, widgets) {
             for (var i = 0, module; (module = widgets[i]); i++) {
@@ -810,57 +858,36 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          * Responds to rd-protocol-contact topic.
          * @param {String} contactId
          */
-        contact: function (contactId) {
+        contact: function (callType, contactId) {
             api({
                 url: 'inflow/conversations/contact',
                 id: '"' + contactId + '"',
-                message_limit: this.messageLimit
-            })
-            .ok(dojo.hitch(this, "updateConversations", "summary"));
-        },
-  
-        /** Responds to rd-protocol-direct topic. */
-        direct: function () {
-            api({
-                url: 'inflow/conversations/direct',
                 limit: this.conversationLimit,
-                message_limit: this.messageLimit
+                message_limit: this.messageLimit,
+                skip: this.skipCount
             })
-            .ok(dojo.hitch(this, "updateConversations", "summary"));
-        },
-  
-        /** Responds to rd-protocol-group topic. */
-        group: function () {
-            api({
-                url: 'inflow/conversations/group',
-                limit: this.conversationLimit,
-                message_limit: this.conversationLimit
-            }).ok(dojo.hitch(this, "updateConversations", "summary"));
+            .ok(dojo.hitch(this, "updateConversations", callType, "summary"));
         },
   
         /** Responds to rd-protocol-locationTag topic. */
-        locationTag: function (/*String*/locationId) {
+        locationTag: function (callType, locationId) {
             //Convert string to array.
             if (typeof locationId === "string") {
                 locationId = locationId.split(",");
             }
     
-            conversation.location(locationId, this.conversationLimit, dojo.hitch(this, "updateConversations", "summary"));
-        },
-  
-        /** Responds to rd-protocol-starred topic. */
-        starred: function () {
-            conversation.starred(this.conversationLimit, dojo.hitch(this, "updateConversations", "summary"));
+            conversation.location(locationId, this.conversationLimit, this.skipCount, dojo.hitch(this, "updateConversations", callType, "summary"));
         },
   
         /** Responds to rd-protocol-sent topic. */
-        sent: function () {
+        sent: function (callType) {
             api({
                 url: "inflow/conversations/identities",
                 limit: this.conversationLimit,
-                message_limit: this.messageLimit
+                message_limit: this.messageLimit,
+                skip: this.skipCount
             })
-            .ok(dojo.hitch(this, "updateConversations", "summary"));
+            .ok(dojo.hitch(this, "updateConversations", callType, "summary"));
         },
 
 
@@ -907,7 +934,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          * Responds to requests to view a conversation.
          * @param {String} convoId
          */
-        conversation: function (convoId) {
+        conversation: function (callType, convoId) {
             api({
                 url: 'inflow/conversations/by_id',
                 key: dojo.fromJson(decodeURIComponent(convoId)),
@@ -915,7 +942,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             })
             .ok(this, function (conversation) {
                 //Show the conversation.         
-                this.updateConversations("conversation", [conversation]);
+                this.updateConversations(callType, "conversation", [conversation]);
     
                 //Update the summary.
                 if (this.summaryWidget.conversation) {

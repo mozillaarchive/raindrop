@@ -291,7 +291,7 @@ class ConversationAPI(API):
     # Fetch all conversations which include a message from the specified contact
     def contact(self, req):
         self.requires_get(req)
-        args = self.get_args(req, "id", message_limit=None, schemas=None)
+        args = self.get_args(req, "id", message_limit=None, limit=None, schemas=None, skip=None)
         cid = args['id']
 
         db = RDCouchDB(req)
@@ -305,7 +305,7 @@ class ConversationAPI(API):
         # XXX - shouldn't we do 'to' etc too?
         db = RDCouchDB(req)
         self.requires_get(req)
-        args = self.get_args(req, ids=None, message_limit=None, schemas=None)
+        args = self.get_args(req, ids=None, message_limit=None, schemas=None, limit=None)
         ids = args['ids']
         if ids is None:
             # special case - means "my identity".  Note this duplicates code
@@ -322,7 +322,7 @@ class ConversationAPI(API):
 
     def _identities(self, db, idids, args):
         keys = [["rd.conv.summary", "identities", idid] for idid in idids]
-        result = db.megaview(keys=keys, reduce=False)
+        result = db.megaview(keys=keys, reduce=False, limit=args['limit'])
         conv_doc_ids = set(r['id'] for r in result['rows'])
         result = db.allDocs(keys=list(conv_doc_ids), include_docs=True)
         # filter out deleted etc.
