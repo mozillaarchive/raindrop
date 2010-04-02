@@ -24,13 +24,17 @@
 from twisted.internet import protocol, ssl, defer, error, task
 from twisted.mail import imap4
 from twisted.python.failure import Failure
+from zope.interface import implements
+
 import logging
 from email.utils import mktime_tz, parsedate_tz
 import time
 import re
+import base64
 
 from ..proc import base
 from ..model import DocumentSaveError
+import xoauth
 
 brat = base.Rat
 
@@ -95,8 +99,22 @@ def check_envelope_ok(env):
       return False
   return True
 
+
+class XOAUTHAuthenticator:
+    implements(imap4.IClientAuthentication)
+    def __init__(self, acct_details):
+      self.acct_details = acct_details
+
+    def getName(self):
+      return "XOAUTH"
+
+    def challengeResponse(self, secret, chal):
+      return secret
+
+
 class ImapClient(imap4.IMAP4Client):
   timeout = DEFAULT_TIMEOUT
+  _in_auth = False
   def _defaultHandler(self, tag, rest):
     # XXX - worm around a bug related to MismatchedQuoting exceptions.
     # Probably: http://twistedmatrix.com/trac/ticket/1443
@@ -118,11 +136,43 @@ class ImapClient(imap4.IMAP4Client):
     logger.warn("IMAP connection timed out")
     return imap4.IMAP4Client.timeoutConnection(self)
 
-  def serverGreeting(self, caps):
-    logger.debug("IMAP server greeting: capabilities are %s", caps)
-    return self._doAuthenticate()
+  @defer.inlineCallbacks
+  def serverGreeting(self, _):
+    #logger.debug("IMAP server greeting: capabilities are %s", caps)
+    caps = yield self.getCapabilities()
+    if 'AUTH' in caps and 'XOAUTH' in caps['AUTH']:
+      acct_det = self.account.details
+      oauth_token = acct_det.get('oauth_token')
+      oauth_token_secret = acct_det.get('oauth_token_secret')
+      # We only do xoauth for gmail as we don't know how to build an auth
+      # URL for anything else...
+      if acct_det['kind'] == 'gmail' and oauth_token and oauth_token_secret:
+        self.registerAuthenticator(XOAUTHAuthenticator(acct_det))
+        # do the xoauth magic.
+        username = acct_det['username'].encode('imap4-utf-7')
+        logger.info("logging into account %r via oauth", acct_det['id'])
+        consumer_key = acct_det.get('consumer_key', 'anonymous')
+        consumer_secret = acct_det.get('consumer_secret', 'anonymous')
+        consumer = xoauth.OAuthEntity(consumer_key, consumer_secret)
+        google_accounts_url_generator = xoauth.GoogleAccountsUrlGenerator(username)
+        access_token = xoauth.OAuthEntity(oauth_token, oauth_token_secret)
+        xoauth_requestor_id = None
+        nonce = None
+        timestamp = None
+        xoauth_string = xoauth.GenerateXOauthString(
+                            consumer, access_token, username, 'imap',
+                            xoauth_requestor_id, nonce, timestamp)
+        self._in_auth = True
+        _ = yield self.authenticate(xoauth_string)
+        self._in_auth = False
+        # it isn't clear why we need to explicitly call the deferred callback
+        # here when we don't for login - but whateva...
+        self.deferred.callback(self)
+      else:
+        logger.warn("This server supports OAUTH but no tokens or secrets are available to use - falling back to password")
+        _ = yield self._startLogin()
 
-  def _doAuthenticate(self):
+  def _startLogin(self):
     if self.account.details.get('crypto') == 'TLS':
       d = self.startTLS(self.factory.ctx)
       d.addCallback(self._doLogin)
@@ -171,11 +221,18 @@ class ImapClient(imap4.IMAP4Client):
             results.append(tuple(parts[1:]))
     return results
 
-  if TRACE_IMAP:
-    def sendLine(self, line):
+  def sendLine(self, line):
+    # twisted has a bug where it base64 encodes our xoauth secret, and while
+    # it strips \n chars from the end, it does *not* remove them from the
+    # middle.  So we have around this here...
+    if self._in_auth:
+      line = line.replace("\n", "")
+    # and support our tracing.
+    if TRACE_IMAP:
       print 'C: %08x: %s' % (id(self), repr(line))
-      return imap4.IMAP4Client.sendLine(self, line)
+    return imap4.IMAP4Client.sendLine(self, line)
   
+  if TRACE_IMAP:
     def lineReceived(self, line):
       if len(line) > 50:
         lrepr = repr(line[:50]) + (' <+ %d more bytes>' % len(line[50:]))
