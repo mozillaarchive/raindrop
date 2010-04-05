@@ -145,6 +145,14 @@ button:active {
   background-image: none;
 }
 
+button.more {
+  padding: 5px 10px;
+  position: relative;
+  right: 10px;
+  bottom: 10px;
+  float: right;
+}
+
 button::-moz-focus-inner,
 input[type="reset"]::-moz-focus-inner,
 input[type="button"]::-moz-focus-inner,
