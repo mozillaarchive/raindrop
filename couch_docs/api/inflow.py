@@ -363,10 +363,7 @@ class MessageAPI(API):
             url = "/" + doc['_id'] + "/" + doc['rd_schema_provider'] + url[1:]
             # note this now qualifies for the next condition
         if url.startswith("/"):
-            # this is very very hacky...
-            host = db.connection.host
-            port = db.connection.port or 80
-            url = ("http://%s:%s" % (host, port)) + db.uri + url[1:]
+            url = self.absuri(db, url[1:])
         doc['url'] = url
 
     def attachments(self, req):

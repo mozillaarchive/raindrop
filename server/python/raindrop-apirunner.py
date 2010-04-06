@@ -62,16 +62,20 @@ else:
 class API:
     # A base class - helpers for the implementation classes...
     def get_args(self, req, *req_args, **opt_args):
+        _json = True
+        if '_json' in opt_args:
+            _json = opt_args.pop('_json')
         supplied = {}
         for name, val in req['query'].iteritems():
-            try:
-                val = json.loads(val)
-            except ValueError, why:
-                raise APIErrorResponse(400, "invalid json in param '%s': %s" % (name, why))
+            if _json:
+                try:
+                    val = json.loads(val)
+                except ValueError, why:
+                    raise APIErrorResponse(400, "invalid json in param '%s': %s" % (name, why))
             supplied[name] = val
 
         body = req.get('body')
-        if body and body != 'undefined': # yes, couch 0.10 send the literal 'undefined'
+        if _json and body and body != 'undefined': # yes, couch 0.10 send the literal 'undefined'
             # If there was a body specified, it can also contain request
             # args - although no args can be specified in both places.
             try:
@@ -132,6 +136,14 @@ class API:
             if not attr.startswith('rd_') and not attr.startswith('_'):
                 ret[attr] = val
         return ret
+
+    def absuri(self, db, path):
+        # kinda like abspath, but makes a URL absolute based on our raindrop
+        # location and port name.
+        # this is very very hacky...
+        host = db.connection.host
+        port = db.connection.port or 80
+        return ("http://%s:%s" % (host, port)) + db.uri + path
 
 api_globals['API'] = API
 
