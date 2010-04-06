@@ -641,6 +641,7 @@ def _build_views_doc_from_directory(ddir, extra_langs = []):
     rtail = "-reduce"
     ltail = "-list"
     stail = "-show"
+    rwtail = "-rewrites"
     optstail = "-options"
     files = os.listdir(ddir)
     for fn in files:
@@ -701,6 +702,19 @@ def _build_views_doc_from_directory(ddir, extra_langs = []):
                     fprinter.get_finger(list_name+tail).update(data)
             except (OSError, IOError):
                 logger.warning("can't open list file %r - skipping this list", fqf)
+                continue
+
+        tail = rwtail + this_ext
+        if fn.endswith(tail):
+            rewrite_name = fn[:-len(tail)]
+            try:
+                with open(fqf) as f:
+                    data = f.readline()
+                    ret_rewrites = ret.setdefault('rewrites', [])
+                    ret_rewrites.extend(eval(data))
+                    fprinter.get_finger(rewrite_name+tail).update(data)
+            except (OSError, IOError):
+                logger.warning("can't open list file %r - skipping this rewrite", fqf)
                 continue
 
         tail = optstail + ".json"
