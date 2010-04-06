@@ -203,7 +203,7 @@ def FillInCommonOauthParams(params, consumer, nonce=None, timestamp=None):
     params['oauth_timestamp'] = str(int(time.time()))
 
 
-def GenerateRequestToken(consumer, scope, nonce, timestamp,
+def GenerateRequestToken(consumer, scope, nonce, timestamp, callback_url,
                          google_accounts_url_generator):
   """Generates an OAuth request token by talking to Google Accounts.
 
@@ -222,7 +222,8 @@ def GenerateRequestToken(consumer, scope, nonce, timestamp,
   """
   params = {}
   FillInCommonOauthParams(params, consumer, nonce, timestamp)
-  params['oauth_callback'] = 'oob'
+  #params['oauth_callback'] = 'oob'
+  params['oauth_callback'] = callback_url
   params['scope'] = scope
   request_url = google_accounts_url_generator.GetRequestTokenUrl()
   token = OAuthEntity(None, '')
@@ -234,15 +235,19 @@ def GenerateRequestToken(consumer, scope, nonce, timestamp,
   url = '%s?%s' % (request_url, FormatUrlParams(params))
   response = urllib.urlopen(url).read()
   response_params = ParseUrlParamString(response)
-  for param in response_params.items():
-    print '%s: %s' % param
+  
+  # for param in response_params.items():
+  #  print '%s: %s' % param
+
   token = OAuthEntity(response_params['oauth_token'],
                       response_params['oauth_token_secret'])
-  print ('To authorize token, visit this url and follow the directions '
-         'to generate a verification code:')
-  print '  %s?oauth_token=%s' % (
-      google_accounts_url_generator.GetAuthorizeTokenUrl(),
-      UrlEscape(response_params['oauth_token']))
+
+  #print ('To authorize token, visit this url and follow the directions '
+  #       'to generate a verification code:')
+
+  #print '  %s?oauth_token=%s' % (
+  #    google_accounts_url_generator.GetAuthorizeTokenUrl(),
+  #    UrlEscape(response_params['oauth_token']))
   return token
 
 
@@ -275,8 +280,8 @@ def GetAccessToken(consumer, request_token, oauth_verifier,
   url = '%s?%s' % (request_url, FormatUrlParams(params))
   response = urllib.urlopen(url).read()
   response_params = ParseUrlParamString(response)
-  for param in ('oauth_token', 'oauth_token_secret'):
-    print '%s: %s' % (param, response_params[param])
+  #for param in ('oauth_token', 'oauth_token_secret'):
+  #  print '%s: %s' % (param, response_params[param])
   return OAuthEntity(response_params['oauth_token'],
                      response_params['oauth_token_secret'])
 

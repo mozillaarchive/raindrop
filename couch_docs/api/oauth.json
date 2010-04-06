@@ -1,0 +1,13 @@
+{
+  "rd_key" : ["api", "oauth"],
+  "schemas" : {
+    "rd.ext.api" : {
+        "code" : "RDFILE: *.py",
+        "content_type" : "application/x-python",
+        "endpoints" : [
+                       ["oauth", "consumer"]
+                      ],
+        "info": "Contacts message service providers to get OAuth tokens"
+    }
+  }
+}

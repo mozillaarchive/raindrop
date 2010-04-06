@@ -26,80 +26,6 @@
 
 import itertools
 
-class API:
-    # A base class - helpers for the implementation classes...
-    def get_args(self, req, *req_args, **opt_args):
-        supplied = {}
-        for name, val in req['query'].iteritems():
-            try:
-                val = json.loads(val)
-            except ValueError, why:
-                raise APIErrorResponse(400, "invalid json in param '%s': %s" % (name, why))
-            supplied[name] = val
-
-        body = req.get('body')
-        if body and body != 'undefined': # yes, couch 0.10 send the literal 'undefined'
-            # If there was a body specified, it can also contain request
-            # args - although no args can be specified in both places.
-            try:
-                body_args = json.loads(body)
-                if not isinstance(body_args, dict):
-                    raise ValueError, "body must be a json object"
-            except ValueError, why:
-                raise APIErrorResponse(400, "invalid json in request body: %s" % (why,))
-            s = set(body_args)
-            both = s.intersection(set(supplied))
-            if both:
-                msg = "the following arguments appear in both the query string and post body: %s" \
-                      % (",".join(both))
-                raise APIErrorResponse(400, msg)
-            supplied.update(body_args)
-
-        ret = {}
-        for arg in req_args:
-            if arg not in supplied:
-                raise APIErrorResponse(400, "required argument '%s' missing" % arg)
-            ret[arg] = supplied[arg]
-        for arg, default in opt_args.iteritems():
-            try:
-                val = supplied[arg]
-            except KeyError:
-                val = default
-            ret[arg] = val
-        # now check there aren't extra unknown args
-        for arg in supplied.iterkeys():
-            if arg not in ret:
-                raise APIErrorResponse(400, "unknown request argument '%s'" % arg)
-        return ret
-
-    def _requires_verbs(self, req, verbs):
-        try:
-            method = req['method'] # couch 0.11+
-        except KeyError:
-            method = req['verb'] # 0.10
-        if method not in verbs:
-            if len(verbs)==1:
-                msg = "%s required" % (verbs[0])
-            else:
-                msg = "one of %s or %s required" % (",".join(verbs[:-1]), verb[-1])
-            raise APIErrorResponse(405, msg)
-
-    def requires_get(self, req):
-        self._requires_verbs(req, ['GET'])
-
-    def requires_post(self, req):
-        self._requires_verbs(req, ['POST'])
-
-    def requires_get_or_post(self, req):
-        self._requires_verbs(req, ['GET', 'POST'])
-
-    def _filter_user_fields(self, doc):
-        ret = {}
-        for attr, val in doc.iteritems():
-            if not attr.startswith('rd_') and not attr.startswith('_'):
-                ret[attr] = val
-        return ret
-
 # The classes which define the API; all methods without a leading _ are public
 class ConversationAPI(API):
     def _filter_known_identities(self, db, idids):
@@ -545,28 +471,6 @@ dispatch = {
 # The standard raindrop extension entry-point (which is responsible for
 # exposing the REST API end-point) - so many points!
 def handler(request):
-    try:
-        # the 'path' tells us the end-point.  It is [db, external, app, class, method]
-        # and our caller has already checked it has exactly that many elts...
-        assert len(request['path'])==5, request
-        cls, meth_name = request['path'][-2:]
-        if cls not in dispatch:
-            raise APIErrorResponse(400, "invalid API request endpoint class")
-        # fetch the names method from the class instance
-        inst = dispatch[cls]
-        meth = getattr(inst, meth_name, None)
-        # check it is callable etc.
-        if not callable(meth) or meth_name.startswith('_'):
-            raise APIErrorResponse(400, "invalid inflow API request endpoint function")
-        # phew - call it.
-        resp = make_response(meth(request))
-    except APIException, exc:
-        resp = exc.err_response
-        log("error response: %s", resp)
-    except Exception, exc:
-        import traceback, StringIO
-        s = StringIO.StringIO()
-        traceback.print_exc(file=s)
-        resp = make_response(s.getvalue(), 400)
-        log("exception response: %s", resp)
-    return resp
+    return api_handle(request, dispatch)
+
+
