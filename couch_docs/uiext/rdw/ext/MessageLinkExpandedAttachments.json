@@ -1,0 +1,10 @@
+{
+  "schemas" : {
+    "rd.ext.uiext" : {
+      "exts": {
+        "rdw/Message": "rdw/ext/MessageLinkExpandedAttachments",
+        "rdw/Conversations": "rdw/ext/MessageLinkExpandedAttachments"
+      }
+    }
+  }
+}
