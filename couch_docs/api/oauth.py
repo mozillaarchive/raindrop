@@ -29,69 +29,75 @@ import time
 from raindrop.proto import xoauth
 
 class ConsumerAPI(API):
-    def get_consumer(self):
+    def _get_consumer(self):
         # TODO: pull these from the .raindrop file, the oauth consumer key,
         # and oauth consumer secret.
         return xoauth.OAuthEntity('anonymous', 'anonymous')
 
-    def get_url_generator(self):
+    def _get_url_generator(self, args):
         # TODO: figure out if we need to pass a real username here
-        return xoauth.GoogleAccountsUrlGenerator('username')
+        if args['provider'] == 'gmail':
+            return xoauth.GoogleAccountsUrlGenerator('username')
+        #TODO: provider=twitter?
+        raise APIErrorResponse(400, "unknown oauth provider")
 
     def request(self, req):
         self.requires_get(req)
+        db = RDCouchDB(req)
 
-        #TODO: take a provider=gmail or provider=twitter and to the right branching
+        args = self.get_args(req, 'provider', _json=False)
 
-        consumer = self.get_consumer()
+        if args['provider'] == 'gmail':
+            scope = 'https://mail.google.com/'
+        else:
+            #TODO: provider=twitter?
+            raise APIErrorResponse(400, "unknown oauth provider")
+        url_gen = self._get_url_generator(args)
 
-        # TODO: generate this full URL appropriately
-        callback_url = 'http://127.0.0.1/raindrop/_api/oauth/consumer/request_done'
+        consumer = self._get_consumer()
+        callback_url = self.absuri(db, '_api/oauth/consumer/request_done?provider=' + args['provider'])
 
-        request_entity = xoauth.GenerateRequestToken(consumer, 'https://mail.google.com/', None, None,                                            
-                                           callback_url,
-                                           self.get_url_generator())
+        # Note the xoauth module automatically generates nonces and timestampts to prevent replays.)
+        request_entity = xoauth.GenerateRequestToken(consumer, scope, None, None,
+                                           callback_url, url_gen)
 
-        # Save the request secret in the
-        # TODO use nonces to prevent replays.
-        oauth_requests[request_entity.key] = request_entity.secret
+        # TODO: Save the request secret in the ~/.raindrop file? We still need
+        # to finalize the 'workflow' before we can finalize the best place
+        # though (eg, we can't save under an account in ~/.raindrop before
+        # that account has been created!)
 
-        url = '%s?oauth_token=%s' % (xoauth.GoogleAccountsUrlGenerator('username').GetAuthorizeTokenUrl(),
+        url = '%s?oauth_token=%s' % (url_gen.GetAuthorizeTokenUrl(),
                                      xoauth.UrlEscape(request_entity.key))
-
         return [None, 302, { 'Location': url, 'Set-Cookie': 'oauth=%s' % xoauth.UrlEscape(request_entity.secret)}]
 
     def request_done(self, req):
         self.requires_get(req)
+        db = RDCouchDB(req)
         oauth_token = req['query']['oauth_token']
         oauth_verifier = req['query']['oauth_verifier']
+        args = self.get_args(req, 'provider', oauth_verifier=None, oauth_token=None, _json=False)
 
         # Read the request secret from the cookie
         # TODO: reconsider this, ideally store it serverside
         oauth_secret = xoauth.UrlUnescape(req['cookie']['oauth'])
+        if oauth_secret:
+            request_token = xoauth.OAuthEntity(oauth_token, oauth_secret)
+            log("REQ token=%r, secret=%r", oauth_token, oauth_secret)
+    
+            # Make the oauth call to get the final verified token
+            verified_token = xoauth.GetAccessToken(self._get_consumer(), request_token, oauth_verifier,
+                                            self._get_url_generator(args))
+    
+            # TODO: save this token in the .raindrop file.
+    
+            # Send the redirect to the user to finish account setup.
+            # TODO: generate the right return URL. Maybe an input to the consumer/request
+            # function?
+            fragment = "oauth_success_" + args['provider']
+        else:
+            fragment = "oauth_failure_" + args['provider']
 
-        request_token = xoauth.OAuthEntity(oauth_token, oauth_secret)
-
-        # Make sure the token matches a request token we were waiting for
-        # TODO: this is not persistent
-        #if not request_token in oauth_requests:
-        #    raise APIErrorResponse(400, "unknown OAUTH request")
-
-        # Remove the token from oauth_requests
-        # TODO
-        # del oauth_requests[request_token]
-
-        # Make the oauth call to get the final verified token
-        verified_token = xoauth.GetAccessToken(self.get_consumer(), request_token, oauth_verifier,
-                                        self.get_url_generator())
-
-        # TODO: save this token in the .raindrop file.
-
-        # Send the redirect to the user to finish account setup.
-        # TODO: generate the right return URL. Maybe an input to the consumer/request
-        # function?
-        # TODO: DO NOT return the token here, just done for testing
-        url = 'http://127.0.0.1/raindrop/signup/index.html#%s' % (verified_token.key)
+        url = self.absuri(db, 'signup/index.html#' + fragment)
 
         return [None, 302, { 'Location': url, 'Set-Cookie': 'oauth='}]
 
@@ -105,11 +111,6 @@ dispatch = {
     },
     'consumer': ConsumerAPI(),
 }
-
-# In memory store of oauth tokens/secrets
-# TODO: make this more robust for the future.
-# TODO: this is not persistent
-oauth_requests = {}
 
 # The standard raindrop extension entry-point (which is responsible for
 # exposing the REST API end-point) - so many points!

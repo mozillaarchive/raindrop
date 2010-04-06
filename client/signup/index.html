@@ -62,7 +62,7 @@
                 <div class="c1">
                     <div id="gmailNameError" class="error invisible">Please enter your Gmail name</div>
                     <div id="gmailPasswordError" class="error invisible">Please enter your Gmail password</div>
-                    <button onclick="location='../_api/auth/request?provider=gmail'">Use Gmail OAuth</button>
+                    <button onclick="location='../_api/oauth/consumer/request?provider=gmail'">Use Gmail OAuth</button>
                 </div>
                 <div class="c1">
                     <a href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Be sure to enable IMAP in your Gmail account first!</a>
@@ -115,6 +115,27 @@
             </div>
         </div>
     </div>
+
+    <!-- Sections indicating a response to oauth dances. -->
+    <div class="section oauth_success_gmail hidden">
+        <div class="row">
+            <div class="c1">
+                <p>raindrop has been authorized for gmail.</p>
+                <button onclick="location='#two'">Continue</button>
+            </div>
+        </div>
+    </div>
+    <div class="section oauth_failure_gmail hidden">
+        <div class="row">
+            <div class="c1">
+               <!-- We probably want nice error images and/or styling? -->
+                <p>Oh-noes</p>
+                <p>raindrop was denied access to gmail!</p>
+                <button onclick="location='#two'">Continue</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
 
