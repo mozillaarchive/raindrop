@@ -63,11 +63,11 @@ def handler(doc):
         return
 
     thumbs = []
-    links = doc['links']
-    for link in links:
-        if link['domain'] in SERVICES:
-            prop = SERVICES.get(link['domain']).get('prop')
-            match = SERVICES.get(link['domain']).get('regex').search(link[prop])
+    for link in doc['links']:
+        service =  SERVICES.get(link['domain'], None)
+        if service is not None:
+            prop = service.get('prop')
+            match = service.get('regex').search(link[prop])
             if match and match.group(1):
                 thumbs.append( (link, match.group(1)) )
 
