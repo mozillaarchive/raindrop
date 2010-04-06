@@ -29,77 +29,137 @@ import time
 from raindrop.proto import xoauth
 
 class ConsumerAPI(API):
-    def _get_consumer(self):
+    def _get_consumer(self, oauth_config):
         # TODO: pull these from the .raindrop file, the oauth consumer key,
         # and oauth consumer secret.
-        return xoauth.OAuthEntity('anonymous', 'anonymous')
+        return xoauth.OAuthEntity(oauth_config['consumer_key'], oauth_config['consumer_secret'])
 
-    def _get_url_generator(self, args):
+    # gets the provider from request args, and makes sure provider is valid,
+    # otherwise raises an exception. Use this method in top level API entry
+    # points to validate provider.
+    def _get_provider_name(self, args):
+        provider = args['provider']
+        if provider != 'gmail' and provider != 'twitter':
+            raise APIErrorResponse(400, "unknown oauth provider")
+        return provider
+
+    def _get_url_generator(self, provider, username):
         # TODO: figure out if we need to pass a real username here
-        if args['provider'] == 'gmail':
-            return xoauth.GoogleAccountsUrlGenerator('username')
-        #TODO: provider=twitter?
-        raise APIErrorResponse(400, "unknown oauth provider")
+        if provider == 'gmail':
+            return xoauth.GoogleAccountsUrlGenerator(username or 'username')
+        elif provider == 'twitter':
+            return xoauth.TwitterAccountsUrlGenerator()
 
     def request(self, req):
         self.requires_get(req)
         db = RDCouchDB(req)
+        config = get_api_config(req)
+        args = self.get_args(req, 'provider', 'username', addresses=None, _json=False)
+        provider = self._get_provider_name(args)
+        provider_config = config.oauth[provider]
+        username = args['username']
 
-        args = self.get_args(req, 'provider', _json=False)
-
-        if args['provider'] == 'gmail':
+        if provider == 'gmail':
             scope = 'https://mail.google.com/'
-        else:
-            #TODO: provider=twitter?
-            raise APIErrorResponse(400, "unknown oauth provider")
-        url_gen = self._get_url_generator(args)
+            if username.find('@') == -1:
+                username += '@gmail.com'
+        elif provider == 'twitter':
+            scope = 'http://twitter.com/'
 
-        consumer = self._get_consumer()
+        url_gen = self._get_url_generator(provider, username)
+
+        consumer = self._get_consumer(provider_config)
+
         callback_url = self.absuri(db, '_api/oauth/consumer/request_done?provider=' + args['provider'])
 
         # Note the xoauth module automatically generates nonces and timestampts to prevent replays.)
         request_entity = xoauth.GenerateRequestToken(consumer, scope, None, None,
                                            callback_url, url_gen)
 
-        # TODO: Save the request secret in the ~/.raindrop file? We still need
-        # to finalize the 'workflow' before we can finalize the best place
-        # though (eg, we can't save under an account in ~/.raindrop before
-        # that account has been created!)
+        # Save the request secret in the ~/.raindrop file
+        provider_config['request_key'] = request_entity.key
+        provider_config['request_secret'] = request_entity.secret
+        #TODO: make sure username, if gmail, ends with a @gmail if not prefix provided
+        provider_config['username'] = username
+        provider_config['addresses'] = args['addresses']
+        
+        config.save_oauth(config.OAUTH_PREFIX + provider, provider_config)
 
         url = '%s?oauth_token=%s' % (url_gen.GetAuthorizeTokenUrl(),
                                      xoauth.UrlEscape(request_entity.key))
-        return [None, 302, { 'Location': url, 'Set-Cookie': 'oauth=%s' % xoauth.UrlEscape(request_entity.secret)}]
+        return [None, 302, { 'Location': url }]
 
     def request_done(self, req):
         self.requires_get(req)
         db = RDCouchDB(req)
+        config = get_api_config(req)
+        args = self.get_args(req, 'provider', oauth_verifier=None, oauth_token=None, _json=False)
+        provider = self._get_provider_name(args)
+        provider_config = config.oauth[provider]
+        username = provider_config['username']
+
         oauth_token = req['query']['oauth_token']
         oauth_verifier = req['query']['oauth_verifier']
-        args = self.get_args(req, 'provider', oauth_verifier=None, oauth_token=None, _json=False)
 
-        # Read the request secret from the cookie
-        # TODO: reconsider this, ideally store it serverside
-        oauth_secret = xoauth.UrlUnescape(req['cookie']['oauth'])
-        if oauth_secret:
-            request_token = xoauth.OAuthEntity(oauth_token, oauth_secret)
-            log("REQ token=%r, secret=%r", oauth_token, oauth_secret)
-    
+        # Read the request secret from .raindrop file
+        request_key = provider_config['request_key']
+        request_secret = provider_config['request_secret']
+        if request_secret and request_key == oauth_token:
+            request_token = xoauth.OAuthEntity(oauth_token, request_secret)
+            log("REQ token=%r, secret=%r", oauth_token, request_secret)
+
             # Make the oauth call to get the final verified token
-            verified_token = xoauth.GetAccessToken(self._get_consumer(), request_token, oauth_verifier,
-                                            self._get_url_generator(args))
-    
-            # TODO: save this token in the .raindrop file.
-    
+            verified_token = xoauth.GetAccessToken(self._get_consumer(provider_config), request_token, oauth_verifier,
+                                            self._get_url_generator(provider, username))
+
+            # Save this token in the .raindrop file as an account setting
+            acct = {
+                'oauth_token': verified_token.key,
+                'oauth_token_secret': verified_token.secret,
+                'username': username,
+            }
+            if provider == 'gmail':
+                # Need to set up imap and smtp sections
+                imap = acct.copy()
+                if 'addresses' in provider_config:
+                    imap['addresses'] = provider_config['addresses']
+                imap['kind'] = 'gmail'
+                imap['proto'] = 'imap'
+                imap['ssl'] = True
+                imap['host'] = 'imap.gmail.com'
+                imap['port'] = 993
+                config.save_account(config.ACCOUNT_PREFIX + 'imap-' + imap['username'], imap)
+
+                smtp = acct.copy()
+                smtp['kind'] = 'smtp'
+                smtp['proto'] = 'smtp'
+                smtp['ssl'] = False
+                smtp['host'] = 'smtp.gmail.com'
+                smtp['port'] = 587
+                config.save_account(config.ACCOUNT_PREFIX + 'smtp-' + smtp['username'], smtp)
+            elif provider == 'twitter':
+                twitter = acct.copy()
+                twitter['kind'] = 'twitter'
+                twitter['proto'] = 'twitter'
+                config.save_account(config.ACCOUNT_PREFIX + 'twitter-' + twitter['username'], twitter)
+
+            # Reset oauth section
+            provider_config['username'] = None
+            provider_config['addresses'] = None
+            provider_config["request_key"] = None
+            provider_config["request_secret"] = None
+            config.save_oauth(config.OAUTH_PREFIX + provider, provider_config)
+
             # Send the redirect to the user to finish account setup.
             # TODO: generate the right return URL. Maybe an input to the consumer/request
             # function?
-            fragment = "oauth_success_" + args['provider']
+            fragment = "oauth_success_" + provider
         else:
-            fragment = "oauth_failure_" + args['provider']
+            fragment = "oauth_failure_" + provider
 
         url = self.absuri(db, 'signup/index.html#' + fragment)
 
-        return [None, 302, { 'Location': url, 'Set-Cookie': 'oauth='}]
+        return [None, 302, { 'Location': url }]
 
 # A mapping of the 'classes' we expose.  Each value is a class instance, and
 # all 'public' methods (ie, those without leading underscores) on the instance

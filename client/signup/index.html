@@ -62,7 +62,7 @@
                 <div class="c1">
                     <div id="gmailNameError" class="error invisible">Please enter your Gmail name</div>
                     <div id="gmailPasswordError" class="error invisible">Please enter your Gmail password</div>
-                    <button onclick="location='../_api/oauth/consumer/request?provider=gmail'">Use Gmail OAuth</button>
+                    <button onclick="location='../_api/oauth/consumer/request?provider=gmail&username=' + encodeURIComponent(document.getElementById('gmailName').value) + '&addresses=' + encodeURIComponent(document.getElementById('gmailAddresses').value)">Use Gmail OAuth</button>
                 </div>
                 <div class="c1">
                     <a href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Be sure to enable IMAP in your Gmail account first!</a>
@@ -80,6 +80,7 @@
                 <div class="c1">
                     <div id="twitterNameError" class="error invisible">Please enter your Twitter name</div>
                     <div id="twitterPasswordError" class="error invisible">Please enter your Twitter password</div>
+                    <button onclick="location='../_api/oauth/consumer/request?provider=twitter&username=' + encodeURIComponent(document.getElementById('twitterName').value)">Use Twitter OAuth</button>
                </div>
                 <div class="c1">
                 *You may delete your account at any time

@@ -59,6 +59,16 @@ if '--show-perf' in sys.argv:
 else:
     note_timeline = lambda msg, *args: None
 
+def get_api_config_filename(req):
+    dbname = req['path'][0]
+    return "~/." + dbname
+
+def get_api_config(req):
+    return config.Config(get_api_config_filename(req))
+
+api_globals['get_api_config_filename'] = get_api_config_filename
+api_globals['get_api_config'] = get_api_config
+
 class API:
     # A base class - helpers for the implementation classes...
     def get_args(self, req, *req_args, **opt_args):

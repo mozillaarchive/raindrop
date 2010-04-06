@@ -359,3 +359,15 @@ class GoogleAccountsUrlGenerator:
 
   def GetAccessTokenUrl(self):
     return 'https://www.google.com/accounts/OAuthGetAccessToken'
+
+
+class TwitterAccountsUrlGenerator:
+
+  def GetRequestTokenUrl(self):
+    return 'http://twitter.com/oauth/request_token'
+
+  def GetAuthorizeTokenUrl(self):
+    return 'http://twitter.com/oauth/authorize'
+
+  def GetAccessTokenUrl(self):
+    return 'http://twitter.com/oauth/access_token'

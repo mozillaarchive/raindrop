@@ -29,8 +29,14 @@ __all__ = ['get_config']
 
 class Config(object):
   COUCH_DEFAULTS = {'host': '127.0.0.1', 'port': 5984, 'name': 'raindrop'}
+  # These twitter defaults mean twitter only redirects back to this URL during
+  # oauth:
+  # http://127.0.0.1/raindrop/_api/oauth/consumer/request_done?provider=twitter
+  OAUTH_TWITTER_DEFAULTS = {'consumer_key': '2r1qbed58DAaNMe142msTg', 'consumer_secret': 'prh6A961516mJ3XEjd7eERsGxuVZqycrBB6lV7LQ'}
+  OAUTH_DEFAULTS = {'consumer_key': 'anonymous', 'consumer_secret': 'anonymous'}
   COUCH_PREFIX = 'couch-'
   ACCOUNT_PREFIX = 'account-'
+  OAUTH_PREFIX = 'oauth-'
   
   def __init__(self, filename=None):
     if not filename:
@@ -53,6 +59,7 @@ class Config(object):
     self.couches['local']['name'] = dbname
 
     self.accounts = {}
+    self.oauth = {}
 
     self.load()
 
@@ -98,17 +105,41 @@ class Config(object):
                     self.dictifySection(section_name, None, account_name)
         acct['id'] = account_name
 
+      if section_name.startswith(self.OAUTH_PREFIX):
+        oauth_name = section_name[len(self.OAUTH_PREFIX):]
+        if oauth_name == "twitter":
+          oauth_defaults = self.OAUTH_TWITTER_DEFAULTS
+        else:
+          oauth_defaults = self.OAUTH_DEFAULTS
+        self.oauth[oauth_name] = self.dictifySection(section_name,
+                                                       oauth_defaults)
+
+    # If no gmail or twitter oauth, then create them
+    if not 'gmail' in self.oauth:
+      self.oauth['gmail'] = self.OAUTH_DEFAULTS
+    if not 'twitter' in self.oauth:
+      self.oauth['twitter'] = self.OAUTH_TWITTER_DEFAULTS
+
     self.local_couch = self.couches['local']
     self.remote_couch = self.couches.get('remote') # may be None
 
   def save_account(self, acct_name, acct_fields):
     assert acct_name.startswith(self.ACCOUNT_PREFIX) # else it will not load!
-    if self.parser.has_section(acct_name):
-      self.parser.remove_section(acct_name)
-    self.parser.add_section(acct_name)
-    for name, val in acct_fields.iteritems():
-      self.parser.set(acct_name, name, str(val))
+    self.save_section(acct_name, acct_fields)
 
+  def save_oauth(self, oauth_name, oauth_fields):
+    assert oauth_name.startswith(self.OAUTH_PREFIX) # else it will not load!
+    self.save_section(oauth_name, oauth_fields)
+
+  def save_section(self, sec_name, sec_fields):
+    if self.parser.has_section(sec_name):
+      self.parser.remove_section(sec_name)
+    self.parser.add_section(sec_name)
+    for name, val in sec_fields.iteritems():
+      self.parser.set(sec_name, name, str(val))
+    self.save_file()
+
+  def save_file(self):
     # first save to a temp filename
     temp_name = self.filename + ".temp"
     with open(temp_name, "w") as fp:
