@@ -30,6 +30,15 @@
   width: 100%;
 }
 
+.rdwConversations .updateCount {
+    cursor: pointer;
+    background-color: yellow;
+    text-align: center;
+    font-weight: bold;
+    color: red;
+}
+
+
 .rdwConversations .scrollArea {
   overflow: auto;
   width: 8000px;

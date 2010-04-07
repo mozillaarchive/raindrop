@@ -76,7 +76,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         //all instances. Reassign the property to a new object to affect
         //only one instance.
         topics: {
-            "rd-engine-sync-done": "checkUpdateInfo",
+            "rd/autoSync-update": "autoSyncUpdate",
             "rd-protocol-home": "home",
             "rd-protocol-contact": "contact",
             "rd-protocol-locationTag": "locationTag",
@@ -122,12 +122,16 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         },
 
         templateString: '<div class="rdwConversations" dojoAttachEvent="onclick: onClick, onkeypress: onKeyPress">' +
+                        '    <div class="updateCount" dojoAttachPoint="updateCountNode" dojoAttachEvent="onclick: onUpdateCountClick"></div>' +        
                         '    <div dojoType="rdw.Summary" dojoAttachPoint="summaryWidget"></div>' +
                         '    <div dojoAttachPoint="listNode"></div>' +
                         '    <div dojoAttachPoint="convoNode"></div>' +
                         '    <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">${i18n.moreConversations}</button>' +
                         '</div>',
         widgetsInTemplate: true,
+
+        updateCountTemplate: "${count} new item",
+        updateCountMultiTemplate: "${count} new items",
 
         /** Dijit lifecycle method before template is generated. */
         postMixInProperties: function () {
@@ -151,10 +155,12 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     this._sub(prop, this.topics[prop]);
                 }
             }
-    
+
+            this.updateCountNode.style.display = "none";
+
             //See if there was a last known state of displayed messages and
             //show them.
-            this.checkUpdateInfo();
+            this.autoSyncUpdate(null);
         },
 
         destroyIgnore: {
@@ -364,15 +370,18 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          */
         _sub: function (/*String*/topicName, /*String*/funcName) {
             this.subscribe(topicName, dojo.hitch(this, function () {
-                var args = Array.prototype.slice.call(arguments);
-                if (topicName !== "rd-engine-sync-done") {
+                var args = Array.prototype.slice.call(arguments),
+                    callType = "update";
+
+                if (topicName !== "rd/autoSync-update") {
+                    callType = null;
                     this._updateInfo = {
                         funcName: funcName,
                         //Convert to real array
                         args: args
                     };
                 }
-                
+
                 //Add in a call type of none, it is not a more or update call
 
                 //Store the topic name for future reference
@@ -396,21 +405,23 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     this.skipCount = 0;
 
                     //Pass null for the callType argument
-                    this[funcName].apply(this, [null].concat(args));
+                    this[funcName].apply(this, [callType].concat(args));
                 }
                 this._isBack = false;
             }));
         },
 
         /** Sees if last request should be updated. */
-        checkUpdateInfo: function () {
+        autoSyncUpdate: function (callType) {
+            console.warn("autoSyncUpdate received");
+ 
             var info = this._updateInfo;
             if (info) {
-                this[info.funcName].apply(this, info.args);
+                this[info.funcName].apply(this, [callType].concat(info.args));
             }
         },
 
-        showMore: function() {
+        showMore: function () {
             var info = this._updateInfo, args;
             if (info) {
                 //Do not modify info.args, since we may need a pristine
@@ -436,7 +447,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         updateConversations: function (callType, viewType, conversations) {
             //TODO: try to reuse a Conversation object instead of destroy/create
             //cycle. Could cause too much memory churn in the browser.
-            var i, module, mod, Ctor, frag, conv;
+            var i, module, mod, Ctor, frag, conv, newCount, lastId;
             //Hold on to conversations in case we need to refresh based on extension
             //action.
             if (viewType === "conversation") {
@@ -481,26 +492,60 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
     
                     //Showing summaries of a few conversations.
                     this.conversations = conversations;
+
+                    //Clean up any old update args
+                    this.updateArgs = null;
+                    this.hideUpdatedCount();
                 } else if (callType === "more") {
                     this.conversations = this.conversations.concat(conversations);
+                } else if (callType === "update") {
+                    //Compare what is available.
+                    newCount = 0;
+                    lastId = null;
+                    if (this.conversations && this.conversations[0]) {
+                        lastId = this.conversations[0].id;
+                    }
+
+                    for (i = 0; (conv = conversations[i]); i++) {
+                        if (!lastId || lastId[0] !== conv.id[0] ||
+                            lastId[1][0] !== conv.id[1][0] ||
+                            lastId[1][1] !== conv.id[1][1]) {
+                            newCount += 1;
+                        } else {
+                            //Once we find the old lastId in the new list,
+                            //stop. That should tell us what will show up
+                            //as "new" above the old lastId.
+                            break;
+                        }
+                    }
+
+                    if (newCount) {
+                        this.updateArgs = Array.prototype.slice.call(arguments);
+                        //Change first arg to be null, to indicate this is a fresh
+                        //call, not an update or a more call.
+                        this.updateArgs[0] = null;
+                        this.showUpdatedCount(newCount);
+                    }
                 }
 
-                //Create new widgets.
-                //Use a document fragment for best performance
-                //and load up each conversation widget in there.
-                frag = dojo.doc.createDocumentFragment();
-                for (i = 0; (conv = conversations[i]); i++) {
-                    this.createConvoWidget(conv, frag);
-                }
-
-                //Inject nodes all at once for best performance.
-                this.listNode.appendChild(frag);
-
-                //Update the More button, whether to show it or not.
-                if (!conversations || !conversations.length) {
-                    this.moreNode.style.display = "none";
-                } else {
-                    this.moreNode.style.display = "";
+                if (callType !== "update") {
+                    //Create new widgets.
+                    //Use a document fragment for best performance
+                    //and load up each conversation widget in there.
+                    frag = dojo.doc.createDocumentFragment();
+                    for (i = 0; (conv = conversations[i]); i++) {
+                        this.createConvoWidget(conv, frag);
+                    }
+    
+                    //Inject nodes all at once for best performance.
+                    this.listNode.appendChild(frag);
+    
+                    //Update the More button, whether to show it or not.
+                    if (!conversations || !conversations.length) {
+                        this.moreNode.style.display = "none";
+                    } else {
+                        this.moreNode.style.display = "";
+                    }
                 }
 
                 if (!callType) {
@@ -511,7 +556,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             this.transition(viewType);
         },
 
-        createConvoWidget: function(conv, refNode, position) {
+        createConvoWidget: function (conv, refNode, position) {
             var Ctor = this._getConvoWidget(conv, this.convoWidgets) ||
                                          require(this.topicConversationCtorNames[this.currentTopic] ||
                                          this.conversationCtorName),
@@ -521,6 +566,41 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
 
             this.addSupporting(widget);
             return widget;
+        },
+
+        /**
+         * Show the section that indicates there are new conversations
+         * @param {Number} count
+         */
+        showUpdatedCount: function (count) {
+            var template = count === 1 ? this.updateCountTemplate : this.updateCountMultiTemplate;
+            this.updateCountNode.innerHTML = rd.template(template, { count: count});
+
+            dojo.style(this.updateCountNode, "opacity", 0);
+            this.updateCountNode.style.display = "";
+            dojo.fadeIn({
+                node: this.updateCountNode,
+                duration: 1000
+            }).play();
+        },
+
+        /**
+         * Show the section that indicates there are new conversations
+         * @param {Number} count
+         */
+        hideUpdatedCount: function (count) {
+            this.updateCountNode.style.display = "none";
+        },
+
+        /**
+         * Handles clicks for the update count. When clicked, then
+         * apply the updates to the display.
+         */
+        onUpdateCountClick: function (evt) {
+            this.hideUpdatedCount();
+            if (this.updateArgs) {
+                this.updateConversations.apply(this, this.updateArgs);
+            }
         },
 
         /**
@@ -890,7 +970,6 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             .ok(dojo.hitch(this, "updateConversations", callType, "summary"));
         },
 
-
         /**
          * Responds to rd-impersonal-remove-from topic.
          * @param {Array} identityId
@@ -903,7 +982,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 msg = widget.msgs && widget.msgs[0];
                 //If no message in this widget, skip it.
                 if (!msg) {
-                  continue;
+                    continue;
                 }
 
                 body = msg.schemas["rd.msg.body"];

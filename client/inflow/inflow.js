@@ -39,7 +39,7 @@ require.def("inflow",
     "rdw/Conversations",
     "rdw/Widgets",
     "rdw/Organizer",
-    "rd/engine",
+    "rd/autoSync",
     "rd/conversation"
 ],
 function (require, dojo, dijit, rd, parser, accountIds) {
@@ -110,7 +110,7 @@ function (require, dojo, dijit, rd, parser, accountIds) {
             //inflow.hideQuickCompose();
 
             //Trigger the first list of items to show. Favor a fragment ID on the URL.
-            var fragId = location.href.split("#")[1], autoSync = 0,
+            var fragId = location.href.split("#")[1],
                 args = location.href.split("#")[0].split("?")[1];
             if (fragId) {
                 rd.dispatchFragId(fragId);
@@ -123,32 +123,6 @@ function (require, dojo, dijit, rd, parser, accountIds) {
                     rd.pub("rd-protocol-home");
                 }
             });
-    
-            //Listen for quick compose open calls        
-            //dojo.query(".quickComposeLaunch").onclick(function(evt) {
-            //    inflow.showQuickCompose();
-            //    dojo.stopEvent(evt);
-            //})
-    
-            //Listen for quick compose close calls.
-            //rd.sub("rd-QuickCompose-closed", inflow, "hideQuickCompose");
-    
-            //Start up the autosyncing if desired, time is in seconds.
-            if (args) {
-                args = dojo.queryToObject(args);
-                if (args.autosync) {
-                    if (args.autosync === "off") {
-                        autoSync = 0;
-                    } else {
-                        autoSync = parseInt(args.autosync, 10);
-                    }
-                }
-            }
-    
-            //watch for auto sync
-            if (autoSync) {
-                rd.engine.autoSync(autoSync);
-            }
         });
     });
     
