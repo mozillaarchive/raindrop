@@ -933,6 +933,8 @@ class ImapClientFactory(protocol.ClientFactory):
       raise ValueError, "this account has no 'host' configured"
 
     ssl = details.get('ssl')
+    if ssl is None and is_gmail:
+      ssl = True
     port = details.get('port')
     if not port:
       port = 993 if ssl else 143
