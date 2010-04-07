@@ -139,6 +139,11 @@ class Config(object):
       self.parser.set(sec_name, name, str(val))
     self.save_file()
 
+  def delete_section(self, sec_name):
+    if self.parser.has_section(sec_name):
+      self.parser.remove_section(sec_name)
+    self.save_file()
+
   def save_file(self):
     # first save to a temp filename
     temp_name = self.filename + ".temp"

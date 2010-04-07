@@ -106,7 +106,6 @@ class ConsumerAPI(API):
         request_secret = provider_config['request_secret']
         if request_secret and request_key == oauth_token:
             request_token = xoauth.OAuthEntity(oauth_token, request_secret)
-            log("REQ token=%r, secret=%r", oauth_token, request_secret)
 
             # Make the oauth call to get the final verified token
             verified_token = xoauth.GetAccessToken(self._get_consumer(provider_config), request_token, oauth_verifier,
@@ -125,9 +124,7 @@ class ConsumerAPI(API):
                     imap['addresses'] = provider_config['addresses']
                 imap['kind'] = 'gmail'
                 imap['proto'] = 'imap'
-                imap['ssl'] = True
-                imap['host'] = 'imap.gmail.com'
-                imap['port'] = 993
+                # with kind=gmail we can avoid settings like 'host', 'ssl', etc
                 config.save_account(config.ACCOUNT_PREFIX + 'imap-' + imap['username'], imap)
 
                 smtp = acct.copy()
@@ -143,12 +140,8 @@ class ConsumerAPI(API):
                 twitter['proto'] = 'twitter'
                 config.save_account(config.ACCOUNT_PREFIX + 'twitter-' + twitter['username'], twitter)
 
-            # Reset oauth section
-            provider_config['username'] = None
-            provider_config['addresses'] = None
-            provider_config["request_key"] = None
-            provider_config["request_secret"] = None
-            config.save_oauth(config.OAUTH_PREFIX + provider, provider_config)
+            # Remove oauth section
+            config.delete_section(config.OAUTH_PREFIX + provider)
 
             # Send the redirect to the user to finish account setup.
             # TODO: generate the right return URL. Maybe an input to the consumer/request
