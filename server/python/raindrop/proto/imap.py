@@ -168,9 +168,10 @@ class ImapClient(imap4.IMAP4Client):
         # it isn't clear why we need to explicitly call the deferred callback
         # here when we don't for login - but whateva...
         self.deferred.callback(self)
+        return
       else:
         logger.warn("This server supports OAUTH but no tokens or secrets are available to use - falling back to password")
-        _ = yield self._startLogin()
+    _ = yield self._startLogin()
 
   def _startLogin(self):
     if self.account.details.get('crypto') == 'TLS':
