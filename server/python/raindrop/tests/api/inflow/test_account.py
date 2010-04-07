@@ -91,3 +91,18 @@ class TestAccount(APITestCase):
         self.failUnlessEqual(parser.get("some_section", "foo"), "bar", content)
         # and the account should have another section.
         self.failUnlessEqual(len(parser.sections()), 2, content)
+
+    @defer.inlineCallbacks
+    def test_set_reloads(self):
+        acct = {"host": "mail.foo.com"}
+        result = yield self.call_api("inflow/account/set", "POST", acct,
+                                     id="test")
+        self.failUnlessEqual(result, "ok")
+        # now read it back - but directly from our local config object.  This
+        # is to ensure that processes which are already running and have
+        # loaded the config see the change and magically get the new value.
+        # (The API reads the file on each 'list' request, so isn't suitable
+        # for testing this specific case)
+        got = self.config.accounts['test']
+        self.failUnless('host' in got, got)
+        self.failUnlessEqual(got['host'], 'mail.foo.com')

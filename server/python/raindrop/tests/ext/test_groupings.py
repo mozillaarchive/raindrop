@@ -144,7 +144,7 @@ Hello everyone
     def make_config(self):
         config = TestCaseWithTestDB.make_config(self)
         # now clobber it with a fake imap account which has our test user.
-        config.accounts = {}
+        config.accounts.clear()
         acct = config.accounts['test'] = {}
         acct['proto'] = 'imap'
         acct['id'] = 'imap_test'

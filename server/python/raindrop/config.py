@@ -23,7 +23,7 @@
 
 from __future__ import with_statement
 
-import ConfigParser, logging, os, os.path
+import ConfigParser, logging, os, stat
 
 __all__ = ['get_config']
 
@@ -49,19 +49,35 @@ class Config(object):
     self.filename = filename
 
     self.parser = ConfigParser.SafeConfigParser()
+    self.cur_stat = None
+    self._init_values()
 
-    self.couches = {'local': self.COUCH_DEFAULTS.copy()}
+  def _init_values(self):
+    self._couches = {'local': self.COUCH_DEFAULTS.copy()}
     # the default name of the DB if derived from the filename being used.
     # This is so our API process, which works with many databases at once,
     # can handle all these different DBs in a sane way.
-    base = os.path.split(filename)[-1]
+    base = os.path.split(self.filename)[-1]
     dbname = base.strip(".")
-    self.couches['local']['name'] = dbname
+    self._couches['local']['name'] = dbname
 
-    self.accounts = {}
-    self.oauth = {}
+    self._accounts = {}
+    self._oauth = {}
 
-    self.load()
+  @property
+  def accounts(self):
+    self._check_load()
+    return self._accounts
+
+  @property
+  def oauth(self):
+    self._check_load()
+    return self._oauth
+
+  @property
+  def couches(self):
+    self._check_load()
+    return self._couches
 
   def dictifySection(self, section_name, defaults=None, name=None):
     '''
@@ -89,19 +105,32 @@ class Config(object):
       results[name] = value
     return results
 
-  def load(self):
+  def _check_load(self):
+    try:
+      cur_stat = os.stat(self.filename)
+    except os.error:
+      # config file doesn't exist
+      dirty = False
+    else:
+      dirty = self.cur_stat is None or \
+              self.cur_stat[stat.ST_MTIME] != cur_stat[stat.ST_MTIME] or \
+              self.cur_stat[stat.ST_SIZE] != cur_stat[stat.ST_SIZE]
+    if not dirty:
+      return
+
+    self._init_values()
     filenames = [self.filename]
     self.parser.read(filenames)
 
     for section_name in self.parser.sections():
       if section_name.startswith(self.COUCH_PREFIX):
         couch_name = section_name[len(self.COUCH_PREFIX):]
-        self.couches[couch_name] = self.dictifySection(section_name,
-                                                       self.COUCH_DEFAULTS)
+        self._couches[couch_name] = self.dictifySection(section_name,
+                                                        self.COUCH_DEFAULTS)
 
       if section_name.startswith(self.ACCOUNT_PREFIX):
         account_name = section_name[len(self.ACCOUNT_PREFIX):]
-        acct = self.accounts[account_name] = \
+        acct = self._accounts[account_name] = \
                     self.dictifySection(section_name, None, account_name)
         acct['id'] = account_name
 
@@ -111,17 +140,15 @@ class Config(object):
           oauth_defaults = self.OAUTH_TWITTER_DEFAULTS
         else:
           oauth_defaults = self.OAUTH_DEFAULTS
-        self.oauth[oauth_name] = self.dictifySection(section_name,
+        self._oauth[oauth_name] = self.dictifySection(section_name,
                                                        oauth_defaults)
 
     # If no gmail or twitter oauth, then create them
-    if not 'gmail' in self.oauth:
-      self.oauth['gmail'] = self.OAUTH_DEFAULTS
-    if not 'twitter' in self.oauth:
-      self.oauth['twitter'] = self.OAUTH_TWITTER_DEFAULTS
-
-    self.local_couch = self.couches['local']
-    self.remote_couch = self.couches.get('remote') # may be None
+    if not 'gmail' in self._oauth:
+      self._oauth['gmail'] = self.OAUTH_DEFAULTS
+    if not 'twitter' in self._oauth:
+      self._oauth['twitter'] = self.OAUTH_TWITTER_DEFAULTS
+    self.cur_stat = cur_stat
 
   def save_account(self, acct_name, acct_fields):
     assert acct_name.startswith(self.ACCOUNT_PREFIX) # else it will not load!
@@ -132,6 +159,7 @@ class Config(object):
     self.save_section(oauth_name, oauth_fields)
 
   def save_section(self, sec_name, sec_fields):
+    self._check_load() # ensure all sections are loaded...
     if self.parser.has_section(sec_name):
       self.parser.remove_section(sec_name)
     self.parser.add_section(sec_name)
@@ -140,6 +168,7 @@ class Config(object):
     self.save_file()
 
   def delete_section(self, sec_name):
+    self._check_load() # ensure all sections are loaded...
     if self.parser.has_section(sec_name):
       self.parser.remove_section(sec_name)
     self.save_file()
