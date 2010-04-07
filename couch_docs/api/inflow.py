@@ -448,7 +448,7 @@ class AccountAPI(API):
             # anything with certain words in the name get replaced with true to
             # indicate we have something, but not what it is.
             for name, val in acct.items():
-                for black in ['password', 'token']:
+                for black in ['password', 'token', 'secret']:
                     if black in name:
                         acct[name] = True
             ret.append(acct)
