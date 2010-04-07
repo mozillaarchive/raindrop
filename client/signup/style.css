@@ -149,8 +149,18 @@ button:hover {
   color: #FF3333;
 }
 
-.error:before {
+div.error:before {
   content: "*";
+}
+
+h4.error {
+    color: #FF3333;
+    height: auto;
+    padding: 0;
+}
+
+h4.success {
+    color: #3B9D3B;
 }
 
 .hidden {
@@ -208,22 +218,26 @@ button:hover {
   background-repeat: no-repeat;
 }
 
-.gmail {
-  display: block;
+.gmailHeader {
   height: 13px;
+  line-height: 13px;
   background-image: url("i/x.png");
   background-position: right -35px;
   background-repeat: no-repeat;
   margin-top: 4px;
 }
 
-.twitter {
-  display: block;
+.twitterHeader {
   height: 12px;
+  line-height: 12px;
   background-image: url("i/x.png");
   background-position: right -49px;
   background-repeat: no-repeat;
   margin-top: 4px;
+}
+
+.twitterActions {
+    margin-bottom: 20px;
 }
 
 .info {
@@ -231,20 +245,6 @@ button:hover {
   background-position: 0 -62px;
   background-repeat: no-repeat;
   padding-top: 16px;
-}
-
-#uninvited {
-  width: 77px;
-  height: 15px;
-  background-image: url("i/x.png");
-  background-position: 0 -20px;
-  background-repeat: no-repeat;
-  position: fixed;
-  display: block;
-  top: 50%;
-  left: 50%;
-  margin-left: -38px;
-  margin-top: -7px;
 }
 
 .zero {
@@ -260,4 +260,15 @@ button:hover {
   vertical-align: text-top;
   position: relative;
   top: 1px;
+}
+
+.skip {
+    color: red;
+    font-size: smaller;
+    text-decoration: none;
+}
+
+.configureImap {
+    display: block;
+    margin: 20px 0;
 }

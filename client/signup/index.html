@@ -38,56 +38,18 @@
         </div>
     </div>
 
-    <!-- Section One -->
-    <div class="section one hidden">
+    <!-- default section -->
+    <div class="section welcome hidden">
         <div class="row">
             <div class="c1">
               <p>Welcome.</p>
-              <p><a href="#two">Create an account</a></p>
+              <p><a href="#fyi">Create an account</a></p>
             </div>
         </div>
     </div>
 
-    <!-- Section Two -->
-    <div class="section two hidden">
-        <form id="credentials" action="#three" method="GET">
-            <div class="row">
-                <div class="c1 gmail">
-                </div>
-                <div class="c1">
-                    <input type="text" id="gmailName" placeholder="Gmail account" value="">
-                    <input type="password" id="gmailPassword" placeholder="Gmail password" value="">
-                    <input type="text" id="gmailAddresses" placeholder="Additional, comma-separated emails" value="">
-                </div>
-                <div class="c1">
-                    <div id="gmailNameError" class="error invisible">Please enter your Gmail name</div>
-                    <div id="gmailPasswordError" class="error invisible">Please enter your Gmail password</div>
-                    <button onclick="location='../_api/oauth/consumer/request?provider=gmail&username=' + encodeURIComponent(document.getElementById('gmailName').value) + '&addresses=' + encodeURIComponent(document.getElementById('gmailAddresses').value)">Use Gmail OAuth</button>
-                </div>
-                <div class="c1">
-                    <a href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Be sure to enable IMAP in your Gmail account first!</a>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="c1 twitter">
-                </div>
-                <div class="c1">
-                    <input type="text" id="twitterName" placeholder="Twitter account" value="">
-                    <input type="password" id="twitterPassword" placeholder="Twitter password" value="">
-                    <input type="submit" value="submit">
-                </div>
-                <div class="c1">
-                    <div id="twitterNameError" class="error invisible">Please enter your Twitter name</div>
-                    <div id="twitterPasswordError" class="error invisible">Please enter your Twitter password</div>
-                    <button onclick="location='../_api/oauth/consumer/request?provider=twitter&username=' + encodeURIComponent(document.getElementById('twitterName').value)">Use Twitter OAuth</button>
-               </div>
-                <div class="c1">
-                *You may delete your account at any time
-                </div>  
-            </div>
-        </form>
-
+    <!-- fyi section -->
+    <div class="section fyi hidden">
         <div class="row">
             <div class="c1 info">
             <strong><p>Privacy</p></strong>
@@ -106,37 +68,118 @@
             <p>Due to the cost of hosting Raindrop at this early stage we are only storing your past couple days worth of messages in an effort to keep things affordable. Of course this will change once we have everything worked out, but please bare with us for now.</p>
             </div>    
         </div>
+        <div class="row">
+            <div class="c4">
+                <button onclick="location='#gmail'">continue</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Section Three -->
-    <div class="section three hidden">
+    <!-- gmail section -->
+    <div class="section gmail hidden">
+        <form class="oauthForm" action="../_api/oauth/consumer/request2" method="GET">
+            <div class="row">
+                <div class="c1 gmailHeader">
+                    <strong>step 1:</strong> Add your Gmail account *
+                </div>
+                <div class="c1">
+                    <input type="hidden" name="provider" value="gmail">
+                    <input type="text" name="username" placeholder="Gmail username" value="">
+                    <input type="text" name="addresses" placeholder="Additional, comma-separated emails" value="">
+
+                    <div class="gmailActions">
+                        <a class="skip" href="#twitter">skip this step</a>
+                        <button>submit</button>
+                    </div>
+
+                    <a class="configureImap" href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Be sure to enable IMAP in your Gmail account first!</a>
+                    
+                    *You may delete your account at any time
+                </div>
+                <div class="c1">
+                    <div class="usernameError error invisible">Please enter your Gmail name</div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- oauth_success_gmail section -->
+    <div class="section oauth_success_gmail hidden">
+        <div class="row">
+            <div class="c1">
+                <h4 class="success">Success!</h4>
+                <p>Gmail properly configured</p>
+                <button onclick="location='#twitter'">continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- oauth_failure_gmail section -->
+    <div class="section oauth_failure_gmail hidden">
+        <div class="row">
+            <div class="c1">
+                <h4 class="error">Error</h4>
+                <p>Gmail not properly configured</p>
+                <button onclick="location='#gmail'">try again</button>
+                <button onclick="location='#twitter'">continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- twitter section -->
+    <div class="section twitter hidden">
+        <form class="oauthForm" action="../_api/oauth/consumer/request2" method="GET">
+            <div class="row">
+                <div class="c1 twitterHeader">
+                    <strong>step 1:</strong> Add twitter account *
+                </div>
+                <div class="c1">
+                    <input type="hidden" name="provider" value="twitter">
+                    <input type="text" name="username" placeholder="Twitter account" value="">
+                    <div class="twitterActions">
+                        <a class="skip" href="#done">skip this step</a>
+                        <button>submit</button>
+                    </div>
+                    *You may delete your account at any time
+                </div>
+                <div class="c1">
+                    <div class="usernameError error invisible">Please enter your Twitter name</div>
+               </div> 
+            </div>
+        </form>
+    </div>
+
+    <!-- oauth_success_twitter section -->
+    <div class="section oauth_success_twitter hidden">
+        <div class="row">
+            <div class="c1">
+                <h4 class="success">Success!</h4>
+                <p>Twitter properly configured</p>
+                <button onclick="location='#done'">continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- oauth_failure_twitter section -->
+    <div class="section oauth_failure_twitter hidden">
+        <div class="row">
+            <div class="c1">
+                <h4 class="error">Error</h4>
+                <p>Twitter not properly configured</p>
+                <button onclick="location='#twitter'">try again</button>
+                <button onclick="location='#done'">continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- done section -->
+    <div class="section done hidden">
         <div class="row">
             <div class="c1">
                 <p>Thank you for signing up. Raindrop is now creating your account. You will be emailed when we're done. Feel free to close this page.</p>
             </div>
         </div>
     </div>
-
-    <!-- Sections indicating a response to oauth dances. -->
-    <div class="section oauth_success_gmail hidden">
-        <div class="row">
-            <div class="c1">
-                <p>raindrop has been authorized for gmail.</p>
-                <button onclick="location='#two'">Continue</button>
-            </div>
-        </div>
-    </div>
-    <div class="section oauth_failure_gmail hidden">
-        <div class="row">
-            <div class="c1">
-               <!-- We probably want nice error images and/or styling? -->
-                <p>Oh-noes</p>
-                <p>raindrop was denied access to gmail!</p>
-                <button onclick="location='#two'">Continue</button>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>
 
