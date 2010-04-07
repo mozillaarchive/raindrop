@@ -88,7 +88,7 @@ import base64
 import hmac
 import imaplib
 import random
-import sha
+import hashlib
 import smtplib
 import sys
 import time
@@ -147,7 +147,7 @@ def GenerateSignatureBaseString(method, request_url_base, params):
 
 
 def GenerateHmacSha1Signature(text, key):
-  digest = hmac.new(key, text, sha)
+  digest = hmac.new(key, text, hashlib.sha1)
   return base64.b64encode(digest.digest())
 
 
