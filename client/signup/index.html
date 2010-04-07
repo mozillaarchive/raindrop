@@ -80,7 +80,7 @@
         <form class="oauthForm" action="../_api/oauth/consumer/request" method="GET">
             <div class="row">
                 <div class="c1 gmailHeader">
-                    <strong>step 1:</strong> Add your Gmail account *
+                    <strong>step 1:</strong> Add Gmail account *
                 </div>
                 <div class="c1">
                     <input type="hidden" name="provider" value="gmail">
@@ -91,13 +91,18 @@
                         <a class="skip" href="#twitter">skip this step</a>
                         <button>submit</button>
                     </div>
-
-                    <a class="configureImap" href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Be sure to enable IMAP in your Gmail account first!</a>
                     
+                    <div class="configureImap grey">
+                    Be sure to enable IMAP in your Gmail account first!
+                    <a href="http://mail.google.com/support/bin/answer.py?hl=en&answer=77695" target="_blank" tabindex="-1">Read more</a>
+                    </div>
+                    <div class="finePrint grey">
                     *You may delete your account at any time
+                    </div>
                 </div>
                 <div class="c1">
                     <div class="usernameError error invisible">Please enter your Gmail name</div>
+                    <div class="help" title="Add all the emails that are associated with your gmail account. e.g. ex1@example.com,ex2@example.com">?</div>
                 </div>
             </div>
         </form>
@@ -109,7 +114,7 @@
             <div class="c1">
                 <h4 class="success">Success!</h4>
                 <p>Gmail properly configured</p>
-                <button onclick="location='#twitter'">continue</button>
+                <button class="notification" onclick="location='#twitter'">continue</button>
             </div>
         </div>
     </div>
@@ -120,8 +125,8 @@
             <div class="c1">
                 <h4 class="error">Error</h4>
                 <p>Gmail not properly configured</p>
-                <button onclick="location='#gmail'">try again</button>
-                <button onclick="location='#twitter'">continue</button>
+                <button class="notification" onclick="location='#gmail'">try again</button>
+                <button class="notification" onclick="location='#twitter'">continue</button>
             </div>
         </div>
     </div>
@@ -131,7 +136,7 @@
         <form class="oauthForm" action="../_api/oauth/consumer/request" method="GET">
             <div class="row">
                 <div class="c1 twitterHeader">
-                    <strong>step 1:</strong> Add twitter account *
+                    <strong>step 2:</strong> Add twitter account *
                 </div>
                 <div class="c1">
                     <input type="hidden" name="provider" value="twitter">
@@ -140,7 +145,11 @@
                         <a class="skip" href="#done">skip this step</a>
                         <button>submit</button>
                     </div>
+                    <div class="finePrint grey">
                     *You may delete your account at any time
+                    </div>
+
+                    </div>
                 </div>
                 <div class="c1">
                     <div class="usernameError error invisible">Please enter your Twitter name</div>
@@ -155,7 +164,7 @@
             <div class="c1">
                 <h4 class="success">Success!</h4>
                 <p>Twitter properly configured</p>
-                <button onclick="location='#done'">continue</button>
+                <button class="notification" onclick="location='#done'">continue</button>
             </div>
         </div>
     </div>
@@ -166,8 +175,8 @@
             <div class="c1">
                 <h4 class="error">Error</h4>
                 <p>Twitter not properly configured</p>
-                <button onclick="location='#twitter'">try again</button>
-                <button onclick="location='#done'">continue</button>
+                <button class="notification" onclick="location='#twitter'">try again</button>
+                <button class="notification" onclick="location='#done'">continue</button>
             </div>
         </div>
     </div>

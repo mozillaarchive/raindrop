@@ -184,6 +184,7 @@ h4.success {
   float: left;
   display: inline-block;
   min-height: 1px;
+  position: relative;
 }
 
 .c2 {
@@ -262,6 +263,34 @@ h4.success {
   top: 1px;
 }
 
+.help {
+  position: absolute;
+  top: 40px;
+  left: -12px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  height: 12px;
+  width: 11px;
+  padding: 0 0 0 1px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 13px;
+  border: 1px solid #888;
+  cursor: help;
+  color: #888;
+  font-weight: bold;
+}
+
+.finePrint {
+  margin: 20px 0;
+  font-size: smaller;
+}
+
+.grey,
+.grey a {
+  color: #888;
+}
+
 .skip {
     color: red;
     font-size: smaller;
@@ -271,4 +300,9 @@ h4.success {
 .configureImap {
     display: block;
     margin: 20px 0;
+}
+
+button.notification {
+  margin: 10px 5px 0 0;
+  float: none;
 }
