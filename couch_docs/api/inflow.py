@@ -231,7 +231,7 @@ class ConversationAPI(API):
         # XXX - shouldn't we do 'to' etc too?
         db = RDCouchDB(req)
         self.requires_get(req)
-        args = self.get_args(req, ids=None, message_limit=None, schemas=None, limit=None)
+        args = self.get_args(req, ids=None, message_limit=3, schemas=None, limit=30)
         ids = args['ids']
         if ids is None:
             # special case - means "my identity".  Note this duplicates code
