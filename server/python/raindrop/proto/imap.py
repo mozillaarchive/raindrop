@@ -151,8 +151,8 @@ class ImapClient(imap4.IMAP4Client):
         # do the xoauth magic.
         username = acct_det['username'].encode('imap4-utf-7')
         logger.info("logging into account %r via oauth", acct_det['id'])
-        consumer_key = acct_det.get('consumer_key', 'anonymous')
-        consumer_secret = acct_det.get('consumer_secret', 'anonymous')
+        consumer_key = acct_det.get('oauth_consumer_key', 'anonymous')
+        consumer_secret = acct_det.get('oauth_consumer_secret', 'anonymous')
         consumer = xoauth.OAuthEntity(consumer_key, consumer_secret)
         google_accounts_url_generator = xoauth.GoogleAccountsUrlGenerator(username)
         access_token = xoauth.OAuthEntity(oauth_token, oauth_token_secret)
