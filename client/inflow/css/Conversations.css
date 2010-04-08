@@ -31,11 +31,18 @@
 }
 
 .rdwConversations .updateCount {
-    cursor: pointer;
-    background-color: yellow;
-    text-align: center;
-    font-weight: bold;
-    color: red;
+  cursor: pointer;
+  -moz-border-image: url("../i/rd_newmsg.png") 1 20 10 20;
+  -webkit-border-image: url("../i/rd_newmsg.png") 1 20 10 20;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border-width: 1px 20px 10px 20px;
+  text-align: center;
+  font-weight: bold;
+  color: #ff5959;
+  width: 620px;
+  padding: 20px 0;
+  margin: -20px 10px 10px;
 }
 
 
