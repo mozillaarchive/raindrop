@@ -38,6 +38,14 @@ from twisted.internet import defer, threads
 
 from ..proc import base
 
+# imports needed for oauth support.
+from random import getrandbits
+from time import time
+import urllib
+import hashlib
+import hmac
+from twitter.twitter_globals import POST_ACTIONS
+
 # See http://code.google.com/p/python-twitter/issues/detail?id=13 for info
 # about getting twisted support into the twitter package.
 # Sadly, the twisty-twitter package has issues of its own (like calling
@@ -83,6 +91,49 @@ def tweet_to_raw(tweet):
 
     return ret
 
+
+def sign_args(account_details, base_url, method="GET", **args):
+    args = args.copy()
+    args['oauth_token'] = account_details['oauth_token']
+    args['oauth_consumer_key'] = account_details['oauth_consumer_key']
+    args['oauth_signature_method'] = 'HMAC-SHA1'
+    args['oauth_version'] = '1.0'
+    args['oauth_timestamp'] = str(int(time()))
+    args['oauth_nonce'] = str(getrandbits(64))
+
+    key = account_details['oauth_consumer_secret'] + "&"
+    key += urllib.quote(account_details['oauth_token_secret'], '')
+ 
+    message = '&'.join(
+            urllib.quote(i, '') for i in [method.upper(), base_url,
+                            urllib.urlencode(sorted(args.iteritems()))])
+ 
+    args['oauth_signature'] = hmac.new(key, message, hashlib.sha1
+                                        ).digest().encode('base64')[:-1]
+    return args
+
+
+def call_twitter(account_details, twit_api, **args):
+    # later we will remove all 'password' support...
+    if 'oauth_token' in account_details:
+        if 'password' in account_details:
+            logger.warn("The twitter account %r has both oauth tokens and a"
+                        "password - the password will be ignored.")
+        # some of this is yuck and cloned from the twitter impl.
+        # find the complete uri twitter uses.
+        uri = "http://%s%s.%s" %(twit_api.domain, twit_api.uri, twit_api.format)
+        # find the method it will use.
+        method = "GET"
+        for action in POST_ACTIONS:
+            if twit_api.uri.endswith(action):
+                method = "POST"
+                break
+        
+        new_args = sign_args(account_details, uri, method, **args)
+    else:
+        new_args = args
+    return threads.deferToThread(twit_api, **new_args)
+
 class TwitterProcessor(object):
     # The 'id' of this extension
     # XXX - should be managed by our caller once these 'protocols' become
@@ -96,19 +147,19 @@ class TwitterProcessor(object):
         self.twit = None
         self.seen_tweets = None
 
+    @defer.inlineCallbacks
     def attach(self):
         logger.info("attaching to twitter...")
-        username = self.account.details['username']
-        pw = self.account.details['password']
-        return threads.deferToThread(twitter.api.Twitter,
-                                     email=username, password=pw
-                                     ).addCallback(self.attached)
-
-
-    @defer.inlineCallbacks
-    def attached(self, twit):
+        ad = self.account.details
+        # later we will remove all 'password' support...
+        if 'oauth_token' not in ad:
+            username = self.account.details['username']
+            pw = self.account.details['password']
+            kw = {'email': username, 'password': pw}
+        else:
+            kw = {}
+        twit = self.twit = twitter.api.Twitter(**kw)
         logger.info("attached to twitter - fetching timeline")
-        self.twit = twit
 
         # Lets get fancy and check our rate limit status on twitter
 
@@ -119,7 +170,8 @@ class TwitterProcessor(object):
             # hourly_limit :            150
             # reset_time_in_seconds :   1266898973
         # }
-        rate_limit_status = twit.account.rate_limit_status()
+        rate_limit_status = yield call_twitter(ad, twit.account.rate_limit_status)
+
         logger.info("rate limit status: %s more hits, resets at %s",
                     rate_limit_status.get("remaining_hits"),
                     rate_limit_status.get("reset_time"))
@@ -163,8 +215,8 @@ class TwitterProcessor(object):
         # as well as their identity info all in a single request
         # This doesn't get us all of our friends but with 200 tweets we'll at
         # least get your most chatty friends
-        tl= yield threads.deferToThread(self.twit.statuses.home_timeline,
-                                        count=200)
+        tl= yield call_twitter(ad, self.twit.statuses.home_timeline,
+                               count=200)
         for status in tl:
             id = int(status.get("id"))
             rd_key = ['tweet', id]
@@ -176,7 +228,7 @@ class TwitterProcessor(object):
                 logger.info("Twitter status id: %s is a retweet", id)
 
         # Grab any direct messages that are waiting for us
-        ml = yield threads.deferToThread(self.twit.direct_messages)
+        ml = yield call_twitter(ad, self.twit.direct_messages)
         for dm in ml:
             id = int(dm.get("id"))
             rd_key = ['tweet-direct', id]
