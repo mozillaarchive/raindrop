@@ -72,7 +72,7 @@ class ConsumerAPI(API):
 
         callback_url = self.absuri(db, '_api/oauth/consumer/request_done?provider=' + args['provider'])
 
-        # Note the xoauth module automatically generates nonces and timestampts to prevent replays.)
+        # Note the xoauth module automatically generates nonces and timestamps to prevent replays.)
         request_entity = xoauth.GenerateRequestToken(consumer, scope, None, None,
                                            callback_url, url_gen)
 
@@ -87,6 +87,8 @@ class ConsumerAPI(API):
 
         url = '%s?oauth_token=%s' % (url_gen.GetAuthorizeTokenUrl(),
                                      xoauth.UrlEscape(request_entity.key))
+        log("redirecting to %r and requesting to land back on %r",
+            url, callback_url)
         return [None, 302, { 'Location': url }]
 
     def request_done(self, req):
@@ -115,6 +117,8 @@ class ConsumerAPI(API):
             acct = {
                 'oauth_token': verified_token.key,
                 'oauth_token_secret': verified_token.secret,
+                'oauth_consumer_key': provider_config['consumer_key'],
+                'oauth_consumer_secret': provider_config['consumer_secret'],
                 'username': username,
             }
             if provider == 'gmail':
