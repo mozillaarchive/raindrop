@@ -387,8 +387,11 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 //Store the topic name for future reference
                 this.currentTopic = topicName;
 
-                //Clear out the summary widget
-                this.summaryWidget.clear();
+                //Clear out the summary widget, but only if not an update
+                //or more
+                if (!callType) {
+                    this.summaryWidget.clear();
+                }
 
                 //If this is a back request or an action that is just a transition
                 //action (no new data to fetch), and there are conversations to show,
@@ -1022,7 +1025,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 this.updateConversations(callType, "conversation", [conversation]);
     
                 //Update the summary.
-                if (this.summaryWidget.conversation) {
+                if (!callType && this.summaryWidget.conversation) {
                     this.summaryWidget.conversation(conversation);
                 }
             });

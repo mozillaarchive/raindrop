@@ -244,10 +244,8 @@ require.modify("rdw/Conversations", "rdw/ext/mailingList/ext-rdw/Conversations",
 
                         //Only set up summary widget if this is a fresh call
                         //to the twitter timeline.
-                        if (!callType) {
-                            if (this.summaryWidget.mailingList) {
-                                this.summaryWidget.mailingList(listId);
-                            }
+                        if (!callType && this.summaryWidget.mailingList) {
+                            this.summaryWidget.mailingList(listId);
                         }
                     }));
                 }

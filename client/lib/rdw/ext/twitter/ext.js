@@ -140,10 +140,8 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                         this.updateConversations(callType, "summary", conversations); 
                         //Only set up summary widget if this is a fresh call
                         //to the twitter timeline.
-                        if (!callType) {
-                            if (this.summaryWidget.twitter) {
-                                this.summaryWidget.twitter();
-                            }
+                        if (!callType && this.summaryWidget.twitter) {
+                            this.summaryWidget.twitter();
                         }
                     }));
                 },
