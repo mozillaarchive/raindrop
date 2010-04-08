@@ -507,9 +507,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     }
 
                     for (i = 0; (conv = conversations[i]); i++) {
-                        if (!lastId || lastId[0] !== conv.id[0] ||
-                            lastId[1][0] !== conv.id[1][0] ||
-                            lastId[1][1] !== conv.id[1][1]) {
+                        if (!lastId || lastId.toString() !== conv.id.toString()) {
                             newCount += 1;
                         } else {
                             //Once we find the old lastId in the new list,
