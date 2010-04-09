@@ -103,6 +103,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
         },
 
         oldScrollY: 0,
+        bottomPad: 80,
 
         setUpScroll: function () {
             this.oldScrollY = window.scrollY;
@@ -123,14 +124,14 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
 
             this.oldScrollY = newScrollY;
 
-            if (position.h > viewportHeight) {
+            if (position.h + this.bottomPad > viewportHeight) {
                 
                 if (possibleY > this.baseY) {
                     //Make sure the value does not go past the top
                     possibleY = this.baseY;
-                } else if (position.h + possibleY < viewportHeight) {
+                } else if (position.h + possibleY + this.bottomPad < viewportHeight) {
                     //Make sure bottom does scroll higher than bottom of window.
-                    possibleY = viewportHeight - position.h;
+                    possibleY = viewportHeight - position.h - this.bottomPad;
                 }
                 this.currentY = newScrollY;
                 this.domNode.style.top = possibleY + "px";
