@@ -162,13 +162,8 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 }
 
 .homeButton {
-  display: block;
-  width: 15px;
-  color: transparent;
-  background-image: url("i/x.png");
+  background-image: url("i/rd_home.png");
   background-repeat: no-repeat;
-  background-position: 0px -120px;
-  text-indent: -1000px;
 }
 
 #top {
@@ -199,17 +194,30 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   background-color: #ff5959;
 }
 
-#top button.composeButton {
+#top button.topButtons {
   margin-left: 8px;
 }
 
-.composeIcon {
+.topIcon {
   display: block;
   width: 15px;
   color: transparent;
+  text-indent: -1000px;
+}
+
+.composeIcon {
   background-image: url("i/rd_compose.png");
   background-repeat: no-repeat;
-  text-indent: -1000px;
+}
+
+.bulkIcon {
+  background-image: url("i/rd_bulk.png");
+  background-repeat: no-repeat;
+}
+
+.editIcon {
+  background-image: url("i/rd_edit.png");
+  background-repeat: no-repeat;
 }
 
 #logo {
