@@ -170,7 +170,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
         render: function (callType, summaries) {
             var i, j, k, summary, frag, zIndex, SummaryWidgetCtor, group,
                 fresh = [], deleted = [], updated = [], oldSummary, del, widget,
-                newGroups;
+                groups, newGroups;
 
             if (!callType) {
                 //Not an update but a fresh render.
@@ -259,10 +259,11 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
 
                 //Update the zIndex for all the widgets, and make sure new ones
                 //are added to the DOM
-                this.setZOrder(this._groups, function (group, i) {
+                groups = this._groups;
+                this.setZOrder(groups, function (group, i) {
                     if (!group.domNode.parentNode) {
                         dojo.style(group.domNode, "opacity", 0);
-                        group.placeAt(this._groups[i - 1], "after");
+                        group.placeAt(groups[i - 1], "after");
                         this.fadeIn(group);
                     }
                 });
@@ -270,7 +271,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 //Notify updated ones of changes.
                 outerUpdated:
                 for (i = 0; (summary = updated[i]); i++) {
-                    for (j = 0; (group = this._groups[j]); j++) {
+                    for (j = 0; (group = groups[j]); j++) {
                         if (group.summary._id === summary._id) {
                             if (group.update) {
                                 group.update(summary);
