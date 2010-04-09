@@ -249,7 +249,7 @@ function (rd, dojo, rdCouch) {
                     return cb.callback(res);
                 });
             } else {
-                this._deferred.addCallback(cb, cbfn);
+                this._deferred.addCallback.apply(this._deferred, arguments);
             }
             return this;
         },
@@ -266,7 +266,7 @@ function (rd, dojo, rdCouch) {
                     return cb.errback(err);
                 });
             } else {
-                this._deferred.addErrback(cb, cbfn);
+                this._deferred.addErrback.apply(this._deferred, arguments);
             }
             return this;
         },

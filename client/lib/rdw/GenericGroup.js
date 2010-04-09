@@ -87,6 +87,22 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
         },
 
         /**
+         * Updates this group widget to an updated summary.
+         * It is assumed this is the same summary as before but with updated
+         * information, like a different set of conversations.
+         * @param {Object} summary the summary API object
+         */
+        update: function (summary) {
+            this.summary = summary;
+
+            //Refetch the convos if they are displayed
+            if (this.convosAvailable) {
+                this.convosAvailable = false;
+                this.loadConvos();
+            }
+        },
+
+        /**
          * Determines if the widget can support this summary. Subclasses should
          * override this method.
          *

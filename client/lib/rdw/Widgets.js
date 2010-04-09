@@ -22,7 +22,7 @@
  * */
 
 /*jslint nomen: false, plusplus: false */
-/*global require: false, setTimeout: false */
+/*global require: false, setTimeout: false, console: false */
 "use strict";
 
 require.def("rdw/Widgets",
@@ -52,7 +52,9 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
             this.subscribe("rd-impersonal-add", "impersonalAdd");
+            this.subscribe("rd/autoSync-update", "autoSync");
 
+            this.summaries = [];
             this._groups = [];
 
             if (!this.groupWidgets) {
@@ -134,18 +136,27 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                     //it with the schema.
                     summary.conversations = unread;
                     summary.num_unread = unread.length;
-                    this.render([summary]);
+                    this.render("update", [summary]);
                 }
             }
         },
 
         /**
+         * Handles autosync update calls. Indicates there may be new content
+         * on the server, but to know for sure, we need to call the API.
+         */
+        autoSync: function () {
+            console.warn("rdw/Widgets autoSync update");
+            this.getData("update");
+        },
+
+        /**
          * Does the API call to get data, then calls rendering.
          */
-        getData: function () {
+        getData: function (callType) {
             return api({
                 url: 'inflow/grouping/summary'
-            }).ok(this, "render");
+            }).ok(this, "render", callType);
         },
 
         /**
@@ -156,11 +167,131 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
          * 
          * @param {Array} summaries the array of "rd.grouping.info" schema summaries.
          */
-        render: function (summaries) {
-            if (summaries && summaries.length) {
-                var i, summary, Handler, widget, frag, zIndex,
-                SummaryWidgetCtor, group, key;
+        render: function (callType, summaries) {
+            var i, j, k, summary, frag, zIndex, SummaryWidgetCtor, group,
+                fresh = [], deleted = [], updated = [], oldSummary, del, widget,
+                newGroups;
 
+            if (!callType) {
+                //Not an update but a fresh render.
+                this.summaries = summaries;
+                this._groups = this.createGroupWidgets(summaries);
+    
+                frag = dojo.doc.createDocumentFragment();
+                zIndex = this._groups.length;
+    
+                //Create summary group widget and add it first to the fragment.
+                if (!this.summaryWidget) {
+                    SummaryWidgetCtor = require(this.summaryGroupCtorName);
+                    this.summaryWidget = new SummaryWidgetCtor();
+                    //Want summary widget to be the highest, add + 1 since group work
+                    //below uses i starting at 0.
+                    this.addSupporting(this.summaryWidget);
+                    this.summaryWidget.placeAt(frag);
+                }
+    
+                //Add all the widgets to the DOM and ask them to display.
+                this.setZOrder(this._groups, function (group, i) {
+                    group.placeAt(frag);
+                });
+
+                //Inject nodes all at once for best performance.
+                this.domNode.appendChild(frag);
+
+            } else if (callType === "update") {
+                //Sort out the differences with the old summaries, figuring out
+                //just new or updated first.
+                outer:
+                for (i = 0; (summary = summaries[i]); i++) {
+                    for (j = 0; (oldSummary = this.summaries[j]); j++) {
+                        if (oldSummary._id === summary._id) {
+                            if (oldSummary.unread.length !== summary.unread.length) {
+                                //Different length of unread so an update.
+                                updated.push(summary);
+                            } else {
+                                //Figure out if any of the unread do not match.
+                                for (k = 0; k < summary.unread.length; k++) {
+                                    if (oldSummary.unread[k].toString() !== summary.unread[k].toString()) {
+                                        updated.push(summary);
+                                        break;
+                                    }
+                                }
+                            }
+                            //Finished processing a changed item.
+                            continue outer;
+                        }
+                    }
+                    fresh.push(summary);
+                }
+
+                //Now figure out deleted. Work backwards through old summaries
+                //so we can remove deleted items as we go
+                outerFindDelete:
+                for (i = oldSummary.length - 1; (i > -1) && (oldSummary = this.summaries[i]); i--) {
+                    for (j = 0; (summary = summaries[j]); j++) {
+                        if (summary._id === oldSummary._id) {
+                            continue outerFindDelete;
+                        }
+                    }
+                    //Not in the new list, remove it.
+                    deleted.push(oldSummary);
+                    this.summaries.splice(i, 1);
+                }
+
+                //Now update all the widgets. First delete the ones that no longer
+                //exist.
+                outerDeleted:
+                for (i = 0; (del = deleted[i]); i++) {
+                    for (j = 0; (widget = this._groups[j]); j++) {
+                        if (widget.summary._id === del._id) {
+                            this.removeSupporting(widget);
+                            continue outerDeleted;
+                        }
+                    }
+                }
+
+                //Insert new ones in the right place.
+                newGroups = this.createGroupWidgets(fresh);
+                if (newGroups) {
+                    this._groups = this._groups.concat(newGroups);
+                    this.sortGroups(this._groups);
+                }
+
+                //Update the zIndex for all the widgets, and make sure new ones
+                //are added to the DOM
+                this.setZOrder(this._groups, function (group, i) {
+                    if (!group.domNode.parentNode) {
+                        dojo.style(group.domNode, "opacity", 0);
+                        group.placeAt(this._groups[i - 1], "after");
+                        this.fadeIn(group);
+                    }
+                });
+
+                //Notify updated ones of changes.
+                outerUpdated:
+                for (i = 0; (summary = updated[i]); i++) {
+                    for (j = 0; (group = this._groups[j]); j++) {
+                        if (group.summary._id === summary._id) {
+                            if (group.update) {
+                                group.update(summary);
+                                this.pulse(group);
+                            }
+                            continue outerUpdated;
+                        }
+                    }
+                }
+            }
+        },
+
+        /**
+         * Given an array of summaries, generate group widgets that encapsulate
+         * those summaries, sorted properly.
+         * @param {Array} summaries the array of summary API objects
+         * @returns {Array} an array of group widgets
+         */
+        createGroupWidgets: function (summaries) {
+            var i, summary, Handler, widget, key, groups = [];
+            if (summaries && summaries.length) {
                 //Weed out items that are not useful to this widget.
                 for (i = 0; (summary = summaries[i]); i++) {
                     key = summary.rd_key;
@@ -177,44 +308,48 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                             summary: summary
                         }, dojo.create("div"));
                         widget._isGroup = true;
-                        this._groups.push(widget);
-                        this.addSupporting(widget);
                     } else {
                         widget = this.createDefaultGroup(summary);
-                        this._groups.push(widget);
-                        this.addSupporting(widget);
                     }
+
+                    groups.push(widget);
+                    this.addSupporting(widget);
                 }
             }
 
-            this._groups.sort(function (a, b) {
+            this.sortGroups(groups);
+
+            return groups;
+        },
+
+        /**
+         * Sets the z-order for all the group widgets, and allows an optional
+         * function to be executed for each widget
+         * @param {Array} groups an array of group widgets
+         * @param {Function} func a function called for each widget in the array
+         */
+        setZOrder: function (groups, func) {
+            var zIndex = groups.length, i, group;
+            //Add all the widgets to the DOM and ask them to display.
+            if (this.summaryWidget) {
+                this.summaryWidget.domNode.style.zIndex = zIndex + 1;
+            }
+            for (i = 0; (group = groups[i]); i++) {
+                group.domNode.style.zIndex = zIndex - i;
+                func(group, i);
+            }
+        },
+  
+        /**
+         * Sorts the array of group widgets by their groupSort property
+         * @param {Array} groups
+         */
+        sortGroups: function (groups) {
+            groups.sort(function (a, b) {
                 var aSort = "groupSort" in a ? a.groupSort : 100,
                         bSort = "groupSort" in b ? b.groupSort : 100;
                 return aSort > bSort ? 1 : -1;
             });
-
-            frag = dojo.doc.createDocumentFragment();
-            zIndex = this._groups.length;
-
-            //Create summary group widget and add it first to the fragment.
-            if (!this.summaryWidget) {
-                SummaryWidgetCtor = require(this.summaryGroupCtorName);
-                this.summaryWidget = new SummaryWidgetCtor();
-                //Want summary widget to be the highest, add + 1 since group work
-                //below uses i starting at 0.
-                this.addSupporting(this.summaryWidget);
-                this.summaryWidget.placeAt(frag);
-            }
-
-            //Add all the widgets to the DOM and ask them to display.
-            this.summaryWidget.domNode.style.zIndex = zIndex + 1;
-            for (i = 0; (group = this._groups[i]); i++) {
-                group.domNode.style.zIndex = zIndex - i;
-                group.placeAt(frag);
-            }
-
-            //Inject nodes all at once for best performance.
-            this.domNode.appendChild(frag);
         },
 
         /**
@@ -243,6 +378,40 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 }
             }
             return null;
+        },
+
+        /**
+         * Uses a fade-in effect for a group widget
+         * @param {Object} group a group widget
+         */
+        fadeIn: function (group) {
+            setTimeout(function () {
+                dojo.fadeIn({
+                    node: group.domNode,
+                    duration: 1000
+                }).play();
+            }, 15);
+        },
+
+        /**
+         * Uses a pulse effect to highlight a group widget
+         * @param {Object} group a group widget
+         */
+        pulse: function (group) {
+            setTimeout(function () {
+                //Using just a fadeIn/fadeOut since the background-image makes it
+                //hard to do color animations.
+                dojo.fadeOut({
+                    node: group.domNode,
+                    duration: 1000,
+                    onEnd: function (node) {
+                        dojo.fadeIn({
+                            node: node,
+                            duration: 1000
+                        }).play();
+                    }
+                }).play();
+            }, 15);
         }
     });
 });
