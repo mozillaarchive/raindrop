@@ -22,7 +22,7 @@
  * */
 
 /*jslint nomen: false, plusplus: false */
-/*global require: false, setTimeout: false, console: false */
+/*global require: false, setTimeout: false, console: false, window: false */
 "use strict";
 
 require.def("rdw/Widgets",
@@ -47,12 +47,15 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
         //Widget used for the summary group widget, the first one in the widget list.
         summaryGroupCtorName: "rdw/SummaryGroup",
     
-        templateString: '<div class="rdwWidgets"></div>',
+        templateString: '<div class="rdwWidgets fixed"><div class="container" dojoAttachPoint="containerNode"></div></div>',
   
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
             this.subscribe("rd-impersonal-add", "impersonalAdd");
             this.subscribe("rd/autoSync-update", "autoSync");
+
+            this.connect(window, "onscroll", "onScroll");
+            this.setUpScroll();
 
             this.summaries = [];
             this._groups = [];
@@ -97,6 +100,45 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
             }
 
             this.inherited("destroy", arguments);
+        },
+
+        oldScrollY: 0,
+
+        setUpScroll: function () {
+            this.oldScrollY = window.scrollY;
+            this.baseY = dojo.position(this.domNode).y;
+            this.currentY = this.baseY;
+        },
+
+        /**
+         * Scroll the widget by an equivalent scroll if it does not fit in the
+         * size of the window
+         */
+        onScroll: function (evt) {
+           var i, position = dojo.position(this.containerNode), node,
+                viewportHeight = window.innerHeight,
+                newScrollY = window.scrollY,
+                diff = newScrollY - this.oldScrollY,
+                possibleY = position.y - diff;
+
+            this.oldScrollY = newScrollY;
+
+            if (position.h > viewportHeight) {
+                
+                if (possibleY > this.baseY) {
+                    //Make sure the value does not go past the top
+                    possibleY = this.baseY;
+                } else if (position.h + possibleY < viewportHeight) {
+                    //Make sure bottom does scroll higher than bottom of window.
+                    possibleY = viewportHeight - position.h;
+                }
+                this.currentY = newScrollY;
+                this.domNode.style.top = possibleY + "px";
+            } else {
+                if (position.y < this.baseY) {
+                    this.domNode.style.top = this.baseY + "px";
+                }
+            }
         },
 
         /**
@@ -196,7 +238,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 });
 
                 //Inject nodes all at once for best performance.
-                this.domNode.appendChild(frag);
+                this.containerNode.appendChild(frag);
 
             } else if (callType === "update") {
                 //Sort out the differences with the old summaries, figuring out

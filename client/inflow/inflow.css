@@ -332,6 +332,12 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
   width: 300px;
 }
 
+#widgets.fixed {
+    position: fixed;
+    top: 50px;
+    left: 640px;
+}
+
 #footer {
   padding: 24px 12px 12px;
   font-size: 10px;
