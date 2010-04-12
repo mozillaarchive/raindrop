@@ -107,9 +107,13 @@ require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
             // Handles clicking anywhere on the youtube attachment block
 
             onYouTubeClick: function (evt) {
-                var yt = this.msg.schemas["rd.msg.body.youtubed"], videoId, q,
-                    videoUrl, content, objTemplateString, obj, player;
-                if (!yt) {
+                var yt = this.msg.schemas["rd.msg.body.youtubed"],
+                    targetName = evt.target.nodeName.toUpperCase(),
+                    videoId, q, videoUrl, content, objTemplateString, obj, player;
+
+                //Skip the work if there is no associated youtube schema, or if
+                //the click is in the video area.
+                if (!yt || targetName === "EMBED" || targetName === "OBJECT" || targetName === "VIDEO") {
                     return;
                 }
 
