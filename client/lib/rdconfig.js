@@ -62,6 +62,12 @@ var djConfig, require;
 
     djConfig = {
         parseOnLoad: false,
+        baseUrl: prefix,
+        modulePaths: {
+            "dojo": dojoPrefix + "dojo",
+            "dijit": dojoPrefix + "dijit",
+            "dojox": dojoPrefix + "dojox"
+        },
         //Does nothing with RequireJS, but allows dojo.Deferred calls to
         //throw their errors.
         debugAtAllCosts: true
