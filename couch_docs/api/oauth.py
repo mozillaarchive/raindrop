@@ -52,12 +52,18 @@ class ConsumerAPI(API):
 
     def request(self, req):
         self.requires_get(req)
+        log("1");
         db = RDCouchDB(req)
+        log("2");
         config = get_api_config(req)
+        log("3");
         args = self.get_args(req, 'provider', 'username', addresses=None, _json=False)
+        log("4");
         provider = self._get_provider_name(args)
+        log("5");
         provider_config = config.oauth[provider]
         username = args['username']
+        log("6");
 
         if provider == 'gmail':
             scope = 'https://mail.google.com/'
@@ -65,16 +71,21 @@ class ConsumerAPI(API):
                 username += '@gmail.com'
         elif provider == 'twitter':
             scope = 'http://twitter.com/'
+        log("7");
 
         url_gen = self._get_url_generator(provider, username)
+        log("8");
 
         consumer = self._get_consumer(provider_config)
+        log("9");
 
         callback_url = self.absuri(db, '_api/oauth/consumer/request_done?provider=' + args['provider'])
+        log("10");
 
         # Note the xoauth module automatically generates nonces and timestamps to prevent replays.)
         request_entity = xoauth.GenerateRequestToken(consumer, scope, None, None,
                                            callback_url, url_gen)
+        log("11");
 
         # Save the request secret in the ~/.raindrop file
         provider_config['request_key'] = request_entity.key
@@ -82,8 +93,11 @@ class ConsumerAPI(API):
         #TODO: make sure username, if gmail, ends with a @gmail if not prefix provided
         provider_config['username'] = username
         provider_config['addresses'] = args['addresses']
-        
+
+        log("12");
+
         config.save_oauth(config.OAUTH_PREFIX + provider, provider_config)
+        log("13");
 
         url = '%s?oauth_token=%s' % (url_gen.GetAuthorizeTokenUrl(),
                                      xoauth.UrlEscape(request_entity.key))
