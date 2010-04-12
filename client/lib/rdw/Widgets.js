@@ -116,7 +116,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
          * size of the window
          */
         onScroll: function (evt) {
-           var i, position = dojo.position(this.containerNode), node,
+            var i, position = dojo.position(this.containerNode), node,
                 viewportHeight = window.innerHeight,
                 newScrollY = window.scrollY,
                 diff = newScrollY - this.oldScrollY,
@@ -270,7 +270,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 //Now figure out deleted. Work backwards through old summaries
                 //so we can remove deleted items as we go
                 outerFindDelete:
-                for (i = oldSummary.length - 1; (i > -1) && (oldSummary = this.summaries[i]); i--) {
+                for (i = this.summaries.length - 1; (i > -1) && (oldSummary = this.summaries[i]); i--) {
                     for (j = 0; (summary = summaries[j]); j++) {
                         if (summary._id === oldSummary._id) {
                             continue outerFindDelete;
@@ -303,13 +303,14 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 //Update the zIndex for all the widgets, and make sure new ones
                 //are added to the DOM
                 groups = this._groups;
-                this.setZOrder(groups, function (group, i) {
+                this.setZOrder(groups, dojo.hitch(this, function (group, i) {
                     if (!group.domNode.parentNode) {
                         dojo.style(group.domNode, "opacity", 0);
-                        group.placeAt(groups[i - 1], "after");
+                        var related = i === 0 ? this.summaryWidget : groups[i - 1];
+                        group.placeAt(related.domNode, "after");
                         this.fadeIn(group);
                     }
-                });
+                }));
 
                 //Notify updated ones of changes.
                 outerUpdated:
