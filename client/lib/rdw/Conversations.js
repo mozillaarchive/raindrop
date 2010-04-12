@@ -450,36 +450,63 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         updateConversations: function (callType, viewType, conversations) {
             //TODO: try to reuse a Conversation object instead of destroy/create
             //cycle. Could cause too much memory churn in the browser.
-            var i, module, mod, Ctor, frag, conv, newCount, lastId;
+            var i, module, mod, Ctor, frag, conv, newCount, lastId, oldMessages,
+                newMessages, needUpdate;
             //Hold on to conversations in case we need to refresh based on extension
             //action.
             if (viewType === "conversation") {
-                this.oneConversation = conversations[0];
+                if (!callType) {
+                    this.oneConversation = conversations[0];
+        
+                    //Make sure we translate all fullConvoWidgets from string names into ctors.
+                    if (!this.fullConvoWidgets) {
+                        this.fullConvoWidgets = [];
+                        for (i = 0; (module = this.fullConvoModules[i]); i++) {
+                            mod = require(module);
+                            this.fullConvoWidgets.push(mod);
+                        }
+                    }
+        
+                    //Clean up old convoWidget
+                    if (this.convoWidget) {
+                        this.removeSupporting(this.convoWidget);
+                        this.convoWidget.destroy();
+                    }
     
-                //Make sure we translate all fullConvoWidgets from string names into ctors.
-                if (!this.fullConvoWidgets) {
-                    this.fullConvoWidgets = [];
-                    for (i = 0; (module = this.fullConvoModules[i]); i++) {
-                        mod = require(module);
-                        this.fullConvoWidgets.push(mod);
+                    //Do not need the More button in the full conversation view
+                    this.moreNode.style.display = "none";
+    
+                    //Make new convoWidget.
+                    Ctor = this._getConvoWidget(this.oneConversation, this.fullConvoWidgets) ||
+                                         require(this.fullConversationCtorName);
+                    this.convoWidget = new Ctor({
+                        conversation: this.oneConversation
+                    }, dojo.create("div", null, this.convoNode));
+
+                } else if (callType === "update") {
+                    //Check list of messages to see if there is something new
+                    
+                    oldMessages = this.oneConversation.messages;
+                    newMessages = conversations[0].messages;
+                    needUpdate = oldMessages.length !== newMessages.length;
+                    if (!needUpdate) {
+                        //Same number of messages, see if there is a mismatch
+                        for (i = 0; i < oldMessages.length; i++) {
+                            if (oldMessages[i].id.toString() !== newMessages[i].id.toString()) {
+                                needUpdate = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (needUpdate) {
+                        this.updateArgs = Array.prototype.slice.call(arguments);
+                        //Change first arg to be null, to indicate this is a fresh
+                        //call, not an update or a more call.
+                        this.updateArgs[0] = null;
+                        this.showUpdatedCount(1);
                     }
                 }
-    
-                //Clean up old convoWidget
-                if (this.convoWidget) {
-                    this.removeSupporting(this.convoWidget);
-                    this.convoWidget.destroy();
-                }
-
-                //Do not need the More button in the full conversation view
-                this.moreNode.style.display = "none";
-
-                //Make new convoWidget.
-                Ctor = this._getConvoWidget(this.oneConversation, this.fullConvoWidgets) ||
-                                     require(this.fullConversationCtorName);
-                this.convoWidget = new Ctor({
-                    conversation: this.oneConversation
-                }, dojo.create("div", null, this.convoNode));
             } else {
                 //Make sure we translate all convoWidgets from string names into ctors.
                 if (!this.convoWidgets) {
@@ -745,14 +772,15 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
     
                         //Pull the nodes out scrollNode                    
                         this.domNode.removeChild(this._scrollNode);
-                        this.domNode.appendChild(this.listNode);
-                        this.domNode.appendChild(this.convoNode);
+                        //Put the nodes after the summary, but before the more button.
+                        dojo.place(this.convoNode, this.summaryWidget.domNode, "after");
+                        dojo.place(this.listNode, this.summaryWidget.domNode, "after");
     
                         //Remove fixed widths on the nodes.
                         this.domNode.style.width = oldDomNodeWidth;
                         this.listNode.style.width = oldListNodeWidth;
                         this.convoNode.style.width = oldConvoNodeWidth;
-                        
+
                         //Reset scroll.
                         this.domNode.scrollLeft = 0;
 
