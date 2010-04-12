@@ -55,8 +55,7 @@
                 "rdw/ext/twitter/Conversation",
                 "rdw/ext/twitter/Group",
                 "rdw/ext/twitter/Message",
-        
-                "rdw/ext/MessageBitlyLinkAttachments",
+
                 "rdw/ext/MessageLinkAttachments",
                 "rdw/ext/MessageLinkImgAttachments",
                 "rdw/ext/MessageLinkLocationAttachments",
