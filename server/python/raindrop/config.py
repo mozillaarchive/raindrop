@@ -63,6 +63,8 @@ class Config(object):
 
     self._accounts = {}
     self._oauth = {}
+    self._oauth['gmail'] = self.OAUTH_DEFAULTS
+    self._oauth['twitter'] = self.OAUTH_TWITTER_DEFAULTS
 
   @property
   def accounts(self):
@@ -143,11 +145,6 @@ class Config(object):
         self._oauth[oauth_name] = self.dictifySection(section_name,
                                                        oauth_defaults)
 
-    # If no gmail or twitter oauth, then create them
-    if not 'gmail' in self._oauth:
-      self._oauth['gmail'] = self.OAUTH_DEFAULTS
-    if not 'twitter' in self._oauth:
-      self._oauth['twitter'] = self.OAUTH_TWITTER_DEFAULTS
     self.cur_stat = cur_stat
 
   def save_account(self, acct_name, acct_fields):

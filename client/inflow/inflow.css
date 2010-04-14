@@ -334,7 +334,7 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 
 #widgets.fixed {
     position: fixed;
-    top: 50px;
+    top: 40px;
     left: 640px;
 }
 
