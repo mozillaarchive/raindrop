@@ -106,8 +106,9 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         topicConversationCtorNames: {},
 
         //Which topic actions should be considered only transition actions
-        //instead of actions that fetch new data.
-        transitionOnlyActions: {
+        //instead of actions that can be replayed.
+        replayableActions: {
+            "autoSyncUpdate": 1,
             "archive": 1,
             "del": 1
         },
@@ -373,7 +374,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 var args = Array.prototype.slice.call(arguments),
                     callType = "update";
 
-                if (topicName !== "rd/autoSync-update") {
+                if (!this.replayableActions[funcName]) {
                     callType = null;
                     this._updateInfo = {
                         funcName: funcName,
@@ -399,7 +400,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 if ((this._isBack) && this.conversations && this.conversations.length) {
                     //Just transition back to summary view, do not fetch new data.
                     this.transition("summary");
-                } else if (this.transitionOnlyActions[funcName]) {
+                } else if (this.replayableActions[funcName]) {
                     this[funcName].apply(this, args);
                 } else {
                     //Clear out info we were saving for back.
@@ -1103,12 +1104,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             .ok(this, function () {
                 var msgs, summaryConvoWidget;
                 if (this.viewType === "summary") {
-                    msgs = convoWidget.msgs;
-    
                     this.removeConversation(convoWidget);
-    
+
                     //Notify the user of the delete.
-                    rd.pub("rd-notify-delete", msgs);
+                    rd.pub("rd-notify-delete", convoWidget.conversation);
                 } else {
                     this.onTransitionEndCallback = dojo.hitch(this, function () {
                         //Assume the selected node is the Conversation node.

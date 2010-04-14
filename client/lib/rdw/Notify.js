@@ -191,16 +191,11 @@ function (rd, dojo, Base, string) {
 
         /**
          * A conversation was deleted
-         * @param {Array} msgs
+         * @param {Object} conversation
          */
-        del: function (msgs) {
-            var title = msgs[0]["rd.msg.body"];
-            if (title) {
-                title = title.subject || "";
-            }
-    
+        del: function (conversation) {
             this.showNotify(string.substitute(this.i18n.conversationDeleted, {
-                title: title
+                title: conversation.subject || ""
             }));
         }
     });

@@ -280,36 +280,38 @@ function (rd, dojo, api, identity) {
     
         _schemaTrue: function (schemaId, propName, onEnd, dfd, args, ids) {
             //Build up a list of docs to update.
-            var updates = [], i, schema, msgBag, rdDoc, prop;
-            for (i = 0; (msgBag = ids[i]); i++) {
-                schema = msgBag[schemaId];
+            var updates = [], i, schema, msg, rdDoc, prop;
+
+            //If the ids object is a conversation instead of an array, get the messages
+            //in the conversation.
+            if (ids.messages) {
+                ids = ids.messages;
+            }
+
+            for (i = 0; (msg = ids[i]); i++) {
+                schema = msg.schemas[schemaId];
                 if (!schema) {
-                    rdDoc = msgBag["rd.msg.body"];
+                    rdDoc = msg.schemas["rd.msg.body"];
                     if (!rdDoc) {
                         //Choose the first schema to get the rd_ values.
-                        for (prop in msgBag) {
-                            if (msgBag.hasOwnProperty(prop)) {
-                                rdDoc = msgBag[prop];
+                        for (prop in msg.schemas) {
+                            if (msg.schemas.hasOwnProperty(prop)) {
+                                rdDoc = msg.schemas[prop];
                                 break;
                             }
                         }
                     }
-                    schema = api.newDoc({
-                        rd_key: rdDoc.rd_key,
+
+                    schema = api().newDoc({
+                        rd_key: msg.id,
                         rd_schema_id: schemaId,
-                        outgoing_state: "outgoing",
-                        rd_schema_items: {
-                            'rd.core.ui': {
-                                schema: null,
-                                rd_source: rdDoc.rd_source
-                            }
-                        }
+                        outgoing_state: "outgoing"
                     });
     
                     schema[propName] = false;
-    
+
                     //Update message bag with new schema.
-                    msgBag[schemaId] = schema;
+                    msg.schemas[schemaId] = schema;
                 }
                 if (!schema[propName]) {
                     schema[propName] = true;

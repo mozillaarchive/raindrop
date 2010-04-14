@@ -192,11 +192,11 @@ class SyncConductor(object):
     rows = results['rows']
     if not rows:
       logger.error("found outgoing row '%(_id)s' but failed to find a source",
-                   outdoc)
+                   out_doc)
       return
     if len(rows) != 1:
       logger.error("found multiple source rows for doc '%s': '%s' and '%s'",
-                   outdoc['_id'], rows[0]['doc']['_id'], rows[1]['doc']['_id'])
+                   out_doc['_id'], rows[0]['doc']['_id'], rows[1]['doc']['_id'])
       return
     src_doc = rows[0]['doc']
     out_state = src_doc.get('outgoing_state')
