@@ -193,21 +193,35 @@ class SyncConductor(object):
       return
     logger.info('processing outgoing message with schema %s',
                 out_doc['rd_schema_id'])
-    # locate the 'source' row - this will be the item with the same rd_key
-    # but with a rd_source of None.  Must be exactly 1.
-    key=['rd.core.content', 'key-source', [out_doc['rd_key'], None]]
-    results = yield self.doc_model.open_view(key=key, reduce=False, limit=2,
-                                             include_docs=True)
-    rows = results['rows']
-    if not rows:
+    # locate the 'source' row - this involves walking backward through the
+    # rd_source attribute until we find an emtpy one.  Fortunately the
+    # chain should be fairly small, so shouldn't cost too much (an alternative
+    # would be to issue one request for all docs with this rd_key and walk
+    # the resulting list.
+    look_docs = [out_doc]
+    src_doc = None
+    while look_docs:
+      look_doc = look_docs.pop()
+      if look_doc is None:
+        continue
+      these = []
+      for ext_id, ext_data in look_doc['rd_schema_items'].iteritems():
+        if ext_data['rd_source'] is None:
+          src_doc = look_doc
+          logger.info("source for %r is %r (created by %r)", out_doc['_id'],
+                      src_doc['_id'], ext_id)
+          break
+        these.append(ext_data['rd_source'][0])
+      if src_doc is not None:
+        break
+      # add the ones we found to the look list.
+      new = yield self.doc_model.open_documents_by_id(these)
+      look_docs.extend(new)
+    if src_doc is None:
       logger.error("found outgoing row '%(_id)s' but failed to find a source",
                    out_doc)
       return
-    if len(rows) != 1:
-      logger.error("found multiple source rows for doc '%s': '%s' and '%s'",
-                   out_doc['_id'], rows[0]['doc']['_id'], rows[1]['doc']['_id'])
-      return
-    src_doc = rows[0]['doc']
+
     out_state = src_doc.get('outgoing_state')
     if out_state != 'outgoing':
       logger.info('skipping outgoing doc %r - outgoing state is %r',

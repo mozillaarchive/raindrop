@@ -165,6 +165,7 @@ class TestSMTPSend(TestCaseWithTestDB, LoopbackMixin):
         f = Factory()
         f.onConnectionLost = d
         f.protocol = FakeSMTPServer
+        FakeSMTPServer.num_connections = 0
         return reactor.listenTCP(SMTP_SERVER_PORT, f)
 
     def tearDown(self):
@@ -221,9 +222,25 @@ class TestSMTPSend(TestCaseWithTestDB, LoopbackMixin):
 
     @defer.inlineCallbacks
     def test_outgoing(self):
-        doc_model = get_doc_model()
         src_doc = yield self._prepare_test_doc()
         _ = yield self.ensure_pipeline_complete()
+        self.failUnlessEqual(FakeSMTPServer.num_connections, 1)
+
+    @defer.inlineCallbacks
+    def test_outgoing_with_unrelated(self):
+        src_doc = yield self._prepare_test_doc()
+        # make another document with the same rd_key, but also an empty
+        # source.
+        items = {'foo' : 'bar',}
+        result = yield self.doc_model.create_schema_items([
+                    {'rd_key': ['test', 'smtp_test'],
+                     'rd_ext_id': 'testsuite',
+                     'rd_schema_id': 'rd.msg.something-unrelated',
+                     'items': items,
+                    }])
+
+        _ = yield self.ensure_pipeline_complete()
+        self.failUnlessEqual(FakeSMTPServer.num_connections, 1)
 
     @defer.inlineCallbacks
     def test_outgoing_twice(self):
