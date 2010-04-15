@@ -494,7 +494,13 @@ class StatefulQueueManager(object):
         assert not q_state.running, q
         q_state.running = True
         while q_state.running and not q_state.failure:
-            _ = yield self._run_queue(q, q_state, None)
+            try:
+                _ = yield self._run_queue(q, q_state, None)
+            except Exception:
+                f = Failure()
+                logger.error("queue %r failed:\n%s", q.queue_id, f.getTraceback())
+                qstate.failure = f
+
         logger.debug("continuous processing of %r terminate: running=%s, failed=%s",
                      q.queue_id, q_state.running, bool(q_state.failure))
         q_state.running = False
