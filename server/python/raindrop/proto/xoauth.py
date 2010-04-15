@@ -15,23 +15,7 @@
 
 # Code lifted from google's XOAUTH sample; almost identical to that sample
 # but with print statements removed or replaced with logging.
-
-#!/usr/bin/python2.4
-#
-# Copyright 2010 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-     # http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+# Also added some raindrop-specific helper functions...
 
 """Utilities for XOAUTH authentication.
 
@@ -337,7 +321,6 @@ def GenerateXOauthString(consumer, access_token, user, proto,
   logger.debug('xoauth string: %s' + preencoded)
   return preencoded
 
-
 class GoogleAccountsUrlGenerator:
   def __init__(self, user):
     self.__apps_domain = None
@@ -360,6 +343,7 @@ class GoogleAccountsUrlGenerator:
   def GetAccessTokenUrl(self):
     return 'https://www.google.com/accounts/OAuthGetAccessToken'
 
+# Some raindrop specific stuff...
 
 class TwitterAccountsUrlGenerator:
 
@@ -371,3 +355,33 @@ class TwitterAccountsUrlGenerator:
 
   def GetAccessTokenUrl(self):
     return 'http://twitter.com/oauth/access_token'
+
+
+def GenerateXOauthStringFromAcctInfo(protocol, acct_info):
+  """Generates an IMAP XOAUTH authentication string from a raindrop
+  'account info' dictionary.
+  """
+  username = acct_info['username']
+  oauth_token = acct_info.get('oauth_token')
+  oauth_token_secret = acct_info.get('oauth_token_secret')
+  consumer_key = acct_info.get('oauth_consumer_key', 'anonymous')
+  consumer_secret = acct_info.get('oauth_consumer_secret', 'anonymous')
+  consumer = OAuthEntity(consumer_key, consumer_secret)
+  google_accounts_url_generator = GoogleAccountsUrlGenerator(username)
+  access_token = OAuthEntity(oauth_token, oauth_token_secret)
+  xoauth_requestor_id = None
+  # the utility functions above will generate nonce and timestamps for us
+  nonce = None
+  timestamp = None
+  xoauth_string = GenerateXOauthString(
+                      consumer, access_token, username, protocol,
+                      xoauth_requestor_id, nonce, timestamp)
+  return xoauth_string 
+
+
+def AcctInfoSupportsOAuth(acct_info):
+  # A reflection on the need to have a URL generator per provider is that
+  # we only support gmail for now...
+  is_google = acct_info.get('kind') == 'gmail' or \
+              acct_info.get('host', '').endswith('gmail.com')
+  return is_google and acct_info.get('oauth_token') and acct_info.get('oauth_token_secret')

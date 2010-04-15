@@ -28,10 +28,12 @@ import sys
 from cStringIO import StringIO
 
 from ..proc import base
+from . import xoauth
 
 from twisted.internet import protocol, defer
 from twisted.python.failure import Failure
 from twisted.internet.ssl import ClientContextFactory
+from zope.interface import implements
 
 # importing twisted's smtp package generates warnings in 2.6...
 if sys.version_info > (2,6):
@@ -46,6 +48,17 @@ from OpenSSL.SSL import SSLv3_METHOD
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+class XOAUTHAuthenticator:
+    implements(smtp.IClientAuthentication)
+    def getName(self):
+        return "XOAUTH"
+
+    def challengeResponse(self, secret, chal):
+        logger.info("logging into SMTP server via oauth")
+        return secret
+
 
 SMTPPostingClient_Base=smtp.ESMTPSender
 class SMTPPostingClient(SMTPPostingClient_Base): #smtp.ESMTPClient):
@@ -171,6 +184,23 @@ class SMTPPostingClient(SMTPPostingClient_Base): #smtp.ESMTPClient):
 
         d = self._update_sent_state(exc.code, exc.resp)
         d.addCallback(do_base)
+
+    def _registerAuthenticators(self):
+        acct_det = self.acct.details
+        if xoauth.AcctInfoSupportsOAuth(acct_det):
+            logger.info("making OAuth authentication available for account %(id)r",
+                        acct_det)
+            xoauth_string = xoauth.GenerateXOauthStringFromAcctInfo('smtp', acct_det)
+            # twisted is dumb - if no 'secret' (ie, password) is available it
+            # doesn't bother to call the authenticators - so we stash it here
+            # in the knowledge we do not fall back to password-based login
+            # (as we haven't called the base-class)
+            self.secret = xoauth_string
+            self.registerAuthenticator(XOAUTHAuthenticator())
+            # and do *not* register the default authenticators.
+        else:
+            # register the default password-based authenticators.
+            SMTPPostingClient_Base._registerAuthenticators(self)
 
 
 class SMTPClientFactory(protocol.ClientFactory):

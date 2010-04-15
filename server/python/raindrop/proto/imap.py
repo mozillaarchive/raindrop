@@ -34,7 +34,7 @@ import base64
 
 from ..proc import base
 from ..model import DocumentSaveError
-import xoauth
+from . import xoauth
 
 brat = base.Rat
 
@@ -102,8 +102,6 @@ def check_envelope_ok(env):
 
 class XOAUTHAuthenticator:
     implements(imap4.IClientAuthentication)
-    def __init__(self, acct_details):
-      self.acct_details = acct_details
 
     def getName(self):
       return "XOAUTH"
@@ -142,29 +140,16 @@ class ImapClient(imap4.IMAP4Client):
     caps = yield self.getCapabilities()
     if 'AUTH' in caps and 'XOAUTH' in caps['AUTH']:
       acct_det = self.account.details
-      oauth_token = acct_det.get('oauth_token')
-      oauth_token_secret = acct_det.get('oauth_token_secret')
-      # We only do xoauth for gmail as we don't know how to build an auth
-      # URL for anything else...
-      if acct_det['kind'] == 'gmail' and oauth_token and oauth_token_secret:
-        self.registerAuthenticator(XOAUTHAuthenticator(acct_det))
-        # do the xoauth magic.
-        username = acct_det['username'].encode('imap4-utf-7')
+      if xoauth.AcctInfoSupportsOAuth(acct_det):
+        self.registerAuthenticator(XOAUTHAuthenticator())
         logger.info("logging into account %r via oauth", acct_det['id'])
-        consumer_key = acct_det.get('oauth_consumer_key', 'anonymous')
-        consumer_secret = acct_det.get('oauth_consumer_secret', 'anonymous')
-        consumer = xoauth.OAuthEntity(consumer_key, consumer_secret)
-        google_accounts_url_generator = xoauth.GoogleAccountsUrlGenerator(username)
-        access_token = xoauth.OAuthEntity(oauth_token, oauth_token_secret)
-        xoauth_requestor_id = None
-        nonce = None
-        timestamp = None
-        xoauth_string = xoauth.GenerateXOauthString(
-                            consumer, access_token, username, 'imap',
-                            xoauth_requestor_id, nonce, timestamp)
+        # do the xoauth magic.
+        xoauth_string = xoauth.GenerateXOauthStringFromAcctInfo('imap', acct_det)
         self._in_auth = True
-        _ = yield self.authenticate(xoauth_string)
-        self._in_auth = False
+        try:
+          _ = yield self.authenticate(xoauth_string)
+        finally:
+          self._in_auth = False
         # it isn't clear why we need to explicitly call the deferred callback
         # here when we don't for login - but whateva...
         self.deferred.callback(self)
