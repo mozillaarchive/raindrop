@@ -131,12 +131,13 @@ class Pipeline(object):
         ret.callback(None)
         return ret
 
-    def add_processor(self, proc, schema_ids, proc_id):
+    def add_processor(self, proc):
+        proc_id = proc.ext.id
         assert proc_id not in self._additional_processors
         if proc_id in self._additional_processors:
             logger.warn("overwriting existing processor with duplicate ID %r",
                         proc_id)
-        self._additional_processors[proc_id] = proc, schema_ids
+        self._additional_processors[proc_id] = proc
 
     @defer.inlineCallbacks
     def provide_schema_items(self, items):
@@ -147,11 +148,8 @@ class Pipeline(object):
         _ = yield self.doc_model.create_schema_items(items)
 
     @defer.inlineCallbacks
-    def get_extensions(self, spec_exts=None):
-        if spec_exts is None:
-            spec_exts = self.options.exts
+    def get_extensions(self):
         ret = set()
-        ret_names = set()
         confidences = {}
         extensions = yield load_extensions(self.doc_model)
         for ext_id, ext in extensions.items():
@@ -159,39 +157,39 @@ class Pipeline(object):
             # being used, so the 'aggregation' still works as expected.
             if ext.confidence is not None:
                 confidences[ext.id] = ext.confidence
-            if spec_exts is None:
-                ret.add(ext)
-            else:
-                if ext_id in spec_exts:
-                    ret.add(ext)
-                    ret_names.add(ext_id)
-        if __debug__ and spec_exts:
-            missing = set(spec_exts) - set(ret_names)
-            if missing:
-                logger.error("The following extensions are unknown: %s",
-                             missing)
+            ret.add(ext)
         self.doc_model.set_extension_confidences(confidences)
         defer.returnValue(ret)
 
     @defer.inlineCallbacks
-    def get_ext_processors(self, spec_exts=None):
-        """Get all the work-queues we know about"""
+    def get_queue_runners(self, spec_exts=None):
+        """Get all the work-queue runners we know about"""
+        if spec_exts is None:
+            spec_exts = self.options.exts
         ret = []
-        for ext in (yield self.get_extensions(spec_exts)):
-            proc = ExtensionProcessor(self.doc_model, ext, self.options)
-            ret.append(proc)
+        ret_names = set()
+        for ext in (yield self.get_extensions()):
+            qid = ext.id
+            if spec_exts is None or qid in spec_exts:
+                proc = ExtensionProcessor(self.doc_model, ext, self.options)
+                schema_ids = ext.source_schemas
+                qr = ProcessingQueueRunner(self.doc_model, proc, schema_ids, qid)
+                ret.append(qr)
+                ret_names.add(qid)
+        # and the non-extension based ones.
+        for ext_id, proc in self._additional_processors.iteritems():
+            if spec_exts is None or ext_id in spec_exts:
+                schema_ids = proc.ext.source_schemas
+                qr = ProcessingQueueRunner(self.doc_model, proc, schema_ids, ext_id)
+                ret.append(qr)
+                ret_names.add(ext_id)
+
         defer.returnValue(ret)
 
     @defer.inlineCallbacks
     def start_processing(self, continuous, cont_stable_callback):
         assert self.runner is None, "already doing a process"
-        exts = yield self.get_extensions()
-        pqrs = [get_pqr_for_extension(self.doc_model, ext, self.options)
-                for ext in exts]
-        # and the non-extension based ones.
-        for ext_id, (proc, schema_ids) in self._additional_processors.iteritems():
-            qr = ProcessingQueueRunner(self.doc_model, proc, schema_ids, ext_id)
-            pqrs.append(qr)
+        pqrs = yield self.get_queue_runners()
 
         self.runner = StatefulQueueManager(self.doc_model, pqrs,
                                            self.options)
@@ -214,8 +212,8 @@ class Pipeline(object):
         # XXX - should do this in a loop with a limit to avoid chewing
         # all mem...
         if self.options.exts:
-            exts = yield self.get_extensions()
-            keys = [['rd.core.content', 'ext_id', e.id] for e in exts]
+            runners = yield self.get_queue_runners()
+            keys = [['rd.core.content', 'ext_id', r.queue_id] for r in runners]
             result = yield self.doc_model.open_view(
                                 keys=keys, reduce=False)
             to_up = [{'_id': row['id'],
@@ -249,8 +247,7 @@ class Pipeline(object):
     @defer.inlineCallbacks
     def _reprocess_items(self, item_gen_factory, *factory_args):
         self.options.force = True # evil!
-        runners = [get_pqr_for_extension(self.doc_model, ext, self.options)
-                   for ext in (yield self.get_extensions())]
+        runners = yield self.get_queue_runners()
         result = yield defer.DeferredList(
                     [r.process_queue(item_gen_factory(*factory_args))
                      for r in runners])
@@ -303,20 +300,20 @@ class Pipeline(object):
         else:
             # do each specified extension one at a time to avoid the races
             # if extensions depend on each other...
-            for ext in (yield self.get_extensions()):
+            for qr in (yield self.get_queue_runners()):
                 # fetch all items this extension says it depends on
                 if self.options.keys:
                     # But only for the specified rd_keys
                     keys = []
                     for k in self.options.keys:
-                        for sch_id in ext.source_schemas:
+                        for sch_id in qr.schema_ids:
                             keys.append(['rd.core.content', 'key-schema_id', [k, sch_id]])
                 else:
                     # all rd_keys...
-                    keys=[['rd.core.content', 'schema_id', sch_id] for sch_id in ext.source_schemas]
+                    keys=[['rd.core.content', 'schema_id', sch_id] for sch_id in qr.schema_ids]
                 result = yield dm.open_view(keys=keys,
                                             reduce=False)
-                logger.info("reprocessing %s - %d docs", ext.id,
+                logger.info("reprocessing %s - %d docs", qr.queue_id,
                             len(result['rows']))
                 _ = yield self._reprocess_items(gen_em, result)
 
@@ -662,11 +659,7 @@ class StatefulQueueManager(object):
         logger.debug("starting queue %r at sequence %s", q.queue_id, start_seq)
         # There is quite a performance penalty involved in getting the
         # dependencies for extensions which don't need them...
-        try:
-            include_deps = q.processor.ext.uses_dependencies
-        except AttributeError:
-            # hacky - not an 'extension' based queue (ie, the outgoing one)
-            include_deps = False
+        include_deps = q.processor.ext.uses_dependencies
 
         iterfact = DocsBySeqIteratorFactory()
         assert self.stop_seq is None
@@ -1122,10 +1115,3 @@ class ExtensionProcessor(object):
                          'rd_ext_id' : self.ext.id,
                          'items' : edoc,
                          }]
-
-
-def get_pqr_for_extension(doc_model, extension, options):
-    processor = ExtensionProcessor(doc_model, extension, options)
-    schema_ids = extension.source_schemas
-    qid = extension.id
-    return ProcessingQueueRunner(doc_model, processor, schema_ids, qid)

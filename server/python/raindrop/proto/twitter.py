@@ -311,6 +311,7 @@ class TwitterAccount(base.AccountBase):
         _ = yield threads.deferToThread(twitter.api.Twitter,
                                      email=username, password=pw
                                      ).addCallback(self.attached)
+        defer.returnValue(True)
 
     @defer.inlineCallbacks
     def attached(self, twitter_api):

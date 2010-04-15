@@ -262,8 +262,10 @@ class SMTPAccount(base.AccountBase):
         # do it...
         assert src_doc['outgoing_state'] == 'outgoing', src_doc # already sent?
         factory = SMTPClientFactory(self, conductor, src_doc, dest_doc)
-        client = yield factory.connect()
+        _ = yield factory.connect()
+        _ = yield factory.result
         # apparently all done!
+        defer.returnValue(True)
 
     def get_identities(self):
         username = self.details.get('username')

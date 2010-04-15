@@ -826,6 +826,7 @@ class ImapUpdater:
       _ = yield account._update_sent_state(src_doc, 'sent')
       logger.debug("successfully adjusted flags for %(rd_key)r", src_doc)
     client.logout()
+    defer.returnValue(True)
 
 
 def failure_to_status(failure):

@@ -56,10 +56,16 @@ def get_conductor(pipeline):
   conductor.initialize()
   return defer.succeed(conductor)
 
+class OutgoingExtension:
+  def __init__(self, id, src_schemas):
+    self.id = id
+    self.source_schemas = src_schemas
+    self.uses_dependencies = False
 
 class OutgoingProcessor:
-  def __init__(self, conductor):
+  def __init__(self, conductor, ext):
     self.conductor = conductor
+    self.ext = ext
     self.num_errors = 0
 
   @defer.inlineCallbacks
@@ -67,7 +73,9 @@ class OutgoingProcessor:
     # XXX - we need a queue here!
     logger.debug("saw new document %r (%s) - kicking outgoing process",
                  src_id, src_rev)
-    self.conductor._process_outgoing_row(src_id, src_rev)
+    _ = yield self.conductor._process_outgoing_row(src_id, src_rev)
+    logger.debug("outgoing processing of %r (%s) finished",
+                 src_id, src_rev)
     defer.returnValue(([], False))
 
 # XXX - rename this to plain 'Conductor' and move to a different file.
@@ -101,8 +109,9 @@ class SyncConductor(object):
     # (or fail) at its own pace.
     for sch_id in self.outgoing_handlers.iterkeys():
       ext_id = "outgoing-" + sch_id
-      proc = OutgoingProcessor(self)
-      self.pipeline.add_processor(proc, sch_id, ext_id)
+      ext = OutgoingExtension(ext_id, [sch_id])
+      proc = OutgoingProcessor(self, ext)
+      self.pipeline.add_processor(proc)
 
   def get_status_ob(self):
     acct_infos = {}
@@ -212,9 +221,7 @@ class SyncConductor(object):
     # the rest of the accounts until one says "yes, it is mine!")
     for sender in senders:
       d = yield sender.startSend(self, src_doc, out_doc)
-      if d is not None:
-        # This sender accepted the item...
-        d()
+      if d:
         break
 
   @defer.inlineCallbacks
@@ -266,8 +273,16 @@ class SyncConductor(object):
     # a timestamp in UTC
     items = {'timestamp': time.mktime(time.gmtime()),
              'new_items': self.num_new_items,
-             'num_syncs': num_syncs + 1,
+             'num_syncs': num_syncs + 1
     }
+    # The 'state' bit - this is the source of an outgoing message.
+    if si is None:
+      # first time around 
+      items['outgoing_state'] = 'outgoing'
+      items['sent_state'] = None
+    else:
+      items['sent_state'] = si.get('sent_state')
+      items['outgoing_state'] = si.get('outgoing_state')
     si = {'rd_key': rd_key,
           'rd_schema_id': schema_id,
           'rd_source': None,
