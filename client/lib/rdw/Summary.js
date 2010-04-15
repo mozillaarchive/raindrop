@@ -63,7 +63,7 @@ function (rd, dojo, Base, api, contact) {
          */
         conversation: function (conversation) {
             var title = conversation.subject || "",
-                html = rd.escapeHtml(title) + '<div class="actions"><button name="archive">archive</button><button name="delete">delete</button></div>';
+                html = rd.escapeHtml(title) + '<div class="actions"><button name="archive" data-dclick="onConvArchive">archive</button><button name="delete" data-dclick="onConvDelete">delete</button></div>';
             this.domNode.innerHTML = html;
             dojo.addClass(this.domNode, "conversation");
         },

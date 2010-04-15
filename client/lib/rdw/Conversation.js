@@ -115,7 +115,7 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
                 if (href === "reply" || href === "forward") {
                     evt.preventDefault();
                 } else if (href === "archive" || href === "delete" || href === "spam") {
-                    rd.pub("rdw/Conversation/" + href, this, this.conversation);
+                    rd.pub("rdw/Conversation/" + href, this.conversation, this);
                     dojo.stopEvent(evt);
                 } else if (href === "impersonal") {
                     if (this.headerNode) {

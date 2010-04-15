@@ -205,6 +205,23 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             } while ((target = target.parentNode));
         },
 
+
+        /**
+         * Handles clicks with a full conversation is archived.
+         * @param {Event} evt
+         */
+        onConvArchive: function (evt) {
+            this.archive(this.oneConversation);
+        },
+
+        /**
+         * Handles clicks with a full conversation is deleted.
+         * @param {Event} evt
+         */
+        onConvDelete: function (evt) {
+            this.del(this.oneConversation);
+        },
+
         /**
          * Handles key presses for navigation. If the key press is
          * for something that should show a full conversation view then trigger
@@ -928,6 +945,28 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             }));
         },
 
+        /**
+         * Finds the widget that is displaying the conversation with the given
+         * conversation ID. Does not include the full conversation widget, just
+         * widgets in the summary of conversations in the inflow.
+         * @param [Array] id a conversation ID as received from the API.
+         *
+         * @returns {Object} widget the widget that represents the conversation
+         * with the given ID.
+         */
+        findWidgetWithConvId: function(id) {
+            var i, widget, result = null, idString = id.toString();
+            for (i = 0; (widget = this._supportingWidgets[i]); i++) {
+                if (widget.conversation && widget.conversation.id &&
+                    widget.conversation.id.toString() === idString &&
+                    widget !== this.convoWidget) {
+                    result = widget;
+                    break;
+                }
+            }
+            return result;
+        },
+
         //**************************************************
         //start topic subscription endpoints
         //**************************************************
@@ -1066,7 +1105,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          * @param {Object} convoWidget
          * @param {Array} msgs
          */
-        archive: function (convoWidget, msgs) {
+        archive: function (msgs, convoWidget) {
             api().archive({
                 ids: msgs
             })
@@ -1090,14 +1129,14 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 }
             });
         },
-  
+
         /**
          * Handles deleting a conversation and cleaning up visual state as
          * a result of the change.
          * @param {Object} convoWidget
          * @param {Array} msgs
          */
-        del: function (convoWidget, msgs) {
+        del: function (msgs, convoWidget) {
             api().del({
                 ids: msgs
             })
@@ -1111,14 +1150,13 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 } else {
                     this.onTransitionEndCallback = dojo.hitch(this, function () {
                         //Assume the selected node is the Conversation node.
-                        summaryConvoWidget = dijit.getEnclosingWidget(this.activeParentNode);
-                        msgs = summaryConvoWidget.msgs;
-    
+                        summaryConvoWidget = this.findWidgetWithConvId(this.oneConversation.id);
+
                         //Remove the conversation
                         this.removeConversation(summaryConvoWidget);
     
                         //Notify the user of the delete.
-                        rd.pub("rd-notify-delete", msgs);
+                        rd.pub("rd-notify-delete", this.oneConversation);
                     });
                     this.onNavSummary();
                 }
