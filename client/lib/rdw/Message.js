@@ -76,7 +76,7 @@ require.def("rdw/Message",
     
             this.fromId = (bodySchema.from && bodySchema.from[1]) || "";
             this.fromName = bodySchema.from_display || this.fromId;
-            this.subject = hyperlink.add(rd.escapeHtml(bodySchema.subject || ""));
+            this.subject = hyperlink.add(rd.escapeHtml(this.conversation.subject || ""));
     
             //TODO: make message transforms extensionized.
             this.message = hyperlink.add(rd.escapeHtml(bodySchema.body_preview));

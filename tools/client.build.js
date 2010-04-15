@@ -49,7 +49,6 @@
                 "rdw/ext/mailingList/Summary",
                 "rdw/ext/mailingList/SummaryGroup",
                 "rdw/ext/mailingList/Group",
-                "rdw/ext/mailingList/GroupConversation",
         
                 "rdw/ext/twitter/ext",
                 "rdw/ext/twitter/Conversation",

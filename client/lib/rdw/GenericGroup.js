@@ -27,8 +27,8 @@
 
 require.def("rdw/GenericGroup",
 ["require", "rd", "dojo", "dojo/string", "rd/api", "rdw/_Base", "rdw/fx/wiper",
- "text!rdw/templates/GenericGroup.html",
- "rdw/conversation/Broadcast"],
+ "text!./templates/GenericGroup.html",
+ "./conversation/Broadcast", "./conversation/BroadcastMulti"],
 function (require, rd, dojo, string, api, Base, wiper, template) {
     /**
      * Groups some broadcast/general group messages into one "conversation"
@@ -39,8 +39,17 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
         /** How many conversations to show when expanded */
         conversationLimit: 3,
 
-        /** Name of the module to use for displaying a conversation */
+        /**
+         * Name of the module to use for displaying a conversation with just
+         * one message in the conversation.
+         */
         conversationCtorName: "rdw/conversation/Broadcast",
+
+        /**
+         * Name of the module to use for displaying a conversation with just
+         * one message in the conversation.
+         */
+        conversationMultiCtorName: "rdw/conversation/BroadcastMulti",
 
         /**
          * The name of the constructor function (module) that should be used
@@ -152,11 +161,17 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
          */
         renderConvos: function (conversations, methodName) {
             var Ctor = require(this.conversationCtorName),
-                i, conversation, widget, args,
+                CtorMulti = require(this.conversationMultiCtorName),
+                FinalCtor, i, conversation, widget, args,
                 frag = dojo.doc.createDocumentFragment();
 
             if (conversations && conversations.length) {
                 for (i = 0; (conversation = conversations[i]) && (i < this.conversationLimit); i++) {
+                    //Choose the right widget to use, the one that shows just
+                    //one message, or one that shows summary of all messages in
+                    //the conversation.
+                    FinalCtor = conversation.messages.length > 1 ? CtorMulti : Ctor;
+
                     //Construct the args, adding in optional values.
                     args = {
                         conversation: conversation
@@ -170,7 +185,7 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
 
                     //Make a new widget and track it so it gets cleaned
                     //up correctly.
-                    this.addSupporting(new Ctor(args, dojo.create("div", null, frag)));
+                    this.addSupporting(new FinalCtor(args, dojo.create("div", null, frag)));
                 }
                 this.containerNode.appendChild(frag);
             }

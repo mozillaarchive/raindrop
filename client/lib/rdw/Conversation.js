@@ -301,6 +301,7 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
             this.lastDisplayedMsg = msg;
             var ctorArgs = {
                 msg: msg,
+                conversation: this.conversation,
                 type: index === 0 ? "" : this.replyStyle,
                 tabIndex: index === 0 || this.allowReplyMessageFocus ? 0 : -1
             };

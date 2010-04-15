@@ -50,7 +50,7 @@ function (rd, dojo, string, Conversation, accountIds, BroadcastMessage, template
          * The name of the module to use for showing individual messages.
          */
         messageCtorName: "rdw/conversation/BroadcastMessage",
-    
+
         /**
          * The relative importance of this group widget. 0 is most important.
          */
@@ -97,7 +97,7 @@ function (rd, dojo, string, Conversation, accountIds, BroadcastMessage, template
         msgSort: function (a, b) {
             return a.schemas["rd.msg.body"].timestamp < b.schemas["rd.msg.body"].timestamp;
         },
-    
+
         /**
          * Determines if the widget can support this conversation.
          *

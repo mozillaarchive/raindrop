@@ -25,11 +25,16 @@
 /*global require: false */
 "use strict";
 
-require.def("rdw/ext/mailingList/GroupConversation",
-["rd", "dojo", "rdw/_Base", "text!rdw/ext/mailingList/GroupConversation.html"],
+require.def("rdw/conversation/BroadcastMulti",
+["rd", "dojo", "rdw/_Base", "text!./templates/BroadcastMulti.html"],
 function (rd, dojo, Base, template) {
 
-    return dojo.declare("rdw.ext.mailingList.GroupConversation", [Base], {
+    /**
+     * This differs from rdw/conversation/Broadcast in that it does not show
+     * a message, but an aggregate display of a conversation that has more
+     * than one message.
+     */
+    return dojo.declare("rdw.conversation.BroadcastMulti", [Base], {
         templateString: template,
 
         /** Passed in property, the conversation API object */
@@ -42,9 +47,9 @@ function (rd, dojo, Base, template) {
             this.subject = rd.escapeHtml(this.conversation.subject || "");
             this.from = rd.escapeHtml(this.conversation.from_display.join(", "));
             this.unread = "";
-            if (this.conversation.unread) {
+            if (this.conversation.unread_ids && this.conversation.unread_ids.length) {
                 this.unread = rd.template(this.i18n.newCount, {
-                    count: this.conversation.unread
+                    count: this.conversation.unread_ids.length
                 });
             }
         }

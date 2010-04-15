@@ -295,6 +295,10 @@
   padding: 0;
 }
 
+.rdwWidgets.start .rdwMessage > .message > .from {
+    font-weight: bold;
+}
+
 .rdwWidgets.start .rdwMessage > .message > .unreadCount {
   font-weight: bold;
 }

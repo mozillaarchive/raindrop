@@ -26,7 +26,7 @@
 "use strict";
 
 require.def("rdw/ext/mailingList/Group",
-["rd", "dojo", "rdw/GenericGroup", "rdw/ext/mailingList/GroupConversation"],
+["rd", "dojo", "rdw/GenericGroup"],
 function (rd, dojo, GenericGroup) {
 
     /**
@@ -40,9 +40,6 @@ function (rd, dojo, GenericGroup) {
 
         /** Extra classes to add to the top level node */
         extraClass: "rdwConversationMailingList",
-
-        /** Module used to display conversations */
-        conversationCtorName: "rdw/ext/mailingList/GroupConversation",
 
         /**
          * Djit lifecycle method, before template is created/injected in the DOM.
