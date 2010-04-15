@@ -150,7 +150,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         /** Dijit lifecycle method after template insertion in the DOM. */
         postCreate: function () {
             //Register for the interesting topics
-            var empty = {}, prop;
+            var empty = {}, prop, info;
             for (prop in this.topics) {
                 if (!(prop in empty)) {
                     this._sub(prop, this.topics[prop]);
@@ -161,7 +161,10 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
 
             //See if there was a last known state of displayed messages and
             //show them.
-            this.autoSyncUpdate(null);
+            info = this._updateInfo;
+            if (info) {
+                this[info.funcName].apply(this, [null].concat(info.args));
+            }
         },
 
         destroyIgnore: {
@@ -433,12 +436,12 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         },
 
         /** Sees if last request should be updated. */
-        autoSyncUpdate: function (callType) {
+        autoSyncUpdate: function () {
             console.warn("autoSyncUpdate received");
  
             var info = this._updateInfo;
             if (info) {
-                this[info.funcName].apply(this, [callType].concat(info.args));
+                this[info.funcName].apply(this, ["update"].concat(info.args));
             }
         },
 
@@ -492,7 +495,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     }
     
                     //Do not need the More button in the full conversation view
-                    this.moreNode.style.display = "none";
+                    this.moreNode.style.visibility = "hidden";
     
                     //Make new convoWidget.
                     Ctor = this._getConvoWidget(this.oneConversation, this.fullConvoWidgets) ||
@@ -588,9 +591,9 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
     
                     //Update the More button, whether to show it or not.
                     if (!conversations || !conversations.length) {
-                        this.moreNode.style.display = "none";
+                        this.moreNode.style.visibility = "hidden";
                     } else {
-                        this.moreNode.style.display = "";
+                        this.moreNode.style.visibility = "";
                     }
                 }
 
