@@ -804,18 +804,19 @@ class ImapUpdater:
     _ = yield account._update_sent_state(src_doc, 'sending')
     try:
       try:
-        flags_add = dest_doc['flags_add']
+        # *sigh* - twisted doesn't encode the flags.
+        flags_add = [f.encode('imap4-utf-7') for f in dest_doc['flags_add']]
       except KeyError:
         pass
       else:
         client.addFlags(dest_doc['uid'], flags_add, uid=1)
       try:
-        flags_rem = dest_doc['flags_remove']
+        flags_rem = [f.encode('imap4-utf-7') for f in dest_doc['flags_remove']]
       except KeyError:
         pass
       else:
         client.removeFlags(dest_doc['uid'], flags_rem, uid=1)
-    except imap4.IMAP4Exception, exc:
+    except Exception, exc:
       logger.error("Failed to update flags: %s", fun, exc)
       # XXX - we need to differentiate between a 'fatal' error, such as
       # when the message has been deleted, or a transient error which can be
