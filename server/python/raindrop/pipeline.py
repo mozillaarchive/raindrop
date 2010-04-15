@@ -562,7 +562,7 @@ class StatefulQueueManager(object):
         qstate.running = False
         failed = isinstance(result, Failure)
         if failed:
-            logger.error("queue %r failed: %s", q.queue_id, result)
+            logger.error("queue %r failed:\n%s", q.queue_id, result.getTraceback())
             qstate.failure = result
         else:
             logger.debug('queue %r reports it is complete at seq %s, done=%s',
