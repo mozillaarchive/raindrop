@@ -1,4 +1,5 @@
 def handler(doc):
+    logger.debug("source doc is %(_id)r/%(_rev)r", doc)
     if doc['num_syncs'] != 1:
         return
     
@@ -9,6 +10,13 @@ def handler(doc):
         logger.warn("can't find an smtp account from which to send welcome email")
         return
     acct = rows[0]['doc']
+
+    # check the outgoing state - this isn't strictly necessary as final
+    # send will check for us - but it prevents us doing this extra work and
+    # giving the impression via the logs that we are doing things multiple
+    # times (our souch doc actually changes during the send.)
+    if doc.get('outgoing_state') != 'outgoing':
+        return
 
     # write a simple outgoing schema
     addy = acct['username']
@@ -21,9 +29,6 @@ def handler(doc):
                    ],
             'to_display' : ['you'],
             'subject': "Welcome to raindrop",
-            # The 'state' bit...
-            'sent_state': None,
-            'outgoing_state': 'outgoing',
     }
     emit_schema('rd.msg.outgoing.simple', item)
     logger.info("queueing welcome mail to '%s'", addy)
