@@ -27,11 +27,11 @@
 
 require.def("rdw/Conversation",
         ["require", "rd", "dojo", "dojo/string", "rd/api", "rd/api/identity", "rd/friendly",
-         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation.html", "text!rdw/templates/impersonal.html"],
+         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation.html"],
 function (require,   rd,   dojo,   string,        api,      identity,          friendly,
-          hyperlink,      Base,        Message,       placeholder,       template,          impersonalTemplate) {
+          hyperlink,      Base,        Message,       placeholder,       template) {
 
-    return dojo.declare("rdw.Conversation", [Base], {
+    var Conversation = dojo.declare("rdw.Conversation", [Base], {
         //Holds the conversatino object fetched from the API.
         conversation: null,
     
@@ -70,8 +70,6 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
         templateString: template,
     
         moreMessagesTemplate: '<a class="moreMessages" href="#${url}">&#9654; ${message}</a>',
-    
-        impersonalTemplate: impersonalTemplate,
 
         /**
          * default message sorting is by timestamp, most
@@ -106,7 +104,7 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
         onClick: function (evt) {
             var href = evt.target.href,
                     isButton = evt.target.nodeName.toLowerCase() === "button",
-                    module, bodySchema;
+                    module;
             if (!href && isButton) {
                 href = "#" + evt.target.name;
             }
@@ -117,41 +115,34 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
                 } else if (href === "archive" || href === "delete" || href === "spam") {
                     rd.pub("rdw/Conversation/" + href, this.conversation, this);
                     dojo.stopEvent(evt);
-                } else if (href === "impersonal") {
-                    if (this.headerNode) {
-                        //Make sure there is not an existing impersonal UI
-                        dojo.query(".newImpersonal", this.domNode).remove();
-    
-                        //Now add the UI
-                        dojo.query(this.headerNode).after(this.impersonalTemplate);
-                    }
-                    dojo.stopEvent(evt);
-                } else if (href === "createImpersonal") {
-                    //Create
-                    bodySchema = this.msgs[0].schemas["rd.msg.body"];
-                    flags = {bulk: true};
-                    api().identitySenderFlags({
-                        id: bodySchema.from,
-                        sourceSchema: bodySchema,
-                        flags: flags
-                    })
-                    .ok(this, function () {
-                        //Notify UI listeners that there is a new impersonal
-                        //schema.
-                        rd.pub("rd-impersonal-remove-from", bodySchema.from);
-                    });
-
-                    //Do not let this action escape.
-                    dojo.stopEvent(evt);
-                } else if (href === "cancelImpersonal") {
-                    //Get rid of the impersonal UI
-                    dojo.query(".newImpersonal", this.domNode).remove();
-                    //Do not let this action escape.
+                } else if (href === "actions") {
+                    Conversation.actionCard.show(evt.target, this);
                     dojo.stopEvent(evt);
                 } else if (isButton) {
                     location = "#" + href;
                 }
             }
+        },
+
+        /**
+         * Creates a bulk/impersonal group, takes items from this sender out of the
+         * personal inflow.
+         */
+        createImpersonalGroup: function () {
+            var bodySchema, flags;
+
+            bodySchema = this.msgs[0].schemas["rd.msg.body"];
+            flags = {bulk: true};
+            api().identitySenderFlags({
+                id: bodySchema.from,
+                sourceSchema: bodySchema,
+                flags: flags
+            })
+            .ok(this, function () {
+                //Notify UI listeners that there is a new impersonal
+                //schema.
+                rd.pub("rd-impersonal-remove-from", bodySchema.from);
+            });
         },
 
         /**
@@ -318,5 +309,65 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
         responseClosed: function () {
             this.removeSupporting(this.responseWidget);
         }
-    });
+    }),
+
+    //Set up actions hover menu. It is a "singleton", there is only one instance
+    //of it in the page.
+    actionCard = Conversation.actionCard = {
+        template: '<ul class="rdwConversationActionCard"></ul>',
+        node: null, //set up after first show
+
+        actions: [
+            {action: "createImpersonalGroup", display: "Move to bulk"}
+        ],
+
+        show: function (node, convWidget) {
+            var actionHtml = '';
+
+            //Hold on to the widget, so we can delegate action to it.
+            actionCard.convWidget = convWidget;
+
+            //Generate the action card HTML if it does not already exist.
+            if (!actionCard.node) {
+                actionCard.node = dojo.place(actionCard.template, dojo.body());
+                dojo.connect(actionCard.node, "onclick", actionCard, "onClick");
+                dojo.connect(document.documentElement, "onclick", actionCard, "onBodyClick");
+
+                actionCard.actions.forEach(function (item) {
+                    actionHtml += '<li class="actionCardItem" data-action=' +
+                                  item.action + '>' + item.display + '</li>';
+                });
+                actionCard.node.innerHTML = actionHtml;
+            }
+
+            //position the action card near the button.
+            actionCard.node.style.display = "";
+            dijit.placeOnScreenAroundElement(actionCard.node, node, {"BL": "TL"});
+
+            actionCard.isVisible = true;
+        },
+
+        onClick: function (evt) {
+            var action = evt.target.getAttribute("data-action");
+            if (action && actionCard.convWidget[action]) {
+                actionCard.convWidget[action]();
+            }
+        },
+
+        onBodyClick: function (evt) {
+            if (actionCard.isVisible) {
+                actionCard.hide();
+            }
+        },
+
+        hide: function () {
+            actionCard.node.style.display = "none";
+            //Do not hold on to the widget, to help memory, extension 
+            delete actionCard.convWidget;
+            actionCard.isVisible = false;
+        }
+    };
+
+
+    return Conversation;
 });

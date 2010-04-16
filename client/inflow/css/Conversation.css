@@ -253,6 +253,47 @@
   visibility: visible;
 }
 
+
+.rdwConversationActionCard {
+    position: absolute;
+    z-index: 500;
+    list-style: none;
+
+}
+
+.rdwConversationActionCard {
+    font-style: normal;
+    color: #333;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    border: none;
+    font-size: 10px;
+    text-decoration: none;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #ccc;
+}
+
+.rdwConversationActionCard li {
+    padding: 2px 4px;
+    background-image: url("i/rd_button_bg.png");
+    background-position: bottom;
+    background-repeat: repeat-x;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.rdwConversationActionCard li:hover {
+}
+
+.rdwConversationActionCard li:active {
+    background-color: #e6e6e6;
+    background-image: none;
+}
+
+
+
+
 /*### twitter actions ###*/
 .rdwConversation.rdwExtTwitterConversation > .actions {
   position: absolute;

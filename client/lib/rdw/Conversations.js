@@ -105,12 +105,13 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         //or fullConvoModules.
         topicConversationCtorNames: {},
 
-        //Which topic actions should be considered only transition actions
-        //instead of actions that can be replayed.
-        replayableActions: {
+        //Which topic actions should be considered only transient actions
+        //instead of stateful actions that can be replayed.
+        transientActions: {
             "autoSyncUpdate": 1,
             "archive": 1,
-            "del": 1
+            "del": 1,
+            "impersonalRemoveFrom": 1
         },
 
         //The key for navigation.
@@ -394,7 +395,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 var args = Array.prototype.slice.call(arguments),
                     callType = "update";
 
-                if (!this.replayableActions[funcName]) {
+                if (!this.transientActions[funcName]) {
                     callType = null;
                     this._updateInfo = {
                         funcName: funcName,
@@ -420,7 +421,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 if ((this._isBack) && this.conversations && this.conversations.length) {
                     //Just transition back to summary view, do not fetch new data.
                     this.transition("summary");
-                } else if (this.replayableActions[funcName]) {
+                } else if (this.transientActions[funcName]) {
                     this[funcName].apply(this, args);
                 } else {
                     //Clear out info we were saving for back.

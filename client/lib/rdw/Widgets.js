@@ -167,7 +167,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
 
                 //Figure out how many unread messages there are.
                 for (i = 0; (convo = conversations[i]); i++) {
-                    if (convo.unread) {
+                    if (convo.unread_ids && convo.unread_ids.length) {
                         unread.push(convo);
                     }
                 }
