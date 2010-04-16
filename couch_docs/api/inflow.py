@@ -47,7 +47,12 @@ class ConversationAPI(API):
 
     def _fetch_messages(self, db, msg_keys, schemas):
         # Generate proper key for megaview lookup.
-        if schemas == ['*']:
+        if not schemas:
+            # return empty dicts for each key.
+            for _ in msg_keys:
+                yield {}, {}
+            return
+        elif schemas == ['*']:
             keys = [['rd.core.content', 'key', k] for k in msg_keys]
         else:
             keys = [['rd.core.content', 'key-schema_id', [k, sid]]
@@ -138,35 +143,69 @@ class ConversationAPI(API):
         # Takes a list of rd.conv.summary schemas and some request args,
         # and builds a list of conversation objects suitable for the result
         # of the API call.
+        if not conv_summaries:
+            return []
+
+        # Note that the conversation summary doc has summaries for the first
+        # 3 messages.  If the caller wants the more than that, or wants
+        # specific schemas, we must hit the couch.
+        if schemas is None and message_limit is not None:
+            for cs in conv_summaries:
+                if message_limit > len(cs['messages']) and len(cs['message_ids']) > len(cs['messages']):
+                    fetch_schemas = True
+                    break
+            else:
+                # we have everything we need without fetching
+                fetch_schemas = False
+        else:
+            # schemas explicitly specified or unlimited msgs - must fetch them.
+            fetch_schemas = True
 
         # xform the raw convo objects and build a list of msg_ids we need to fetch
         ret = []
         msg_keys = []
+        convs_for_msg_keys = []
         for cs in conv_summaries:
             rdkey = cs['rd_key']
             ret_conv = self._filter_user_fields(cs)
             ret_conv['id'] = rdkey
             ret.append(ret_conv)
-            if schemas:
+            if fetch_schemas:
                 these_ids = cs['message_ids']
                 if message_limit is not None:
-                    ret_conv['messages'] = ret_conv['messages'][:message_limit]
                     these_ids = these_ids[:message_limit]
+                    ret_conv['messages'] = ret_conv['messages'][:message_limit]
                 msg_keys.extend(these_ids)
+                convs_for_msg_keys.extend([ret_conv] * len(these_ids))
+            else:
+                if message_limit is not None:
+                    ret_conv['messages'] = ret_conv['messages'][:message_limit]
 
-        # If they want specific full schemas, then we update the 'messages'
+        # If we are fetching schemas then we update the 'messages'
         # element accordingly.
-        if msg_keys:
+        if fetch_schemas:
+            assert msg_keys # how can we end up with no keys here?
             message_gen = self._fetch_messages(db, msg_keys, schemas)
             # The message_infos are in the exact order of the messages of
             # each convo - so loop in that order taking a message at a time.
-            for conv in ret:
-                for msg in conv['messages']:
-                    new_schemas, new_attach = message_gen.next()
-                    msg.setdefault('attachments', []).extend(new_attach)
-                    for new_schema_id, vals in new_schemas.iteritems():
-                        to_up = msg['schemas'].setdefault(new_schema_id, {})
-                        to_up.update(vals)
+            last_conv = None
+            for conv, msg_id in zip(convs_for_msg_keys, msg_keys):
+                if conv is not last_conv:
+                    last_conv = conv
+                    msg_index = 0
+                else:
+                    msg_index += 1
+                if msg_index < len(conv['messages']):
+                    # a 'summary' already exists, so update that.
+                    message = conv['messages'][msg_index]
+                else:
+                    # this is a message without a summary, so add a new one.
+                    message = {'id': msg_id, 'schemas': {}}
+                    conv['messages'].append(message)
+                new_schemas, new_attach = message_gen.next()
+                message['schemas'].update(new_schemas)
+                if new_attach:
+                    message['attachments'] = new_attach
         return ret
 
     # The 'single' end-point for getting a single conversation.

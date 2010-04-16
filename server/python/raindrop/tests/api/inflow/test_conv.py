@@ -1,7 +1,8 @@
 from pprint import pformat
+import rfc822
 
 from twisted.internet import defer
-from raindrop.tests.api import APITestCaseWithCorpus
+from raindrop.tests.api import APITestCase, APITestCaseWithCorpus
 
 class TestConvoSimple(APITestCaseWithCorpus):
     # "my identity" in the context of these tests should give us
@@ -77,7 +78,8 @@ class TestConvoSimple(APITestCaseWithCorpus):
         seen = set()
         for convo in result:
             _ = yield self.sanity_check_convo(convo)
-            for msg in convo['messages']:
+            # only the first 3 messages have the 'summary' schemas
+            for msg in convo['messages'][:3]:
                 seen.add(tuple(msg['id']))
                 # check the 'rd_*' fields have been removed.
                 for schid, schvals in msg['schemas'].iteritems():
@@ -89,7 +91,8 @@ class TestConvoSimple(APITestCaseWithCorpus):
                 if schemas is not None:
                     if schemas != ['*'] and should_exist:
                         for schema in schemas:
-                            self.failUnless(schema in msg['schemas'], pformat(msg['schemas']))
+                            self.failUnless(schema in msg['schemas'],
+                                            "no schema %s in:\n%s" % (schema, pformat(msg['schemas'])))
                     if schemas == ['*'] or 'rd.msg.body' in schemas:
                         # Here we test that the *full* body schema was returned,
                         # not just the summary one. The 'body' field is not in the
@@ -186,3 +189,114 @@ class TestConvoSimple(APITestCaseWithCorpus):
         for msg in result['messages']:
             seen.add(self.doc_model.hashable_key(msg['id']))
         self.failUnlessEqual(known_msgs.intersection(seen), known_msgs)
+
+
+# Some tests which don't use a corpus but instead introduce test messages
+# manually.
+class TestConvoMessageLimits(APITestCase):
+    msg_template = """\
+Delivered-To: raindrop_test_user@mozillamessaging.com
+From: Raindrop Test User <Raindrop_test_user@mozillamessaging.com>
+To: Raindrop Test Recipient <Raindrop_test_recip@mozillamessaging.com>
+Date: %(date)s
+Message-Id: %(mid)s
+References: %(refs)s
+
+Hello
+"""
+
+    def get_message_schema_item(self, msgid, refs, date=None):
+        args = {'mid': '<'+msgid+'>',
+                'refs': ' '.join(['<'+ref+'>' for ref in refs]),
+                'date': rfc822.formatdate(date),
+                }
+        src = self.msg_template % args
+        si = {'rd_key': ['email', msgid],
+              'rd_schema_id': 'rd.msg.rfc822',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {},
+              'attachments' : {
+                    'rfc822': {
+                        'data': src
+                    }
+              }
+        }
+        return si
+
+    @defer.inlineCallbacks
+    def make_test_convo(self):
+        # create one convo with 10 messages.
+        items = [self.get_message_schema_item("0@something.com", [])]
+        for i in range(1, 10):
+            items.append(self.get_message_schema_item("%d@something.com" % i,
+                                                      ["0@something.com"]))
+        _ = yield self.doc_model.create_schema_items(items)
+        _ = yield self.ensure_pipeline_complete()
+        # should be 1 convo.
+        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        result = yield self.doc_model.open_view(key=key, reduce=False,
+                                                include_docs=True)
+        self.failUnlessEqual(len(result['rows']), 1)
+        cid = result['rows'][0]['doc']['rd_key']
+        defer.returnValue(cid)
+
+    @defer.inlineCallbacks
+    def test_message_limit(self, limit=2):
+        conv_id = yield self.make_test_convo()
+        result = yield self.call_api("inflow/conversations/by_id",
+                                     key=conv_id, message_limit=limit)
+        self.failUnlessEqual(len(result['messages']), limit)
+        defer.returnValue(result)
+
+    @defer.inlineCallbacks
+    def test_message_limit_none(self):
+        _ = yield self.test_message_limit(0)
+
+    @defer.inlineCallbacks
+    def test_message_limit_lots(self):
+        _ = yield self.test_message_limit(10)
+
+    @defer.inlineCallbacks
+    def test_message_no_limit(self):
+        conv_id = yield self.make_test_convo()
+        result = yield self.call_api("inflow/conversations/by_id",
+                                     key=conv_id)
+        self.failUnlessEqual(len(result['messages']), 10)
+        # We asked for more messages than are in the summary, so
+        # we expect the first to have a body schema and the last to have
+        # no schemas
+        self.failUnless('rd.msg.body' in result['messages'][0]['schemas'],
+                        pformat(result))
+        self.failIf(result['messages'][-1]['schemas'], pformat(result))
+
+    @defer.inlineCallbacks
+    def test_message_limit_summary(self):
+        result = yield self.test_message_limit(2)
+        # this should have only used the summary docs - so there will
+        # be a 'body' schema, but no 'body' field in that schema.
+        schema = result['messages'][0]['schemas']['rd.msg.body']
+        self.failIf('body' in schema, pformat(schema))
+
+    @defer.inlineCallbacks
+    def test_message_schemas_exist(self):
+        conv_id = yield self.make_test_convo()
+        result = yield self.call_api("inflow/conversations/by_id",
+                                     key=conv_id, message_limit=2,
+                                     schemas=["rd.msg.body"])
+        self.failUnlessEqual(len(result['messages']), 2)
+        self.failUnless('rd.msg.body' in result['messages'][0]['schemas'],
+                        pformat(result))
+        # we explicitly asked for the body schema - so the entire schema
+        # should be there - including the 'body' field which is stripped from
+        # summaries.
+        schema = result['messages'][0]['schemas']['rd.msg.body']
+        self.failUnless('body' in schema, pformat(schema))
+
+    @defer.inlineCallbacks
+    def test_message_schemas_bad(self):
+        conv_id = yield self.make_test_convo()
+        result = yield self.call_api("inflow/conversations/by_id",
+                                     key=conv_id, message_limit=2,
+                                     schemas=["rd.unknown.schema.name"])
+        self.failUnlessEqual(len(result['messages']), 2)
