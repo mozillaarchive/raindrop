@@ -774,8 +774,9 @@ class ProcessingQueueRunner(object):
         num_created = 0
         schema_ids = self.schema_ids
         processor = self.processor
+        queue_id = self.queue_id
 
-        logger.debug("starting processing %r", self.queue_id)
+        logger.debug("starting processing %r", queue_id)
         items = []
         pending = []
         # Given multiple extensions may write to the same document (as all
@@ -801,11 +802,15 @@ class ProcessingQueueRunner(object):
             if schema_id not in schema_ids:
                 continue
 
+            logger.debug("queue %r checking schema '%s' (doc %r/%s) at seq %s",
+                         queue_id, schema_id, src_id, src_rev, self.current_seq)
             try:
                 got, must_save = yield processor(src_id, src_rev)
             except extenv.ProcessLaterException, exc:
                 # This extension has been asked to be called later at the
                 # end of the batch - presumably to save doing duplicate work.
+                logger.debug("queue %r asked for document %r/%s to be processed later (state=%r)",
+                             queue_id, src_id, src_rev, exc.value)
                 pending.append(exc.value)
                 continue
 
@@ -863,13 +868,17 @@ class ProcessingQueueRunner(object):
             # If the extension asked for stuff to be done later, then now
             # is later!  We must do it per-batch, so the backlog processor
             # doesn't think we are done with this batch before we actually are.
+            logger.debug("queue %r starting to process %d pending items",
+                         queue_id, len(pending))
             got = yield self.processor.process_pending(pending)
+            logger.debug("queue %r pending processing made %d items",
+                         queue_id, len(got))
             if got:
                 _ = yield doc_model.create_schema_items(got)
                 num_created += len(got)
 
         logger.debug("finished processing %r to %r - %d processed",
-                     self.queue_id, self.current_seq, num_created)
+                     queue_id, self.current_seq, num_created)
         defer.returnValue(num_created)
 
 
