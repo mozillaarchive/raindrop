@@ -530,16 +530,6 @@ function (rd, dojo, rdCouch) {
             return doc;
         },
 
-        _stringify: function(what) {
-            // Make a json-like repr of an object - numbers etc appear
-            // as they stand, while strings get leading and trailing quotes
-            // with internal quotes escaped.
-            // (Isn't there a public json function we can use for this?)
-            if (dojo.isString(what))
-                return '"' + what.replace(/\"/g, '\\"') + '"';
-            return (what + "");
-        },
-
         _docIdForItem: function (item) {
             //WARNING: any array value for rd_key[1] needs to have
             //a space between array items in the stringified version.
@@ -549,13 +539,13 @@ function (rd, dojo, rdCouch) {
             if (dojo.isArray(part2)) {
                 for (i = 0; i < part2.length; i++) {
                     piece = part2[i];
-                    temp += (i !== 0 ? ', ' : '') + this._stringify(piece);
+                    temp += (i !== 0 ? ', ' : '') + JSON.stringify(piece);
                 }
                 part2 = '[' + temp + ']';
             } else {
-                part2 = this._stringify(part2);
+                part2 = JSON.stringify(part2);
             }
-  
+
             return "rc!" +
                    item.rd_key[0] +
                    "." +
