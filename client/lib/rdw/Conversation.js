@@ -22,14 +22,16 @@
  * */
 
 /*jslint plusplus: false, nomen: false */
-/*global require: false, location: true */
+/*global require: false, location: true, alert: false, document: false */
 "use strict";
 
 require.def("rdw/Conversation",
-        ["require", "rd", "dojo", "dojo/string", "rd/api", "rd/api/identity", "rd/friendly",
-         "rd/hyperlink", "rdw/_Base", "rdw/Message", "rdw/placeholder", "text!rdw/templates/Conversation.html"],
-function (require,   rd,   dojo,   string,        api,      identity,          friendly,
-          hyperlink,      Base,        Message,       placeholder,       template) {
+        ["require", "rd", "dojo", "dijit", "dojo/string", "rd/api", "rd/api/identity",
+         "rd/accountIds", "rd/friendly", "rd/hyperlink", "rdw/_Base", "rdw/Message",
+         "rdw/placeholder", "text!rdw/templates/Conversation.html"],
+function (require,   rd,   dojo,   dijit,   string,        api,      identity,
+          accountIds,      friendly,      hyperlink,      Base,        Message,
+          placeholder,       template) {
 
     var Conversation = dojo.declare("rdw.Conversation", [Base], {
         //Holds the conversatino object fetched from the API.
@@ -104,13 +106,90 @@ function (require,   rd,   dojo,   string,        api,      identity,          f
         onClick: function (evt) {
             var href = evt.target.href,
                     isButton = evt.target.nodeName.toLowerCase() === "button",
-                    module;
+                    module, message, source, to, to_display, from, from_display,
+                    cc, cc_display, subject, doc, sourceMsg;
             if (!href && isButton) {
                 href = "#" + evt.target.name;
             }
-    
+
             if (href && (href = href.split("#")[1])) {
-                if (href === "reply" || href === "forward") {
+                if (href === "reply") {
+                    message = dojo.trim(this.replyTextNode.value);
+                    if (this.replyTextNode.getAttribute("placeholder") !== message) {
+                        //Build up the message from the first message in the conversation
+                        sourceMsg = this.conversation.messages[0];
+                        source = sourceMsg.schemas['rd.msg.body'];
+
+                        //Set up to, frome and cc.
+                        to = [
+                            source.from
+                        ];
+                        to_display = [
+                            source.from_display
+                        ];
+
+                        if (source.to.length === 1 && !source.cc) {
+                            from = source.to[0];
+                            from_display = source.to_display[0];
+                        } else {
+                            //multiple recipients. Pull out our ID
+                            //and treat the rest as recipients.
+                            source.to.forEach(function (sourceTo, i) {
+                                if (!from && accountIds.indexOf(sourceTo) !== -1) {
+                                    from = sourceTo;
+                                    from_display = source.to_display[i];
+                                } else {
+                                    to.push(sourceTo);
+                                    to_display.push(source.to_display[i]);
+                                }
+                            });
+                            source.cc.forEach(function (sourceCc, i) {
+                                if (!from && accountIds.indexOf(sourceCc) !== -1) {
+                                    from = sourceCc;
+                                    from_display = source.cc_display[i];
+                                } else {
+                                    cc.push(sourceCc);
+                                    cc_display.push(source.cc_display[i]);
+                                }
+                            });
+                        }
+
+                        //Set up the subject.
+                        subject = this.conversation.subject;
+                        if (subject.indexOf(this.i18n.replySubjectPrefix) !== 0) {
+                            subject = this.i18n.replySubjectPrefix + subject;
+                        }
+
+                        doc = api()._makeOutSchema(
+                            ["mail", "out-" + (new Date()).getTime()],
+                            "rd.msg.outgoing.simple", {
+                                subject: subject,
+                                from: from,
+                                from_display: from_display,
+                                to: to,
+                                to_display: to_display,
+                                body: message,
+                                in_reply_to: sourceMsg.id
+                            });
+                        if (cc) {
+                            doc.cc = cc;
+                            doc.cc_display = cc_display;
+                        }
+
+                        api().put({
+                            doc: doc
+                        })
+                        .ok(this, function (response) {
+                            //TODO: synthesize a schema and update the UI.
+                            //for now just clear our the reply
+                            this.replyTextNode.value = "";
+                            placeholder(this.replyTextNode);
+                        })
+                        .error(this, function (error) {
+                            //TODO: yuck.
+                            alert("Reply failed: " + error);
+                        });
+                    }
                     evt.preventDefault();
                 } else if (href === "archive" || href === "delete" || href === "spam") {
                     rd.pub("rdw/Conversation/" + href, this.conversation, this);

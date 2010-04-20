@@ -204,8 +204,8 @@ function (rd, dojo, rdCouch) {
          */
         xhr: function (args) {
             var dfd = new dojo.Deferred();
-            rdCouch.xhr(args, function(obj) {
-                dfd.callback(obj)
+            rdCouch.xhr(args, function (obj) {
+                dfd.callback(obj);
             });
 
             //Bind result to triggering current Deferred.
@@ -354,7 +354,7 @@ function (rd, dojo, rdCouch) {
 
             //Favor having stale content to help performance
             if (!args.content) {
-                args.content = {}
+                args.content = {};
             }
             if (!("stale" in args.content)) {
                 args.content.stale = "ok";
@@ -536,6 +536,44 @@ function (rd, dojo, rdCouch) {
                 };
             }
   
+            return doc;
+        },
+
+
+        /**
+         * Aww yeah, make out. Makes an outgoing schema, for sending
+         * messages.
+         * @param {Array} rdKey the value to use for the rd_key field.
+         * @param {String} schemaId the schema ID to use. It should be some
+         * variation on rd.msg.outgoing.
+         * @param {data} extra data to put on the schema.
+         *
+         * @returns {Object} a schema object that can be sent to the server.
+         */
+        _makeOutSchema: function (rdKey, schemaId, data) {
+            //Needed by back-end to correctly process the schema.
+            var schemaItems = {}, doc;
+
+            schemaItems[rd.uiExtId] = {
+                rd_source: null,
+                schema: null
+            };
+
+            doc = {
+                //NOTE these rd_keys are different from the ones received
+                //from the twitter API.
+                rd_key: rdKey,
+                rd_schema_id: schemaId,
+                rd_schema_provider: rd.uiExtId,
+                rd_schema_items: schemaItems,
+
+                outgoing_state: 'outgoing'
+            };
+
+            if (data) {
+                dojo._mixin(doc, data);
+            }
+
             return doc;
         },
 

@@ -31,40 +31,6 @@ function (rd, dojo, api) {
 
     var tapi = {
         /**
-         * Aww yeah, make out.
-         */
-        _makeOutSchema: function (data) {
-            //Needed by back-end to correctly process the schema.
-            var schemaItems = {}, doc, i, field, fields = [
-                "from", "body", "in_reply_to", "retweet_id"
-            ];
-
-            schemaItems[rd.uiExtId] = {
-                rd_source: null,
-                schema: null
-            };
-
-            doc = {
-                //NOTE these rd_keys are different from the ones received
-                //from the twitter API.
-                rd_key: ["tweet", "out-" + (new Date()).getTime()],
-                rd_schema_id: "rd.msg.outgoing.tweet",
-                rd_schema_provider: rd.uiExtId,
-                rd_schema_items: schemaItems,
-
-                outgoing_state: 'outgoing'
-            };
-
-            for (i = 0; (field = fields[i]); i++) {
-                if (data[field]) {
-                    doc[field] = data[field];
-                }
-            }
-
-            return doc;
-        },
-
-        /**
          * Sends a tweet via the Raindrop backend.
          *
          * @param {Array} from the identity ID of the sender.
@@ -89,12 +55,13 @@ function (rd, dojo, api) {
             } else {
 
                 api().put({
-                    doc: this._makeOutSchema({
-                        from: from,
-                        body: body,
-                        in_reply_to: inReplyTo
+                    doc: api()._makeOutSchema(["tweet", "out-" + (new Date()).getTime()],
+                        "rd.msg.outgoing.tweet", {
+                            from: from,
+                            body: body,
+                            in_reply_to: inReplyTo
+                        })
                     })
-                })
                 .ok(dfd)
                 .error(dfd);
             }
@@ -111,10 +78,12 @@ function (rd, dojo, api) {
             var dfd = new dojo.Deferred(), schemaItems = {}, doc;
 
             api().put({
-                doc: this._makeOutSchema({
-                    retweet_id: retweetId
+                doc: api()._makeOutSchema(
+                    ["tweet", "out-" + (new Date()).getTime()],
+                    "rd.msg.outgoing.tweet", {
+                        retweet_id: retweetId
+                    })
                 })
-            })
             .ok(dfd)
             .error(dfd);
 
