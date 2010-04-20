@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-__my_identities = []
+_my_identities = []
 
 class ProcessLaterException(Exception):
     def __init__(self, value):
@@ -151,7 +151,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
 
     def get_my_identities():
         # XXX - can't use globals here - so we cheat!
-        from raindrop.extenv import __my_identities
+        from raindrop.extenv import _my_identities
         # Some extensions need to know which identity IDs mean the current
         # user for various purposes - eg, "was it sent to/from me?".
         # We could let such extensions use open_view, but then it would
@@ -160,7 +160,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
         # For now, assume identities don't change between runs.  Later we
         # could listen for changes to account schemas in the pipeline and
         # invalidate...
-        if not __my_identities:
+        if not _my_identities:
             result = threads.blockingCallFromThread(reactor,
                         doc_model.open_view,
                         startkey=["rd.account", "identities"],
@@ -170,9 +170,9 @@ def get_ext_env(doc_model, context, src_doc, ext):
             for row in result['rows']:
                 iid = row['key'][2]
                 # can't use a set - identity_ids are lists!
-                if iid not in __my_identities:
-                    __my_identities.append(iid)
-        return __my_identities
+                if iid not in _my_identities:
+                    _my_identities.append(iid)
+        return _my_identities
 
     def init_grouping_tag(tag, grouping_key, grouping_title):
         # Tell the system that a new 'grouping tag' has sprung into life.  Used

@@ -76,7 +76,12 @@ class FakeOptions:
     continuous = False
 
 class TestCase(unittest.TestCase):
+    def resetRaindrop(self):
+        import raindrop.extenv
+        raindrop.extenv._my_identities[:] = []
+    
     def setUp(self):
+        self.resetRaindrop()
         self.log_handler = TestLogHandler()
         # by default, WARNING or higher messages cause a test failure...
         filter = lambda record: record.levelno < logging.WARNING
