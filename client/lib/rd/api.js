@@ -351,12 +351,21 @@ function (rd, dojo, rdCouch) {
         megaview: function (args) {
             args = dojo.delegate(args);
             args.url = this.dbPath(args) + "_design/raindrop!content!all/_view/megaview";
+
+            //Favor having stale content to help performance
+            if (!args.content) {
+                args.content = {}
+            }
+            if (!("stale" in args.content)) {
+                args.content.stale = "ok";
+            }
+
             return this.xhr(args);
         },
     
     
         megaviewList: function (args) {
-            args = dojo.delegat(args);
+            args = dojo.delegate(args);
             var listName = args.listName;
             delete args.listName;
             args.url = "raindrop!content!all/_list/" + listName + "/megaview";
