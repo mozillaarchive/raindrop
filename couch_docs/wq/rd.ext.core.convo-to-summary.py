@@ -69,7 +69,14 @@ def build_summary(conv_id):
     latest_by_recip_target = {}
     subject = None
     groups_with_unread = set()
+    groups = set()
     for msg_info in all_msgs:
+        try:
+            grouping_tag = msg_info['rd.msg.grouping-tag']['tag']
+        except KeyError:
+            grouping_tag = None
+        if grouping_tag is not None:
+            groups.add(grouping_tag)
         if 'rd.msg.body' not in msg_info:
             continue
         if 'rd.msg.deleted' in msg_info and msg_info['rd.msg.deleted']['deleted']:
@@ -80,11 +87,8 @@ def build_summary(conv_id):
         good_msgs.append(msg_info)
         if 'rd.msg.seen' not in msg_info or not msg_info['rd.msg.seen']['seen']:
             unread.append(msg_info)
-            try:
-                grouping_tag = msg_info['rd.msg.grouping-tag']['tag']
-            except KeyError:
-                grouping_tag = None
-            groups_with_unread.add(grouping_tag)
+            if grouping_tag is not None:
+                groups_with_unread.add(grouping_tag)
         body_schema = msg_info['rd.msg.body']            
         for field in ["to", "cc"]:
             if field in body_schema:
@@ -154,6 +158,7 @@ def build_summary(conv_id):
         'from_display': from_display,
         'grouping-timestamp': [],
         'unread_grouping_tags': sorted(groups_with_unread),
+        'all_grouping_tags': sorted(groups),
     }
     for target, timestamp in sorted(latest_by_grouping.iteritems()):
         item['grouping-timestamp'].append([target, timestamp])

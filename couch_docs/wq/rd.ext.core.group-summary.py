@@ -30,7 +30,7 @@ def update_default_group(rd_source):
     
 def handler(doc):
     rd_source = (doc['_id'], doc['_rev'])
-    process_later((doc['unread_grouping_tags'], rd_source))
+    process_later((doc['all_grouping_tags'], rd_source))
 
 def later_handler(tags_info):
     # first find the unique set of grouping-tags
@@ -38,6 +38,7 @@ def later_handler(tags_info):
     for grouping_tags, rd_source in tags_info:
         for gt in grouping_tags:
             all_tags[gt] = rd_source
+    logger.debug("all tags are %s", all_tags)
     # Now find the unique set of 'display-group's with those tags
     groups = {}
     seen_tags = set()

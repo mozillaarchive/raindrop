@@ -27,7 +27,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
-        self.failUnlessEqual(len(rows), 1)
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
         self.failUnlessEqual(rows[0]['doc']['rd_key'], ex_grouping_key)
 
 
@@ -94,6 +94,34 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         expected_doc = {
             'unread' : [conv_id],
             'num_unread': 1,
+        }
+        self.failUnlessDocEqual(doc_sum, expected_doc)
+        # now mark the one message in the conversation as 'read' - the entire
+        # convo should vanish from the grouping-summary.
+        si = {
+            'rd_key': msgid,
+            'rd_schema_id': 'rd.msg.seen',
+            'rd_ext_id': 'rd.testsuite',
+            'items' : {
+                'seen': 'true',
+                'outgoing_state': 'sent',
+            }
+        }
+        import logging; logger=logging.getLogger(__name__)
+        logger.info("Starting set msg to 'read'")
+        _ = yield self.doc_model.create_schema_items([si])
+        _ = yield self.ensure_pipeline_complete()
+        # check the grouping.
+        key = ['rd.core.content', 'schema_id', 'rd.grouping.summary']
+        result = yield self.doc_model.open_view(key=key, reduce=False,
+                                                include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        self.failUnlessEqual(rows[0]['doc']['rd_schema_id'], 'rd.grouping.summary')
+        doc_sum = rows[0]['doc']
+        expected_doc = {
+            'unread' : [],
+            'num_unread': 0,
         }
         self.failUnlessDocEqual(doc_sum, expected_doc)
 

@@ -63,6 +63,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
                             ],
             'from_display': ['Raindrop Test User'],
             'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
+            'all_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         del doc_sum['messages'] # delete fields we aren't testing.
         self.failUnlessDocEqual(doc_sum, expected_doc)
@@ -102,6 +103,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
             'identities': [],
             'from_display': [],
             'unread_grouping_tags': [],
+            'all_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
             'grouping-timestamp': [],
         }
         del doc_sum['messages'] # delete fields we aren't testing.
@@ -145,6 +147,7 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
                             ],
             'from_display': ['Raindrop Test Recipient', 'Raindrop Test User'],
             'unread_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
+            'all_grouping_tags': ['identity-email-raindrop_test_user@mozillamessaging.com'],
         }
         del doc_sum['messages'] # delete fields we aren't testing.
         self.failUnlessDocEqual(doc_sum, expected_doc)
