@@ -104,7 +104,10 @@ require.def("rdw/Attachments",
             this._displayed = true;
 
             var files = this.files, links = this.links, tabHtml = "", html = "",
-                i, type, list, width, node;
+                i, type, list, width, node, totalCount = 0, isFirstTab = false;
+
+            this.tabIndexOffset = {};
+            this.shownTabTypes = [];
 
             for (i = 0; (type = this.tabTypes[i]); i++) {
                 list = this.types[type];
@@ -112,16 +115,25 @@ require.def("rdw/Attachments",
                     continue;
                 }
 
+                this.shownTabTypes.push(type);
+                this.tabIndexOffset[type] = totalCount;
+
                 //Generate the tabs for types of attachments
-                tabHtml += '<div class="attachTab" data-type="' + type + '" data-count="' + list.length + '">' +
-                           this.i18n["attachTab_" + type] +
+                tabHtml += '<div class="attachTab' + (isFirstTab ? " selected" : "") +
+                           '" data-type="' + type + '">' +
+                               this.i18n["attachTab_" + type] +
                            '</div>';
 
                 html += list.join('');
+                totalCount += list.length;
             }
 
             this.tabsNode.innerHTML = tabHtml;
             this.scrollNode.innerHTML = html;
+
+            //Hold on to the tab nodes for later.
+            this.tabHeaderNodes = dojo.query(".attachTab", this.tabsNode);
+
             this.updateButtons();
         },
 
@@ -139,18 +151,29 @@ require.def("rdw/Attachments",
          * @param {Event} evt
          */
         onAction: function (evt) {
-            var target = evt.target, name = target.name, scrollTarget, marginBox;
+            var target = evt.target, name = target.name, scrollTarget, marginBox,
+                isTab = dojo.hasClass(target, "attachTab"), tabType;
 
-            if (name === "rdwAttachmentsPrev" || name === "rdwAttachmentsNext") {
+            if (name === "rdwAttachmentsPrev" || name === "rdwAttachmentsNext" || isTab) {
                 if (name === "rdwAttachmentsPrev") {
                     this.attachIndex -= 1;
                     if (this.attachIndex < 0) {
                         this.attachIndex = 0;
                     }
-                } else {
+                } else if (name === "rdwAttachmentsNext") {
                     this.attachIndex += 1;
                     if (this.attachIndex > this.count - 1) {
                         this.attachIndex = this.count - 1;
+                    }
+                } else {
+                    //A tab click.
+                    tabType = target.getAttribute("data-type");
+                    if (this.selectedTabType === tabType) {
+                        dojo.stopEvent(evt);
+                        return;
+                    } else {
+                        this.attachIndex = this.tabIndexOffset[tabType];
+                        this.selectedTabType = tabType;
                     }
                 }
 
@@ -183,6 +206,8 @@ require.def("rdw/Attachments",
          * Change the action buttons to reflect the right state.
          */
         updateButtons: function () {
+            var i, type, isFirstTab = true, nextType, selectedTabType;
+
             dojo.removeAttr(this.prevNode, "disabled");
             dojo.removeAttr(this.nextNode, "disabled");
             if (this.attachIndex === 0) {
@@ -191,6 +216,21 @@ require.def("rdw/Attachments",
             if (this.attachIndex === this.count - 1) {
                 dojo.attr(this.nextNode, "disabled", "disabled");
             }
+
+            //Figure out what tab should be selected.
+            for (i = 0; (type = this.shownTabTypes[i]); i++) {
+                nextType = this.shownTabTypes[i + 1];
+                if (i === 0 || (this.tabIndexOffset[type] <= this.attachIndex &&
+                    (!nextType || this.tabIndexOffset[nextType] > this.attachIndex))) {
+                    selectedTabType = type;
+                }
+            }
+
+            this.tabHeaderNodes.forEach(function (node) {
+                var action = node.getAttribute("data-type") === selectedTabType ?
+                             "addClass": "removeClass";
+                dojo[action](node, "selected");
+            });
         }
     });
 });
