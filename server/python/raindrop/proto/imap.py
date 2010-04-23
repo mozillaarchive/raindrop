@@ -100,6 +100,12 @@ def check_envelope_ok(env):
   return True
 
 
+class IMAP4AuthException(imap4.IMAP4Exception):
+  def __init__(self, why, *args):
+    self.why = why
+    imap4.IMAP4Exception.__init__(self, *args)
+
+
 class XOAUTHAuthenticator:
     implements(imap4.IClientAuthentication)
 
@@ -145,14 +151,19 @@ class ImapClient(imap4.IMAP4Client):
         logger.info("logging into account %r via oauth", acct_det['id'])
         # do the xoauth magic.
         xoauth_string = xoauth.GenerateXOauthStringFromAcctInfo('imap', acct_det)
-        self._in_auth = True
         try:
-          _ = yield self.authenticate(xoauth_string)
-        finally:
-          self._in_auth = False
+          self._in_auth = True
+          try:
+            _ = yield self.authenticate(xoauth_string)
+          finally:
+            self._in_auth = False
         # it isn't clear why we need to explicitly call the deferred callback
         # here when we don't for login - but whateva...
-        self.deferred.callback(self)
+        except imap4.IMAP4Exception, exc:
+          new_exc = IMAP4AuthException(brat.OAUTH, *exc.args)
+          self.deferred.errback(Failure(new_exc))
+        else:
+          self.deferred.callback(self)
         return
       else:
         logger.warn("This server supports OAUTH but no tokens or secrets are available to use - falling back to password")
@@ -169,7 +180,15 @@ class ImapClient(imap4.IMAP4Client):
       if isinstance(result, Failure):
         # throw the connection away - we will (probably) retry...
         def fire_errback(_):
-          td.errback(result)
+          # this kinda sucks - there doesn't seem to be a good way to check
+          # if the underlying error was password related.  Errors like
+          # timeouts have their own error class, so we assume anything which
+          # is a 'vanilla' IMAP exception is password related.
+          if type(result.value) == imap4.IMAP4Exception:
+            exc = IMAP4AuthException(brat.PASSWORD, *result.value.args)
+          else:
+            exc = result.value
+          td.errback(Failure(exc))
         defer.maybeDeferred(self.transport.loseConnection
                            ).addBoth(fire_errback)
       else:
@@ -832,18 +851,25 @@ class ImapUpdater:
 
 def failure_to_status(failure):
   exc = failure.value
+  what = brat.SERVER
+  duration = brat.TEMPORARY
   if isinstance(exc, error.ConnectionRefusedError):
     why = brat.UNREACHABLE
-  elif isinstance(exc, imap4.IMAP4Exception):
-    # XXX - better detection is needed!
-    why = brat.PASSWORD
+  elif isinstance(exc, IMAP4AuthException):
+    what = brat.ACCOUNT
+    why = exc.why
+    # It would be nice to treat authentication failures as permanent, but
+    # it isn't clear how to differentiate a "bad password" response (which
+    # is permanent) from a 'too many concurrent connections' type response
+    # which is temporary - so we assume all are temporary.
   elif isinstance(exc, error.TimeoutError):
     why = brat.TIMEOUT
   else:
     why = brat.UNKNOWN
-  return {'what': brat.SERVER,
+  return {'what': what,
           'state': brat.BAD,
           'why': why,
+          'duration': duration,
           'message': failure.getErrorMessage()}
 
 def get_connection(account, conductor):
@@ -873,13 +899,18 @@ def _do_get_connection(account, conductor, ready, retries_left, backoff):
         status = failure_to_status(fail)
         account.reportStatus(**status)
         acct_id = account.details.get('id','')
-        logger.warning('Failed to connect to account %r, will retry after %s secs: %s',
-                       acct_id, backoff, fail.getErrorMessage())
-        next_backoff = min(backoff * 2, MAX_BACKOFF) # magic number
-        conductor.reactor.callLater(backoff,
-                                    _do_get_connection,
-                                    account, conductor, ready,
-                                    retries_left, next_backoff)
+        if status.get('duration') == account.PERMANENT:
+          logger.error('Permanent failure connecting to account %r: %s',
+                       acct_id, fail.getErrorMessage())
+          ready.errback(fail)
+        else:
+          logger.warning('Failed to connect to account %r, will retry after %s secs: %s',
+                         acct_id, backoff, fail.getErrorMessage())
+          next_backoff = min(backoff * 2, MAX_BACKOFF) # magic number
+          conductor.reactor.callLater(backoff,
+                                      _do_get_connection,
+                                      account, conductor, ready,
+                                      retries_left, next_backoff)
 
 
 class ImapClientFactory(protocol.ClientFactory):

@@ -3,6 +3,7 @@ from raindrop.pipeline import Pipeline
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
 from raindrop.proto.smtp import SMTPAccount, SMTPPostingClient, \
                                 SMTPClientFactory
+from raindrop.proc.base import Rat
 
 from twisted.protocols import basic, loopback
 from twisted.internet import defer
@@ -90,10 +91,10 @@ class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
         defer.returnValue(src_doc)
 
     def _get_post_client(self, src_doc, raw_doc):
-        acct = SMTPAccount(get_doc_model(), {})
+        self.acct = SMTPAccount(get_doc_model(), {})
         # we need a factory for error handling...
         factory = SMTPClientFactory(None, None, src_doc, raw_doc)
-        c = SMTPPostingClient(acct, src_doc, raw_doc, 'secret', None, None, None)
+        c = SMTPPostingClient(self.acct, src_doc, raw_doc, 'secret', None, None, None)
         c.factory = factory
         c.deferred = defer.Deferred()
         return c
@@ -108,6 +109,10 @@ class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
         src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'sent')
         self.failUnless(server.buffer) # must have connected to the test server.
+        # check the protocol recorded the success
+        status = self.acct.status
+        self.failUnlessEqual(status.get('state'), Rat.GOOD, status)
+        self.failUnlessEqual(status.get('what'), Rat.EVERYTHING, status)
 
     @defer.inlineCallbacks
     def test_simple_rejected(self):
@@ -120,6 +125,11 @@ class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
         # now re-open the doc and check the state says 'error'
         src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'error')
+        # check the protocol recorded the error.
+        status = self.acct.status
+        self.failUnlessEqual(status.get('state'), Rat.BAD, status)
+        self.failUnlessEqual(status.get('what'), Rat.SERVER, status)
+        self.failUnless('sook' in status.get('message', ''), status)
 
     @defer.inlineCallbacks
     def test_simple_failed(self):
@@ -131,6 +141,9 @@ class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
         # now re-open the doc and check the state says 'error'
         src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'error')
+        # and check the protocol recorded the error.
+        status = self.acct.status
+        self.failUnlessEqual(status.get('state'), Rat.BAD, status)
 
     @defer.inlineCallbacks
     def test_simple_connection_failed(self):

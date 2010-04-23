@@ -46,8 +46,10 @@ class Rat(object):
   UNREACHABLE = 'unreachable'
   TIMEOUT = 'timeout'
   PASSWORD = 'password'
+  OAUTH = 'oauth'
   MAINTENANCE = 'maintenance'
   BUSY = 'busy'
+  REJECTED = 'rejected'
   #: something is up with the crypto; this needs to be exploded
   CRYPTO = 'crypto'
 

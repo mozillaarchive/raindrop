@@ -137,11 +137,16 @@ class SMTPPostingClient(SMTPPostingClient_Base): #smtp.ESMTPClient):
         # us twice.
         assert not self.done_sent_state, self.src_doc
         # been sent - record that.
-        dm = self.acct.doc_model
+        a = self.acct
+        dm = a.doc_model
         # ack - errors talking to couch here are too late to do anything
         # about...
-        if code==250:
+        # From rfc822:
+        # 250 Requested mail action okay, completed
+        # 251 User not local; will forward to <forward-path>
+        if code in (250, 251):
             _ = yield self.acct._update_sent_state(self.src_doc, 'sent')
+            a.reportStatus(what=a.EVERYTHING, state=a.GOOD)
         else:
             reason = (code, resp)
             message = resp # theoretically already suitable for humans.
@@ -151,6 +156,20 @@ class SMTPPostingClient(SMTPPostingClient_Base): #smtp.ESMTPClient):
             _ = yield self.acct._update_sent_state(self.src_doc, 'error',
                                                    reason, message,
                                                    outgoing_state='outgoing')
+            if code==535:
+                # see if we are using XOAUTH (we could just record that state
+                # when we set the authenticator, but this works too...)
+                for a in self.authenticators:
+                    if a.getName()=='XOAUTH':
+                        why = a.OAUTH
+                        break
+                else:
+                    why=a.PASSWORD
+                a.reportStatus(what=a.ACCOUNT, state=a.BAD, why=why,
+                               message=message)
+            else:
+                a.reportStatus(what=a.SERVER, state=a.BAD, why=a.REJECTED,
+                               message=message)
         self.done_sent_state = True
 
     def smtpState_msgSent(self, code, resp):

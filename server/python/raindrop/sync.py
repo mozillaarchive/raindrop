@@ -287,7 +287,8 @@ class SyncConductor(object):
     # a timestamp in UTC
     items = {'timestamp': time.mktime(time.gmtime()),
              'new_items': self.num_new_items,
-             'num_syncs': num_syncs + 1
+             'num_syncs': num_syncs + 1,
+             'status': self.get_status_ob(),
     }
     # The 'state' bit - this is the source of an outgoing message.
     if si is None:
