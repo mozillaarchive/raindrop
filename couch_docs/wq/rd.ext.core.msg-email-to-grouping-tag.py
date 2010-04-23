@@ -67,11 +67,11 @@
 def get_recips(doc):
     fr = doc.get('from')
     if fr:
-        yield fr, doc.get('from_display')
+        yield fr, doc.get('from_display') or fr
     for recip, name in zip(doc.get('to', []), doc.get('to_display', [])):
-        yield recip, name
+        yield recip, name or recip
     for recip, name in zip(doc.get('cc', []), doc.get('cc_display', [])):
-        yield recip, name
+        yield recip, name or recip
 
 def handler(src_doc):
     # We make our lives easier by using the rd.msg.body schema, but only
