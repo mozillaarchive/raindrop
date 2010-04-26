@@ -375,7 +375,7 @@ def insert_default_docs(whateva, options):
     #this is hazardous because it may wipe out user-installed extensions,
     #but our more immediate need is to remove cruft as we continue development.
     #All the FE extensions are checked into the trunk at the moment.
-    results = yield dm.open_view(key=["rd.core.content", "schema_id", "rd.ext.uiext"], include_docs=True, reduce=False)
+    results = yield dm.open_view(key=["schema_id", "rd.ext.uiext"], include_docs=True, reduce=False)
     all_rows = results['rows']
     deletes = []
     for row in all_rows:

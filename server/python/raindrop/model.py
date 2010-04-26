@@ -51,7 +51,6 @@ class DocumentSaveError(Exception):
 class DocumentOpenError(Exception):
     pass
 
-
 # Schema definitions which don't want an aggregate written; the individual
 # extensions schemas are emitted individually.
 megaview_schemas_no_aggr = [

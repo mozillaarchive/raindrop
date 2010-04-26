@@ -16,7 +16,7 @@ def update_group(group_key, grouping_tags, rd_source):
 def update_default_group(rd_source):
     # get the list of grouping tags in groupings
     grouped_tags = set()
-    key = ['rd.core.content', 'schema_id', 'rd.grouping.info']
+    key = ['schema_id', 'rd.grouping.info']
     result = open_view(key=key, include_docs=True, reduce=False)
     for row in result['rows']:
         for tag in row['doc']['grouping_tags']:

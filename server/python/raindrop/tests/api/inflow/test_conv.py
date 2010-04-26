@@ -36,7 +36,7 @@ class TestConvoSimple(APITestCaseWithCorpus):
     def sanity_check_convo(self, convo):
         # all messages in a convo must have the same conversation ID.
         messages = convo['messages']
-        keys = [['rd.core.content', 'key-schema_id', [msg['id'], 'rd.msg.conversation']]
+        keys = [['key-schema_id', [msg['id'], 'rd.msg.conversation']]
                 for msg in messages]
         result = yield self.doc_model.open_view(keys=keys, reduce=False,
                                                 include_docs=True)
@@ -75,6 +75,7 @@ class TestConvoSimple(APITestCaseWithCorpus):
                     schemas=None, should_exist=True):
         known_msgs = self.get_known_msgs_to_identities()
         result = yield self.call_api(endpoint, schemas=schemas)
+        self.failUnless(result, "no conversations came back!")
         seen = set()
         for convo in result:
             _ = yield self.sanity_check_convo(convo)
@@ -253,7 +254,7 @@ Hello
         _ = yield self.doc_model.create_schema_items(items)
         _ = yield self.ensure_pipeline_complete()
         # should be 1 convo.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)

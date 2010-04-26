@@ -192,7 +192,7 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         # should have a single 'tag' associated with it.
         self.failUnlessEqual(doc['grouping_tags'], ['mailing-list-' + list_id])
         # Now find the 'summary' doc for this grouping.
-        key = ['rd.core.content', 'key-schema_id', [doc['rd_key'], 'rd.grouping.summary']]
+        key = ['key-schema_id', [doc['rd_key'], 'rd.grouping.summary']]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)

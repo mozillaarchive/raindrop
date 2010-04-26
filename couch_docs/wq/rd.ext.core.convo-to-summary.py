@@ -115,10 +115,11 @@ def build_summary(conv_id):
     latest_by_grouping = {}
     keys = [["rd.grouping.info", "grouping_tags", gt]
             for gt in latest_by_recip_target]
-    result = open_view(keys=keys, reduce=False)
+    result = open_view(viewId="grouping_info_tags",
+                       keys=latest_by_recip_target.keys())
     for row in result['rows']:
-        gtag = row['key'][-1]
-        gkey = row['value']['rd_key']
+        gtag = row['key']
+        gkey = row['value']
         this_ts = latest_by_recip_target[gtag]
         cur_latest = latest_by_grouping.get(hashable_key(gkey), 0)
         if this_ts > cur_latest:

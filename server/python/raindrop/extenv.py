@@ -169,7 +169,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
                         group_level=1,
                         )
             for row in result['rows']:
-                iid = row['key']
+                iid = row['key'][0]
                 # can't use a set - identity_ids are lists!
                 if iid not in _my_identities:
                     _my_identities.append(iid)

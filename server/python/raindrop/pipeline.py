@@ -213,7 +213,7 @@ class Pipeline(object):
         # all mem...
         if self.options.exts:
             runners = yield self.get_queue_runners()
-            keys = [['ext_id', e.id] for e in exts]
+            keys = [['ext_id', r.queue_id] for r in runners]
             result = yield self.doc_model.open_view(
                                 keys=keys, reduce=False)
             to_up = [{'_id': row['id'],
@@ -310,7 +310,7 @@ class Pipeline(object):
                             keys.append(['key-schema_id', [k, sch_id]])
                 else:
                     # all rd_keys...
-                    keys=[['schema_id', sch_id] for sch_id in ext.source_schemas]
+                    keys=[['schema_id', sch_id] for sch_id in qr.schema_ids]
                 result = yield dm.open_view(keys=keys,
                                             reduce=False)
                 logger.info("reprocessing %s - %d docs", qr.queue_id,

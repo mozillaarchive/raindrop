@@ -16,14 +16,14 @@ class TestSimpleCorpus(TestCaseWithCorpus):
     @defer.inlineCallbacks
     def check_groupings(self, ex_tag, ex_grouping_key):
         # open all grouping-tag schemas - should be only 1
-        key = ["rd.core.content", "schema_id", "rd.msg.grouping-tag"]
+        key = ["schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         # Check that grouping-tag specifies a tag for us
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
         self.failUnlessEqual(rows[0]['doc']['tag'], ex_tag)
-        key = ["rd.core.content", "schema_id", "rd.grouping.summary"]
+        key = ["schema_id", "rd.grouping.summary"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -75,7 +75,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         msgid = ['email', '78cb2eb5dbc74cdd9691dcfdb266d1b9@something']
         body_schema = (yield self.doc_model.open_schemas([(msgid, 'rd.msg.body')]))[0]
         # should be one 'rd.convo.summary' doc in the DB.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -84,7 +84,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         conv_id = rows[0]['doc']['rd_key']
 
         # should also be exactly 1 'grouping summary'
-        key = ['rd.core.content', 'schema_id', 'rd.grouping.summary']
+        key = ['schema_id', 'rd.grouping.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']
@@ -112,7 +112,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # check the grouping.
-        key = ['rd.core.content', 'schema_id', 'rd.grouping.summary']
+        key = ['schema_id', 'rd.grouping.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         rows = result['rows']

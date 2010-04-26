@@ -223,7 +223,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag document and compare the results.
-        key = ["schema_id", "rd.msg.notification"]
+        key = ["schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 
@@ -241,7 +241,7 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         _ = yield self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag documents and compare the results.
-        key = ["schema_id", "rd.msg.notification"]
+        key = ["schema_id", "rd.msg.grouping-tag"]
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
 

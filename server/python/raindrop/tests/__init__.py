@@ -133,7 +133,7 @@ class TestCaseWithDB(TestCase):
             # We just need to wait a little and try again...
             failure.trap(Error)
             if failure.value.status == '500' and retries_left:
-                import time;time.sleep(0.1)
+                import time;time.sleep(0.5)
                 return db.deleteDB(dbinfo['name']
                     ).addCallbacks(_nuked_ok, _nuke_failed,
                                    errbackArgs=(retries_left-1,)

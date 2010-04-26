@@ -53,9 +53,9 @@ class ConversationAPI(API):
                 yield {}, {}
             return
         elif schemas == ['*']:
-            keys = ['key', k] for k in msg_keys]
+            keys = [['key', k] for k in msg_keys]
         else:
-            keys = ['key-schema_id', [k, sid]]
+            keys = [['key-schema_id', [k, sid]]
                     for k in msg_keys for sid in schemas]
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
         message_results = {}
@@ -273,7 +273,7 @@ class ConversationAPI(API):
             # special case - means "my identity".  Note this duplicates code
             # in raindrop/extenv.py's get_my_identities() function.
             result = db.view('raindrop!content!all/acct_identities',
-                             {'group': 'true', 'group_level': '1'})
+                             group=True, group_level=1)
             mine = set()
             for row in result['rows']:
                 iid = row['key'][0]
@@ -282,9 +282,9 @@ class ConversationAPI(API):
         return self._identities(db, ids, args)
 
     def _identities(self, db, idids, args):
-        # XXXX - fix me!
+
         result = db.view('raindrop!content!all/conv_summary_by_identity',
-                         keys=idids, skip=args['skip'])
+                         keys=idids, limit=args['limit'], skip=args['skip'])
         conv_doc_ids = set(r['id'] for r in result['rows'])
         result = db.allDocs(keys=list(conv_doc_ids), include_docs=True)
         # filter out deleted etc.
@@ -297,7 +297,6 @@ class ConversationAPI(API):
     # Helper for most other end-points
     def in_groups(self, req):
         opts = {
-            'reduce': False,
             'include_docs': True,
             'descending': True,
         }
@@ -310,9 +309,8 @@ class ConversationAPI(API):
 
         convo_summaries = []
         for gk in args['keys']:
-            result = db.megaview(startkey=["rd.conv.summary", "grouping-timestamp", [gk, {}]],
-                                 endkey=["rd.conv.summary", "grouping-timestamp", [gk]],
-                                 **opts)
+            result = db.view('raindrop!content!all/conv_summary_by_grouping_timestamp',
+                             startkey=[gk, {}], endkey=[gk], **opts)
             convo_summaries.extend(row['doc'] for row in result['rows'])
 
         convos = self._build_conversations(db, convo_summaries, args['message_limit'],
@@ -412,14 +410,14 @@ class GroupingAPI(API):
         db = RDCouchDB(req)
         # Note there might be lots of .info groups, but only a small number
         # of them with 'summary'
-        key = ['rd.core.content', 'schema_id', 'rd.grouping.summary']
+        key = ['schema_id', 'rd.grouping.summary']
         result = db.megaview(key=key, include_docs=True, reduce=False)
         by_key = {}
         keys = []
         for row in result['rows']:
             rd_key = row['value']['rd_key']
             by_key[hashable_key(rd_key)] = row['doc']
-            keys.append(['rd.core.content', 'key-schema_id', [rd_key, 'rd.grouping.info']])
+            keys.append(['key-schema_id', [rd_key, 'rd.grouping.info']])
         result = db.megaview(keys=keys, include_docs=True, reduce=False)
         for row in result['rows']:
             rd_key = row['value']['rd_key']

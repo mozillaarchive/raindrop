@@ -301,7 +301,7 @@ function (rd, dojo, api) {
             if (!flags) {
                 //Just get the value.
                 api().megaview({
-                    key: ["key-schema_id", [["identity", id], "rd.identity.recip-target"]],
+                    key: ["key-schema_id", [["identity", id], "rd.identity.sender-flags"]],
                     reduce: false,
                     include_docs: true
                 })

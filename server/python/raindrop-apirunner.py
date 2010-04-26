@@ -216,10 +216,16 @@ class CouchDB:
         c.request(method, uri, body, headers)
         return c.getresponse()
 
-    def view(self, viewname, options, keys=None):
-        viewParts = viewname.split('/');
+    def view(self, viewname, **kw):
+        # The javascript impl has a painful separation of the 'keys' param
+        # from other params - hide that.
+        kw = kw.copy()
+        keys = kw.get('keys')
+        if keys is not None:
+            del kw['keys']
+        viewParts = viewname.split('/')
         viewPath = self.uri + "_design/" + viewParts[0] + "/_view/" \
-            + viewParts[1] + self.encodeOptions(options)
+            + viewParts[1] + self.encodeOptions(kw)
         if keys is None:
             resp = self.request("GET", viewPath);
         else:
@@ -287,15 +293,9 @@ class RDCouchDB(CouchDB):
         CouchDB.__init__(self, name, host, port)
 
     def megaview(self, **kw):
-        # The javascript impl has a painful separation of the 'keys' param
-        # from other params - hide that.
-        opts = kw.copy()
-        keys = opts.get('keys')
-        if keys is not None:
-            del opts['keys']
-        note_timeline("megaview request opts=%s, %d keys", opts, len(keys or []))
+        note_timeline("megaview request opts=%s, %d keys", kw, len(kw.get('keys') or []))
         # and make the request.
-        ret = self.view('raindrop!content!all/megaview', opts, keys)
+        ret = self.view('raindrop!content!all/megaview', **kw)
         note_timeline("megaview result - %d rows", len(ret['rows']))
         return ret
 

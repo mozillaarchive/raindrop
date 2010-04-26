@@ -220,7 +220,7 @@ Hello
             _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 3 convos.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 3)
         # now the last message - two convos should vanish.
@@ -228,7 +228,7 @@ Hello
         _ = yield self.doc_model.create_schema_items([si])
         _ = yield self.ensure_pipeline_complete()
         # should be 1 convo.
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), 1)
         conv_id = result['rows'][0]['value']['rd_key']
@@ -341,7 +341,7 @@ Content-Transfer-Encoding: 7bit
         # Now get the convo summary - the summary messages should include
         # the first, second and last (second preferred over 3rd as it is
         # unread, last included as it is most-recent read)
-        key = ['rd.core.content', 'schema_id', 'rd.conv.summary']
+        key = ['schema_id', 'rd.conv.summary']
         result = yield self.doc_model.open_view(key=key, reduce=False,
                                                 include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)
