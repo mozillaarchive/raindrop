@@ -60,7 +60,6 @@ def handler(doc):
             opener.close()
 
             obj = obj.get("entry")
-            obj["is_attachment"] = True
             obj['ref_link'] = link
             emit_schema('rd.msg.body.youtubed', obj)
         except urllib2.HTTPError, exc:

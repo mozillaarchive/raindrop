@@ -66,6 +66,5 @@ def handler(doc):
 
         # Vimeo always returns a list and we only asked for one video
         schema = obj.pop()
-        schema["is_attachment"] = True
         schema['ref_link'] = link
         emit_schema('rd.msg.body.quoted.hyperlinks.vimeo', schema)

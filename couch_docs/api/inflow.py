@@ -134,9 +134,6 @@ class ConversationAPI(API):
             except KeyError:
                 bag = {}
             attachments = []
-            for schema_items in bag.itervalues():
-                if 'is_attachment' in schema_items:
-                    attachments.append(schema_items)
             yield (bag, attachments)
 
     def _build_conversations(self, db, conv_summaries, message_limit, schemas=None):

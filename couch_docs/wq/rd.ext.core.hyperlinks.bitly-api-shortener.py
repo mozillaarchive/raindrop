@@ -165,7 +165,6 @@ def handler(doc):
                       "user_url"     : ss.get("user_url")(link, shorty),
                       "description"  : ss.get("description")(link, shorty),
                       "extra"        : shorty,
-                      "is_attachment": True,
                       "domain"       : link.get('domain'),
                       "ref_link"     : link['url']
                       }

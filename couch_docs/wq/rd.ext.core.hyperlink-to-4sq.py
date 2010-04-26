@@ -64,6 +64,5 @@ def handler(doc):
         opener = urllib2.build_opener()
         obj = json.load(opener.open(info_api))
         if obj:
-            obj['is_attachment'] = True
             obj["ref_link"] = link['url']
             emit_schema('rd.msg.body.attachment.link.foursquare', obj)
