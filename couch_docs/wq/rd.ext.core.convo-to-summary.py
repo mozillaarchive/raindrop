@@ -111,10 +111,9 @@ def build_summary(conv_id):
             if this_ts > cur_latest:
                 latest_by_recip_target[this_group] = this_ts
 
+    logger.debug('conversation has %d messages, %d good', len(all_msgs), len(good_msgs))
     # build a map of grouping-tag to group ID
     latest_by_grouping = {}
-    keys = [["rd.grouping.info", "grouping_tags", gt]
-            for gt in latest_by_recip_target]
     result = open_view(viewId="grouping_info_tags",
                        keys=latest_by_recip_target.keys())
     for row in result['rows']:

@@ -181,10 +181,10 @@ def get_ext_env(doc_model, context, src_doc, ext):
         # at runtime.
         # If the grouping-tag is already associated with a different rd.grouping
         # schema, no action is taken.
-        key = ['rd.grouping.info', 'grouping_tags', tag]
         result = threads.blockingCallFromThread(reactor,
                         doc_model.open_view,
-                        key=key, reduce=False)
+                        viewId='grouping_info_tags',
+                        key=tag)
         if result['rows']:
             return # this grouping already exists.
         # create a new 'info' schema marked as 'dynamic' so it can be deleted

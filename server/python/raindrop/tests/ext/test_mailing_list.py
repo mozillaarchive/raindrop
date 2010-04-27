@@ -185,8 +185,9 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         list_id = 'test.lists.example.com'
         # we should now have one 'rd.grouping.info' doc with the mailing-list's tag
         key = ['rd.grouping.info', 'title', list_id]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = yield self.doc_model.open_view("raindrop!content!tests",
+                                                "grouping_info_by_title",
+                                                key=list_id, include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)
         doc = result['rows'][0]['doc']
         # should have a single 'tag' associated with it.

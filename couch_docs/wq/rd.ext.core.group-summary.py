@@ -42,14 +42,13 @@ def later_handler(tags_info):
     # Now find the unique set of 'display-group's with those tags
     groups = {}
     seen_tags = set()
-    keys = [['rd.grouping.info', 'grouping_tags', gt]
-            for gt in all_tags]
-    result = open_view(keys=keys, include_docs=True, reduce=False)
+    result = open_view(viewId="grouping_info_tags", keys=all_tags.keys(),
+                       include_docs=True)
     for row in result['rows']:
-        # the doc has the group key and the list of grouping_tags
-        this_tag = row['key'][-1]
+        # the view has the group key and the list of grouping_tags
+        this_tag = row['key']
         rd_source = all_tags[this_tag]
-        groups[hashable_key(row['value']['rd_key'])] = (row['doc']['grouping_tags'], rd_source)
+        groups[hashable_key(row['value'])] = (row['doc']['grouping_tags'], rd_source)
         seen_tags.add(this_tag)
     # now process them - first the found groups
     for group, (tags, rd_source) in groups.iteritems():
