@@ -42,9 +42,8 @@ require.modify("rd/conversation", "rdw/ext/mailingList/ext-rd/conversation",
                  * @param {Function} [errback]
                  */
                 mailingList: function (listId, limit, skip, callback, errback) {
-                    api().view(msg_by_mailinglist, {
+                    api().view('msg_by_mailinglist', {
                         key: listId,
-                        reduce: false,
                         limit: limit,
                         skip: skip
                     })
