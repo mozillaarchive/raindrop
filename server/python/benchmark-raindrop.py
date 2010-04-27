@@ -130,7 +130,7 @@ def run_timings_async(_, opts):
     print "Loaded %d documents in %.3f" % (ndocs, avg)
     # now do a 'process' on one single extension.
     tc.pipeline.options.exts = ['rd.ext.core.msg-rfc-to-email']
-    _, avg = yield timeit(tc.pipeline.start_backlog)
+    _, avg = yield timeit(tc.pipeline.start_processing, False, None)
     print "Ran 1 extension in %.3f" % (avg)
     # now do a few in (hopefully) parallel
     tc.pipeline.options.exts = ['rd.ext.core.msg-email-to-body',
@@ -139,17 +139,17 @@ def run_timings_async(_, opts):
                                 'rd.ext.core.msg-body-to-quoted',
                                 'rd.ext.core.msg-body-quoted-to-hyperlink',
                                 ]
-    _, avg = yield timeit(tc.pipeline.start_backlog)
+    _, avg = yield timeit(tc.pipeline.start_processing, False, None)
     print "Ran %d extensions in %.3f" % (len(tc.pipeline.options.exts), avg)
     # now the 'rest'
     tc.pipeline.options.exts = None
-    _, avg = yield timeit(tc.pipeline.start_backlog)
+    _, avg = yield timeit(tc.pipeline.start_processing, False, None)
     print "Ran remaining extensions in %.3f" % (avg,)
     _ = yield report_db_state(tc.pipeline.doc_model.db, opts)
     # try unprocess then process_backlog
     _, avg = yield timeit(tc.pipeline.unprocess)
     print "Unprocessed in %.3f" % (avg,)
-    _, avg = yield timeit(tc.pipeline.start_backlog)
+    _, avg = yield timeit(tc.pipeline.start_processing, False, None)
     print "re-processed in %.3f" % (avg,)
     _ = yield report_db_state(tc.pipeline.doc_model.db, opts)
 
