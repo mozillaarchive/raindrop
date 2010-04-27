@@ -94,6 +94,12 @@ def tweet_to_raw(tweet):
 
 def sign_args(account_details, base_url, method="GET", **args):
     args = args.copy()
+
+    # Remove args that have a None value
+    for k, v in args.items():
+        if not v:
+            del args[k]
+
     args['oauth_token'] = account_details['oauth_token']
     args['oauth_consumer_key'] = account_details['oauth_consumer_key']
     args['oauth_signature_method'] = 'HMAC-SHA1'
@@ -103,15 +109,26 @@ def sign_args(account_details, base_url, method="GET", **args):
 
     key = account_details['oauth_consumer_secret'] + "&"
     key += urllib.quote(account_details['oauth_token_secret'], '')
- 
+
     message = '&'.join(
             urllib.quote(i, '') for i in [method.upper(), base_url,
                             urllib.urlencode(sorted(args.iteritems()))])
- 
+
+    logger.info("TWITTER sign_args will sign: %s", message)
+
     args['oauth_signature'] = hmac.new(key, message, hashlib.sha1
                                         ).digest().encode('base64')[:-1]
     return args
 
+def create_api(account_details):
+    # later we will remove all 'password' support...
+    if 'oauth_token' not in account_details:
+        username = account_details['username']
+        pw = account_details['password']
+        kw = {'email': username, 'password': pw}
+    else:
+        kw = {}
+    return twitter.api.Twitter(**kw)
 
 def call_twitter(account_details, twit_api, **args):
     # later we will remove all 'password' support...
@@ -128,7 +145,7 @@ def call_twitter(account_details, twit_api, **args):
             if twit_api.uri.endswith(action):
                 method = "POST"
                 break
-        
+
         new_args = sign_args(account_details, uri, method, **args)
     else:
         new_args = args
@@ -151,14 +168,7 @@ class TwitterProcessor(object):
     def attach(self):
         logger.info("attaching to twitter...")
         ad = self.account.details
-        # later we will remove all 'password' support...
-        if 'oauth_token' not in ad:
-            username = self.account.details['username']
-            pw = self.account.details['password']
-            kw = {'email': username, 'password': pw}
-        else:
-            kw = {}
-        twit = self.twit = twitter.api.Twitter(**kw)
+        twit = self.twit = create_api(ad)
         logger.info("attached to twitter - fetching timeline")
 
         # Lets get fancy and check our rate limit status on twitter
@@ -305,16 +315,9 @@ class TwitterAccount(base.AccountBase):
     def startSend(self, conductor, src_doc, dest_doc):
         logger.info("Sending tweet from TwitterAccount...")
 
-        username = self.details['username']
-        pw = self.details['password']
         self.src_doc = src_doc
-        _ = yield threads.deferToThread(twitter.api.Twitter,
-                                     email=username, password=pw
-                                     ).addCallback(self.attached)
-        defer.returnValue(True)
+        twitter_api = create_api(self.details)
 
-    @defer.inlineCallbacks
-    def attached(self, twitter_api):
         logger.info("attached to twitter - sending tweet")
 
         _ = yield self._update_sent_state(self.src_doc, 'sending')
@@ -324,15 +327,15 @@ class TwitterAccount(base.AccountBase):
             if ('retweet_id' in self.src_doc):
                 # A retweet
                 retweet_id = str(self.src_doc['retweet_id'])
-                status = yield threads.deferToThread(twitter_api.statuses.retweet, id=retweet_id, source='Raindrop')
+                status = yield call_twitter(self.details, twitter_api.statuses.retweet, id=retweet_id)
             else:
                 # A status update or a reply
                 in_reply_to = None
                 if ('in_reply_to' in self.src_doc):
                     in_reply_to = self.src_doc['in_reply_to']
 
-                status = yield threads.deferToThread(twitter_api.statuses.update,
-                                   status=self.src_doc['body'], in_reply_to_status_id=in_reply_to, source='Raindrop')
+                status = yield call_twitter(self.details, twitter_api.statuses.update,
+                               status=self.src_doc['body'], in_reply_to_status_id=in_reply_to)
 
             # If status has an ID, then it saved. Otherwise,
             # assume an error. TODO: store the result as a real incoming
@@ -357,6 +360,8 @@ class TwitterAccount(base.AccountBase):
                                           # reset to 'outgoing' if temp error.
                                           # or set to 'error' if permanent.
                                           outgoing_state='error')
+
+        defer.returnValue(True)
 
     def startSync(self, conductor, options):
         return TwitterProcessor(self, conductor, options).attach()
