@@ -272,7 +272,7 @@ function (require, rd, dojo, DeferredList, api) {
     
             require(["rd/contact"], function (contact) {
                 var args = {
-                    key: ["rd.core.content", "schema_id", "rd.identity.contacts"],
+                    key: ["schema_id", "rd.identity.contacts"],
                     reduce: false,
                     ioPublish: false,
                     identity: query,
