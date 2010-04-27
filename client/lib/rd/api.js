@@ -351,12 +351,6 @@ function (rd, dojo, rdCouch) {
         view: function (vwname, args) {
             args = dojo.delegate(args);
             args.url = this.dbPath(args) + "_design/raindrop!content!all/_view/" + vwname;
-            return this.xhr(args);
-        },
-    
-        megaview: function (args) {
-            args = dojo.delegate(args);
-            args.url = this.dbPath(args) + "_design/raindrop!content!all/_view/megaview";
 
             //Favor having stale content to help performance
             if (!args.content) {
@@ -367,6 +361,10 @@ function (rd, dojo, rdCouch) {
             }
 
             return this.xhr(args);
+        },
+    
+        megaview: function (args) {
+            return this.view("megaview", args);
         },
     
     
