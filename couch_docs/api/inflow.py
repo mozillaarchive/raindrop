@@ -339,29 +339,6 @@ class ConversationAPI(API):
         req['body'] = json.dumps({'keys': [('display-group', 'inflow')]})
         return self.in_groups(req)
 
-    def twitter(self, req):
-        opts = {
-            'startkey': ["rd.msg.tweet.raw", "twitter_created_at_in_seconds", 9999999999999999],
-            'endkey': ["rd.msg.tweet.raw", "twitter_created_at_in_seconds", 0],
-            'reduce': False,
-            'descending': True,
-        }
-
-        self.requires_get(req)
-        args = self.get_args(req, limit=30, skip=0, message_limit=None,
-                             schemas=None)
-        opts['limit'] = args['limit']
-        opts['skip'] = args['skip']
-        db = RDCouchDB(req)
-
-        result = db.megaview(**opts)
-
-        keys = [row['value']['rd_key'] for row in result['rows']]
-        convos = self._with_messages(db, keys, args['message_limit'], args['schemas'])
-        
-        convos.sort(key=lambda item: item['messages'][0]['schemas']['rd.msg.body']['timestamp'],
-                   reverse=True)
-        return convos
 
 class ContactAPI(API):
     def _fetch_identies_for_contact(self, db, cid):

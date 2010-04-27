@@ -130,12 +130,14 @@ class TestConvoSimple(APITestCaseWithCorpus):
 
     @defer.inlineCallbacks
     def test_twitter(self):
-        result = yield self.call_api("inflow/conversations/twitter")
-        # confirm 3 conversations
-        self.failUnlessEqual(3, len(result), pformat(result))
+        result = yield self.call_api("inflow/conversations/in_groups",
+                                     keys=[["display-group", "twitter"]])
+        # confirm 2 conversations (the @reply in the corpus winds up in the
+        # inflow.
+        self.failUnlessEqual(2, len(result), pformat(result))
 
         # get the conversations and sanity check them.
-        ex_ids = [['tweet', tid] for tid in [6119612045, 11111, 22222]]
+        ex_ids = [['tweet', 6119612045], ['email', '4ac4f85d89769_1de3156943569ffc176015a@mx007.twitter.com.tmail']]
         seen_ids = []
         for convo in result:
             _ = yield self.sanity_check_convo(convo)
@@ -148,6 +150,23 @@ class TestConvoSimple(APITestCaseWithCorpus):
             seen_ids.append(msg['id'])
 
         self.failUnlessEqual(sorted(seen_ids), sorted(ex_ids))
+
+    @defer.inlineCallbacks
+    def test_twitter_inflow(self):
+        # here we test that the 2 @reply tweets do indeed appear in the
+        # inflow.
+        result = yield self.call_api("inflow/conversations/in_groups",
+                                     keys=[["display-group", "inflow"]])
+        # confirm the 2 conversations exist
+        look = []
+        for conv in result:
+            if conv['id'] in (['twitter', 11111], ['twitter', 22222]):
+                look.append(conv)
+        self.failUnlessEqual(2, len(look), pformat(look))
+        for conv in look:
+            _ = yield self.sanity_check_convo(conv)
+            # confirm only one message
+            self.failUnlessEqual(1, len(conv['messages']), pformat(conv))
 
     @defer.inlineCallbacks
     def test_with_messages(self):
