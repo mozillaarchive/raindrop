@@ -499,7 +499,7 @@ class StatefulQueueManager(object):
             except Exception:
                 f = Failure()
                 logger.error("queue %r failed:\n%s", q.queue_id, f.getTraceback())
-                qstate.failure = f
+                q_state.failure = f
 
         logger.debug("continuous processing of %r terminate: running=%s, failed=%s",
                      q.queue_id, q_state.running, bool(q_state.failure))
