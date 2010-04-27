@@ -87,9 +87,9 @@
             for (prop in args) {
                 if (!(prop in empty) && prop in safe) {
                     value = args[prop];
-                    //Couch likes array and object values as json data
-                    if (value !== undefined &&
-                       (value === null || typeof value === "object" || require.isArray(value) || require.isFunction(value))) {
+                    //Couch likes all values as json data
+                    // XXX - should we instead throw an error if we hit undefined?
+                    if (value !== undefined) {
                         value = JSON.stringify(value);
                     }
                     content[prop] = value;
