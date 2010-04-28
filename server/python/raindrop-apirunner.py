@@ -226,6 +226,15 @@ class CouchDB:
         keys = kw.get('keys')
         if keys is not None:
             del kw['keys']
+        # stale is a little tricky - 'ok' is the only valid option.  So if
+        # the user puts 'stale=None' we assume stale is *not* ok!
+        if 'stale' in kw:
+            stale = kw['stale']
+            assert stale in (None, 'ok'), stale # only ok and None are allowed!
+            if stale is None:
+                del kw['stale']
+        else:
+            kw['stale'] = 'ok'
         viewParts = viewname.split('/')
         viewPath = self.uri + "_design/" + viewParts[0] + "/_view/" \
             + viewParts[1] + self.encodeOptions(kw)
