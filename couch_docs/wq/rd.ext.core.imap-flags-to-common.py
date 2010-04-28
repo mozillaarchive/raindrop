@@ -31,7 +31,6 @@ def handler(doc):
     # all meta-data about all items in a folder; so one document holds the
     # state for many messages.  We first need to determine which are
     # different...
-    keys = []
     rdkeys = []
     imap_flags = []
     folder_name = doc['rd_key'][1][1]
@@ -40,27 +39,25 @@ def handler(doc):
         msg_id = item['ENVELOPE'][-1]
         rdkey = get_rdkey_for_email(msg_id)
         rdkeys.append(rdkey)
-        keys.append(['key-schema_id', [rdkey, 'rd.msg.seen']])
         imap_flags.append((rdkey, item['FLAGS']))
-    result = open_view(keys=keys, reduce=False, include_docs=True)
+    result = open_view('raindrop!content!all', 'msg-seen-flag', keys=rdkeys)
 
-    # turn the result into a dict also keyed by rdkey
-    couch_docs = {}
+    # turn the result into a dict keyed by rdkey
+    couch_values = {}
     for row in result['rows']:
-        couch_docs[tuple(row['value']['rd_key'])] = row['doc']
+        couch_values[hashable_key(row['key'])] = row['value']
 
     # work out which of these rdkeys actually exist in our db.
     existing_rdkeys = set()
-    keys = []
-    for rdkey in rdkeys:
-        keys.append(['key-schema_id', [rdkey, 'rd.msg.rfc822']])
+    keys = [['key-schema_id', [rdkey, 'rd.msg.rfc822']]
+            for rdkey in rdkeys]
     result = open_view(keys=keys, reduce=False)
     for row in result['rows']:
-        existing_rdkeys.add(tuple(row['value']['rd_key']))
+        existing_rdkeys.add(hashable_key(row['value']['rd_key']))
 
     # find what is different...
     nnew = 0
-    to_up = []
+    nupdated = 0
     # Note it is fairly common to see multiples with the same msg ID in, eg
     # a 'drafts' folder, so skip duplicates to avoid conflicts.
     seen_keys = set()
@@ -70,13 +67,17 @@ def handler(doc):
                         folder_name, rdkey)
             continue
         if rdkey not in existing_rdkeys:
+            # this means we haven't actually sucked the message into raindrop
+            # yet (eg, --max-age may have caused only a subset of the messages
+            # to be grabbed, although all messages in the folder are returned
+            # in the input document)
             logger.debug('skipping message not yet in folder %r: %r',
                          folder_name, rdkey)
             continue
         seen_keys.add(rdkey)
         seen_now = "\\Seen" in flags
         try:
-            doc = couch_docs[rdkey]
+            couch_value = couch_values[rdkey]
         except KeyError:
             # new message
             items = {'seen' : seen_now,
@@ -88,14 +89,16 @@ def handler(doc):
             # If the state in couch is anything other than 'incoming'', it
             # represents a request to change the state on the server (or the
             # process of trying to update the server).
-            if doc.get('outgoing_state') != 'incoming':
-                logger.info("found outgoing 'seen' state request in doc %(_id)r", doc)
+            if couch_value.get('outgoing_state') != 'incoming':
+                logger.info("found outgoing 'seen' state request in doc with key %r", rdkey)
                 continue
-            seen_couch = doc['seen']
+            seen_couch = couch_value['seen']
             if seen_now != seen_couch:
-                doc['seen'] = seen_now
-                to_up.append(doc)
-    if to_up:
-        update_documents(to_up)
+                items = {'seen' : seen_now,
+                         'outgoing_state' : 'incoming',
+                         '_rev' : couch_value['_rev'],
+                         }
+                emit_schema('rd.msg.seen', items, rdkey)
+                nupdated += 1
     logger.info("folder %r needs %d new and %d updated 'seen' records",
-                folder_name, nnew, len(to_up))
+                folder_name, nnew, nupdated)
