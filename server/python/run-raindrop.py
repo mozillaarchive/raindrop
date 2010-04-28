@@ -207,6 +207,16 @@ def retry_errors(result, parser, options):
         return result
     _ = yield g_pipeline.start_retry_errors()
     print "Error retry pipeline has finished..."
+    # Now reset all outgoing items with a state of 'error' back to 'outgoing'
+    dm = model.get_doc_model()
+    result = yield dm.open_view(viewId="outgoing_by_state", key="error",
+                                include_docs=True)
+    docs = [r['doc'] for r in result['rows']]
+    if docs:
+        for d in docs:
+            d['outgoing_state'] = 'outgoing'
+        _ = yield dm.update_documents(docs)
+    print "Reset %d outgoing items for retry" % (len(docs),)
     # XXX - should do the 'process' thing now...
 
 @allargs_command
