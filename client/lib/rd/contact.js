@@ -346,7 +346,6 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
         //Loads the contact-identity mapping.
         _loadIdtyMapping: function () {
             api().view('identities_by_contact', {
-                reduce: false
             })
             .ok(this, function (json) {
                 //Error out if no rows return.
