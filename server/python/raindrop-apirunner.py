@@ -31,8 +31,9 @@ request URL.
 
 import sys
 import httplib
-from time import clock
+from time import time
 from urllib import urlencode, quote
+import optparse
 
 try:
     import json
@@ -49,15 +50,14 @@ from raindrop import config
 # in their globals
 api_globals={'json': json}
 
-# A little hack so we can record some basic perf stats about certain things.
-# You must modify couch's local.ini to include '--show-perf' on the cmdline.
-if '--show-perf' in sys.argv:
-    sys.argv.remove('--show-perf')
-    def note_timeline(msg, *args):
-        msg = msg % args
-        log("%.3f: %s", clock(), msg)
-else:
-    note_timeline = lambda msg, *args: None
+# A little hack so we can record some basic perf stats about certain things
+# if specified on the cmdline.  This function may be overridden in main()
+# by the do_note_timeline function
+note_timeline = lambda msg, *args: None
+
+def do_note_timeline(msg, *args):
+    msg = msg % args
+    log("%.3f: %s", time(), msg)
 
 def get_api_config_filename(req):
     dbname = req['path'][0]
@@ -195,11 +195,14 @@ api_globals['api_handle'] = api_handle
 
 # This is a port of some of the couch.js class.
 class CouchDB:
+    default_host = None
+    default_port = None
     def __init__(self, name, host=None, port=None):
         self.name = name;
         self.uri = "/" + quote(name) + "/"
         # share and reuse one connection.
-        self.connection = httplib.HTTPConnection(host or '127.0.0.1', port or 5984)
+        self.connection = httplib.HTTPConnection(host or self.default_host,
+                                                 port or self.default_port)
 
     def maybeThrowError(self, resp):
         if resp.status >= 400:
@@ -337,7 +340,7 @@ class APILoadError(Exception):
 # REST end-point handlers we have already loaded.
 _handlers = {}
 
-def get_api_handler(cfg, req):
+def get_api_handler(options, req):
     # path format is "db_name/external_name/app_name/class_name/method_name
     if len(req.get('path', [])) != 5:
         raise APILoadError("invalid api request format")
@@ -352,15 +355,15 @@ def get_api_handler(cfg, req):
     # Load the schemas which declare they implement this end-point
     apiid = req['path'][2:4] # the 'app' name and the 'class' name.
     path = "/%s/_design/raindrop!content!all/_view/api_endpoints" % dbname
-    options = {'key': json.dumps(apiid), 'include_docs': 'true',
-    }
-    uri = path + "?" + urlencode(options)
+    req_options = {'key': json.dumps(apiid), 'include_docs': 'true'}
+    uri = path + "?" + urlencode(req_options)
 
-    c = httplib.HTTPConnection(cfg['host'], cfg['port'])
+    c = httplib.HTTPConnection(options.couchdb_host, options.couchdb_port)
     c.request("GET", uri)
     resp = c.getresponse()
     if resp.status != 200:
-        raise APILoadError("api query failure (%s: %s) to %s:%s", resp.status, resp.reason, cfg['host'],cfg['port'])
+        raise APILoadError("api query failure (%s: %s) to %s:%s", resp.status,
+                           resp.reason, options.couchdb_host, options.couchdb_port)
     result = json.load(resp)
     resp.close()
     rows = result['rows']
@@ -385,16 +388,60 @@ def get_api_handler(cfg, req):
     log("loaded API end-point %s from %r", cache_key, doc['_id'])
     return handler
 
-
+def process(req, options):
+    # handle 'special' requests'
+    if len(req['path'])==3 and req['path'][-1] == '_reset':
+        msg = '%d document(s) dropped' % len(_handlers)
+        resp = {'code': 200, 'json': {'info': msg}}
+        _handlers.clear()
+    elif len(req['path'])==3 and req['path'][-1] == '_exit':
+        json.dump({'code': 200, 'json': {'info': 'goodbye'}}, sys.stdout)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        sys.exit(0)
+    else:
+        try:
+            handler = get_api_handler(options, req)
+        except APILoadError, exc:
+            log("%s", exc.msg)
+            resp = {'code': 400, 'json': {'error': 400, 'reason': exc.msg}}
+        else:
+            # call the API handler - we expect the API to be robust and
+            # catch mostexceptions, so if we see one, we just die.
+            note_timeline("api request: %s", req['path'])
+            resp = handler(req)
+            note_timeline("api back")
+    return resp
+    
 def main():
-    # no options or args now!
-    if len(sys.argv) != 1:
+    # for now, so we know the couch defaults
+    cfg = config.init_config().couches['local']
+    parser = optparse.OptionParser("%prog [options]",
+                                   description="the raindrop api runner")
+    parser.add_option("", "--couchdb-host",
+                help="Specifies the hostname to use for couchdb requests",
+                default=cfg['host'])
+
+    parser.add_option("", "--couchdb-port",
+                help="Specifies the port number to use for couchdb requests",
+                default=cfg['port'])
+
+    parser.add_option("", "--show-perf", action="store_true",
+                help="Reports some information about how long some things take")
+
+    options, args = parser.parse_args()
+
+    # no args used
+    if len(args) != 0:
         print >> sys.stderr, __doc__
         print >> sys.stderr, "this program takes no arguments"
         sys.exit(1)
 
-    # for now, so we know the couch.
-    cfg = config.init_config().couches['local']
+    if options.show_perf:
+        global note_timeline
+        note_timeline = do_note_timeline
+    CouchDB.default_host = options.couchdb_host
+    CouchDB.default_port = options.couchdb_port
 
     log("raindrops keep falling on my api...")
     # and now the main loop.
@@ -403,28 +450,7 @@ def main():
         if not line:
             break
         req = json.loads(line)
-        # handle 'special' requests'
-        if len(req['path'])==3 and req['path'][-1] == '_reset':
-            msg = '%d document(s) dropped' % len(_handlers)
-            resp = {'code': 200, 'json': {'info': msg}}
-            _handlers.clear()
-        elif len(req['path'])==3 and req['path'][-1] == '_exit':
-            json.dump({'code': 200, 'json': {'info': 'goodbye'}}, sys.stdout)
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            sys.exit(0)
-        else:
-            try:
-                handler = get_api_handler(cfg, req)
-            except APILoadError, exc:
-                log("%s", exc.msg)
-                resp = {'code': 400, 'json': {'error': 400, 'reason': exc.msg}}
-            else:
-                # call the API handler - we expect the API to be robust and
-                # catch mostexceptions, so if we see one, we just die.
-                note_timeline("api request: %s", req['path'])
-                resp = handler(req)
-                note_timeline("api back")
+        resp = process(req, options)
 
         json.dump(resp, sys.stdout)
         sys.stdout.write("\n")
