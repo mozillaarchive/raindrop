@@ -355,7 +355,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
                 } else {
                     for (var i = 0, row; (row = json.rows[i]); i++) {
                         // check we really have an identity record...
-                        this._mapIdtyToContact(row.value.rd_key, row.id, row.key);
+                        this._mapIdtyToContact(row.value.rd_key, row.id, row.key[0]);
                     }
     
                     if (this._listStatus === "needFetch") {
@@ -374,7 +374,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
         //Given a new identity, map it correctly to the contact in internal storage
         _mapIdtyToContact: function (/*Object*/idty_rdkey, idty_docid, /*String*/contactId) {
     
-            var rdkey = idty_rd_key,
+            var rdkey = idty_rdkey,
                 idid = rdkey[1],
                 idtyStringKey = idid.join("|"),
                 byContact, byIdty;

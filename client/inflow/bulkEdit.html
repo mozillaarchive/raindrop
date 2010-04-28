@@ -1,0 +1,66 @@
+<!-- ***** BEGIN LICENSE BLOCK *****
+   - Version: MPL 1.1
+   -
+   - The contents of this file are subject to the Mozilla Public License Version
+   - 1.1 (the "License"); you may not use this file except in compliance with
+   - the License. You may obtain a copy of the License at
+   - http://www.mozilla.org/MPL/
+   -
+   - Software distributed under the License is distributed on an "AS IS" basis,
+   - WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+   - for the specific language governing rights and limitations under the
+   - License.
+   -
+   - The Original Code is Raindrop.
+   -
+   - The Initial Developer of the Original Code is
+   - Mozilla Messaging, Inc..
+   - Portions created by the Initial Developer are Copyright (C) 2009
+   - the Initial Developer. All Rights Reserved.
+   -
+   - Contributor(s):
+   - -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <link REL="SHORTCUT ICON" HREF="i/favicon.ico">
+
+    <title>Raindrop Inflow - Bulk Edit Prototype</title>
+
+    <link type="text/css" rel="stylesheet" href="inflow.css">
+    <link type="text/css" rel="stylesheet" href="exp/bulkEdit.css">
+    <script>
+    require = {
+        paths: {
+            "bulkedit" : "../inflow/exp/bulkedit",
+            "rdw/Widgets" : "../inflow/exp/rdw/Widgets"
+        }
+    };
+    </script>
+    <script data-appname="inflow" data-modules="inflow,bulkedit" src="../lib/rdconfig.js" charset="utf-8"></script>
+</head>
+<body>
+    <div id="top">
+        <div dojoType="rdw.Search"></div>
+        <button name="rd:home" onclick="location='#rd:home'"><div class="topIcon homeButton">inflow</div></button>
+        <button style="display:none;" class="topButtons"><div class="topIcon bulkIcon">bulk</div></button>
+        <button style="display:none;" class="topButtons"><div class="topIcon editIcon">edit</div></button>
+        <button class="topButtons" onclick="window.open('https://mail.google.com/mail/?extsrc=mailto');"><div class="topIcon composeIcon">compose</div></button>
+        <button class="topButtons bulkEditButton"><div class="topIcon bulkEditIcon">bulk edit</div></button>
+        <div dojoType="rdw.Notify"></div>
+        <div id="logo"></div>
+        <div dojoType="rdw.Loading"></div>
+    </div>
+
+    <div id="notices"></div>
+
+    <div id="content" class="hbox">
+        <div id="conversations" dojoType="rdw.Conversations" class="start"></div>
+        <div id="widgets" dojoType="rdw.Widgets" class="start"></div>
+        <div id="openSocial" class="boxFlex"></div>
+    </div>
+
+    <div id="footer"><a style="color: #000;" target="_blank" href="/raindrop/extender/index.html">extend</a> | <a style="color: #000;" target="_blank" href="https://wiki.mozilla.org/Raindrop/MetricsInfo">metrics</a></div>
+</body>
+</html>

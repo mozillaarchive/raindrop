@@ -31,7 +31,8 @@ var djConfig, require;
     //Find raindrop location
     var scripts = document.getElementsByTagName("script"), prefix = "", i,
         src, index, dbPath, appName, dojoPrefix, exts, extNew, empty = {}, prop,
-        scp, extList, ext, modules, useSync = false, deps = '"rd"';
+        scp, extList, ext, modules, useSync = false, deps = '"rd"', oldRequire,
+        paths, prop2;
     for (i = scripts.length - 1; (i > -1) && (scp = scripts[i]); i--) {
         src = scripts[i].src;
         index = src && src.indexOf("/rdconfig.js");
@@ -73,6 +74,10 @@ var djConfig, require;
         debugAtAllCosts: true
     };
 
+    if (typeof require !== "undefined") {
+        oldRequire = require;
+    }
+
     require = {
         baseUrl: prefix,
         paths: {
@@ -98,6 +103,25 @@ var djConfig, require;
     if (modules && modules.length) {
         for (i = 0; i < modules.length; i++) {
             deps += ', "' + modules[i] + '"';
+        }
+    }
+
+    //Allow a require object specified in the page to override some properties.
+    //This is a bit cumbersome since we do not have helper libs in the page yet.
+    if (oldRequire) {
+        for (prop in oldRequire) {
+            if (!(prop in empty)) {
+                if (prop === "paths") {
+                    paths = oldRequire.paths;
+                    for (prop2 in paths) {
+                        if (!(prop2 in empty)) {
+                            require.paths[prop2] = oldRequire.paths[prop2];
+                        }
+                    }
+                } else {
+                    require[prop] = oldRequire[prop];
+                }
+            }
         }
     }
 

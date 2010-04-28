@@ -27,9 +27,7 @@
 
 require.def("inflow",
 [
-    "require", "dojo", "dijit", "rd",
-    "dojo/parser",
-    "rd/accountIds",
+    "require", "dojo", "dijit", "rd", "dojo/parser", "rd/accountIds",
     "rd/onHashChange",
     "rdw/Loading",
     "rdw/Notify",
