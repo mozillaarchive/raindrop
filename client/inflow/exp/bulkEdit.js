@@ -26,8 +26,9 @@
 "use strict";
 
 require.def("bulkEdit",
-        ["require", "dojo", "rd", "dijit"],
-function (require,   dojo,   rd,   dijit) {
+        ["require", "dojo", "rd", "dijit", "dojo/dnd/Source", "dojo/NodeList-fx"],
+function (require,   dojo,   rd,   dijit,   Source) {
+    var dndSource;
 
     require.ready(function () {
         dojo.query(".bulkEditButton", dojo.byId("top")).onclick(function () {
@@ -39,17 +40,22 @@ function (require,   dojo,   rd,   dijit) {
             widgetBoxes.splice(0, 1);
 
             if (dojo.hasClass(domNode, "bulkEdit")) {
-                widgetBoxes.forEach(function (node) {
-                    dojo.anim(node, {marginTop: -30}, 1000, null, function () {
-                        dojo.style(node, "marginTop", "");
-                    });
+                widgetBoxes.anim({marginTop: -30}, 1000, null, function () {
+                    widgetBoxes.style("marginTop", "");
                 });
                 dojo.removeClass(domNode, "bulkEdit");
+                //if (dndSource) {
+                //    dndSource.destroy();
+                //    dndSource = null;
+                //    widgetBoxes.removeClass("dojoDndItem");
+               // }
             } else {
-                widgetBoxes.forEach(function (node) {
-                    dojo.anim(node, {marginTop: 20}, 1000);
-                });
+                widgetBoxes.anim({marginTop: 20}, 1000);
                 dojo.addClass(domNode, "bulkEdit");
+                
+                //Set up DND
+                widgetBoxes.addClass("dojoDndItem");
+                //dndSource = new Source(domNode);
             }
         });
     });

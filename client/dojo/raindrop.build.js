@@ -35,6 +35,7 @@
         "dojo/date",
         "dojo/date/locale",
         "dojo/fx",
+        "dojo/NodeList-fx",
         "dojox/fx/_core",
         "dojox/fx/scroll",
         "dijit/TitlePane",
