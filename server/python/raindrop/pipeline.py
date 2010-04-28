@@ -238,7 +238,8 @@ class Pipeline(object):
                       '_deleted': True
                       } for row in result['rows']]
         logger.info('deleting %d schemas', len(to_up))
-        _ = yield self.doc_model.create_schema_items(to_up)
+        if to_up:
+            _ = yield self.doc_model.create_schema_items(to_up)
 
         # and rebuild our views
         logger.info("rebuilding all views...")
