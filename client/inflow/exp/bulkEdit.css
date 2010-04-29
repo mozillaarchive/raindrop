@@ -2,3 +2,12 @@
 .rdwWidgets.bulkEdit {
 
 }
+
+
+.bulkEditTooltip {
+    display: block;
+    position: absolute;
+    background-color: black;
+    color: white;
+    z-index: 1000;
+}

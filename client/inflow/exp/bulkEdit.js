@@ -28,12 +28,43 @@
 require.def("bulkEdit",
         ["require", "dojo", "rd", "dijit", "dojo/dnd/Source", "dojo/NodeList-fx"],
 function (require,   dojo,   rd,   dijit,   Source) {
-    var dndSource;
+    var dndSource, newFolderNode, dndTargets = [],
+
+        tooltip = {
+            template: '<div class="bulkEditTooltip">Merge these two items into new folder</div>',
+            show: function (node) {
+                if (!tooltip.node) {
+                    tooltip.node = dojo.place(tooltip.template, dojo.body());
+                }
+
+                tooltip.node.style.display = "block";
+                dijit.placeOnScreenAroundElement(tooltip.node, node, {"TL": "BL"});
+            },
+
+            hide: function () {
+                tooltip.node.style.display = "none";
+            }
+        };
+
+    function makeTarget(node) {
+        var target = new dojo.dnd.Target(node);
+        target.onDraggingOver = function () {
+            tooltip.show(node);
+        };
+        target.onDraggingOut = function () {
+            tooltip.hide();
+        };
+        target.onDrop = function (source, nodes, copy) {
+            //Do not do anything for right now.
+            tooltip.hide();
+        };
+        return target;
+    }
 
     require.ready(function () {
         dojo.query(".bulkEditButton", dojo.byId("top")).onclick(function () {
             var widget = dijit.byId("widgets"),
-                domNode = widget.domNode;
+                domNode = widget.containerNode,
                 widgetBoxes = dojo.query(".WidgetBox", domNode);
 
             //Pull out the first widget box, which is the summary box.
@@ -44,18 +75,40 @@ function (require,   dojo,   rd,   dijit,   Source) {
                     widgetBoxes.style("marginTop", "");
                 });
                 dojo.removeClass(domNode, "bulkEdit");
-                //if (dndSource) {
-                //    dndSource.destroy();
-                //    dndSource = null;
-                //    widgetBoxes.removeClass("dojoDndItem");
-               // }
+                if (dndSource) {
+                    dndSource.destroy();
+                    dndSource = null;
+                    widgetBoxes.removeClass("dojoDndItem");
+                }
+                if (dndTargets.length) {
+                    dndTargets.forEach(function (target) {
+                        target.destroy();
+                    })
+                }
+
+                newFolderNode.parentNode.removeChild(newFolderNode);
+
             } else {
                 widgetBoxes.anim({marginTop: 20}, 1000);
                 dojo.addClass(domNode, "bulkEdit");
-                
+
                 //Set up DND
-                widgetBoxes.addClass("dojoDndItem");
-                //dndSource = new Source(domNode);
+                dndTargets = [];
+                widgetBoxes.forEach(function (node) {
+                    dojo.addClass(node, "dojoDndItem");
+                    dndTargets.push(makeTarget(node));
+                });
+                dndSource = new Source(domNode);
+
+                //Put in the New Folder item
+                if (!newFolderNode) {
+                    newFolderNode = dojo.place('<div class="newFolderContainer">Create new folder</div>', domNode);
+                    dojo.connect(newFolderNode, "onclick", function (evt) {
+                        console.log("clicked");
+                    });
+                } else {
+                    dojo.place(newFolderNode, domNode);
+                }
             }
         });
     });
