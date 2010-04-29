@@ -179,8 +179,12 @@ Hello everyone
         acct['username'] = self.my_addy
         return config
 
-    @defer.inlineCallbacks
     def check_grouping(self, from_addy, to_addys, expected_addy, bulk_flag):
+        ex_tag = 'identity-email-' + expected_addy
+        return self.check_grouping_raw(from_addy, to_addys, ex_tag, bulk_flag)
+
+    @defer.inlineCallbacks
+    def check_grouping_raw(self, from_addy, to_addys, expected_tag, bulk_flag):
         to_str = ",".join(to_addys)
         msg = self.msg_template % (from_addy, to_str)
         si = {'rd_key': ['email', '1234@something'],
@@ -211,8 +215,7 @@ Hello everyone
         docs = yield self.doc_model.open_schemas([(rd_key, 'rd.msg.grouping-tag')])
         doc = docs[0]
         self.failUnless(doc, 'no grouping-tag schema')
-        ex = 'identity-email-' + expected_addy
-        self.failUnlessEqual(doc['tag'], ex)
+        self.failUnlessEqual(doc['tag'], expected_tag)
 
     # This table from msg-email-to-grouping-tag
     #Scenario                       no bulk flag          bulk flag
@@ -308,6 +311,19 @@ Hello everyone
     def test_bulk_none_flagged(self):
         return self.check_grouping(self.bulk_addy, [], self.bulk_addy, True)
 
+    @defer.inlineCallbacks
+    def test_folder(self):
+        si = {'rd_key': ['email', '1234@something'],
+              'rd_schema_id': 'rd.msg.location',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {
+                'location': ['parent', 'child'],
+                'location_sep': '/'
+              },
+            }
+        _ = yield self.doc_model.create_schema_items([si])
+        _ = yield self.check_grouping_raw(self.bulk_addy, [], "folder-parent/child", True)
 
 class TestGroupingSummaries(TestCaseWithTestDB):
     msg_template = """\

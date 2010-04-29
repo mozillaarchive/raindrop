@@ -1,0 +1,12 @@
+{
+  "schemas" : {
+    "rd.ext.workqueue" : {
+        "source_schemas" : ["rd.msg.location"],
+        "code" : "RDFILE: *.py",
+        "content_type" : "application/x-python",
+        "category": "extender",
+        "confidence": 5,
+        "info": "Creates new 'rd.msg.grouping-tag' schemas for IMAP folders"
+    }
+  }
+}
