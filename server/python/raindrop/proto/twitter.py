@@ -91,14 +91,35 @@ def tweet_to_raw(tweet):
 
     return ret
 
+# apparently contrary to the HTTP RFCs, spaces in arguments must be encoded as
+# %20 rather than '+' when constructing the OAuth signature (and therefore
+# also in the request itself.)
+# So here is a specialized version which does exactly that.
+def urlencode_noplus(query):
+    if hasattr(query,"items"):
+        # mapping objects
+        query = query.items()
+    
+    encoded_bits = []
+    for n, v in query:
+        # and do unicode here while we are at it...
+        if isinstance(n, unicode):
+            n = n.encode('utf-8')
+        else:
+            n = str(n)
+        if isinstance(v, unicode):
+            v = v.encode('utf-8')
+        else:
+            v = str(v)
+        encoded_bits.append("%s=%s" % (urllib.quote(n, ""), urllib.quote(v, "")))
+    return "&".join(encoded_bits)
+
+# and we monkey-patch the twitter lib to use this version :(
+import twitter.api
+twitter.api.urlencode = urlencode_noplus
 
 def sign_args(account_details, base_url, method="GET", **args):
     args = args.copy()
-
-    # Remove args that have a None value
-    for k, v in args.items():
-        if not v:
-            del args[k]
 
     args['oauth_token'] = account_details['oauth_token']
     args['oauth_consumer_key'] = account_details['oauth_consumer_key']
@@ -112,8 +133,8 @@ def sign_args(account_details, base_url, method="GET", **args):
 
     message = '&'.join(
             urllib.quote(i, '') for i in [method.upper(), base_url,
-                            urllib.urlencode(sorted(args.iteritems()))])
-
+                            urlencode_noplus(sorted(args.iteritems()))])
+    
     logger.info("TWITTER sign_args will sign: %s", message)
 
     args['oauth_signature'] = hmac.new(key, message, hashlib.sha1
@@ -330,12 +351,12 @@ class TwitterAccount(base.AccountBase):
                 status = yield call_twitter(self.details, twitter_api.statuses.retweet, id=retweet_id)
             else:
                 # A status update or a reply
-                in_reply_to = None
-                if ('in_reply_to' in self.src_doc):
-                    in_reply_to = self.src_doc['in_reply_to']
+                extra_args = {}
+                if self.src_doc.get('in_reply_to'):
+                    extra_args['in_reply_to'] = self.src_doc['in_reply_to']
 
                 status = yield call_twitter(self.details, twitter_api.statuses.update,
-                               status=self.src_doc['body'], in_reply_to_status_id=in_reply_to)
+                               status=self.src_doc['body'], **extra_args)
 
             # If status has an ID, then it saved. Otherwise,
             # assume an error. TODO: store the result as a real incoming
