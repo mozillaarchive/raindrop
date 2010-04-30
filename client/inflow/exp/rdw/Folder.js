@@ -73,11 +73,12 @@ function (rd, dojo, GenericGroup) {
          * @param {Event} evt
          */
         onNameInputKeyPress: function (evt) {
-            if (evt.charChode === dojo.keys.ENTER) {
+            var key = evt.charOrCode;
+            if (key === dojo.keys.ENTER) {
                 this.nameNode.firstChild.nodeValue = this.nameInputNode.value;
                 this.hideNameInput();
                 dojo.stopEvent(evt);
-            } else if (evt.charChode === dojo.keys.ESCAPE) {
+            } else if (key === dojo.keys.ESCAPE) {
                 this.hideNameInput();
                 dojo.stopEvent(evt);
             }
@@ -87,7 +88,7 @@ function (rd, dojo, GenericGroup) {
             this.nameInputNode.value = this.nameNode.firstChild.nodeValue;
             this.nameInputNode.style.display = "block";
             this.nameNode.style.display = "none";
-            this.nameInputNode.focus();
+            this.nameInputNode.select();
         },
 
         hideNameInput: function () {

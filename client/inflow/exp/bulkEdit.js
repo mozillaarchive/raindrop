@@ -59,14 +59,16 @@ function (require,   dojo,   rd,   dijit,   Source,            Folder) {
         target.onDrop = function (source, nodes, copy) {
             var folderWidget, widget = dijit.byId("widgets"),
                 dropWidget = dijit.getEnclosingWidget(node),
-                dragWidget = dijit.getEnclosingWidget(nodes[0]);
+                dragWidget = dijit.getEnclosingWidget(nodes[0]),
+                dragTitle = (dragWidget.conversation && dragWidget.conversation.from_display) ||
+                            dragWidget.nameNode.firstChild.nodeValue;
 
             tooltip.hide();
 
             //Create a new folder widget
             folderWidget = new Folder({
                 summary: {
-                    title: "foo"
+                    title: dropWidget.nameNode.firstChild.nodeValue + " and " + dragTitle
                 }
             }, dojo.create("div"));
             folderWidget.domNode.style.zIndex = node.style.zIndex;
@@ -171,6 +173,39 @@ function (require,   dojo,   rd,   dijit,   Source,            Folder) {
                     dndTargets.push(makeTarget(node));
                 });
                 dndSource = new Source(domNode);
+                dndSource.onDrop = function (source, nodes, copy) {
+                    var dragWidget = dijit.getEnclosingWidget(nodes[0]),
+                        widget = dijit.byId("widgets"),
+                        previousNode = widget.summaryWidget.domNode;
+
+                    //Only bother with conversation widgets dropped into the area.
+                    if (!dragWidget.conversation) {
+                        return;
+                    }
+                    //Create a new folder widget
+                    folderWidget = new Folder({
+                        summary: {
+                            title: dragWidget.conversation.from_display
+                        }
+                    }, dojo.create("div"));
+                    folderWidget.placeAt(widget.containerNode, 1);
+                    widget.addSupporting(folderWidget);
+                    widget._groups.push(folderWidget);
+                    widget.sortGroups(widget._groups);
+                    
+                    widget.setZOrder(widget._groups, function (group, i) {
+                        group.placeAt(previousNode, "after");
+                        previousNode = group.domNode;
+                    });
+
+                    //Remove the old widget from conversations
+                    dijit.byId("conversations").removeSupporting(dragWidget);
+                    dragWidget.destroy();
+
+                    //focus in the edit for the folder.
+                    folderWidget.showNameInput();
+                };
+
                 dojo.addClass(domNode, "dragCursor");
 
                 //Put in the New Folder item
