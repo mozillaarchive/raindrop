@@ -3,6 +3,15 @@
 
 }
 
+.rdwWidgets .bulkEditExpanded .WidgetBox {
+    margin-top: 20px;
+}
+
+/* Style folders here */
+.rdwGenericGroup.rdwFolder {
+    
+}
+
 
 .bulkEditTooltip {
     display: block;
@@ -10,4 +19,23 @@
     background-color: black;
     color: white;
     z-index: 1000;
+}
+
+.bulkEditConvDrag {
+    background-color: gray;
+    color: red;
+    font-weight: bold;
+    border: 1px dotted black;
+    width: 400px;
+}
+
+/* Hide the header for the drag avatar */
+body .dojoDndAvatarHeader {
+    display: none;
+}
+
+/* Change cursor when in drag mode */
+
+.dragCursor {
+    cursor: move;
 }

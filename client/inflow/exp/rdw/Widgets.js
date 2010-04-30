@@ -219,10 +219,10 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                 //Not an update but a fresh render.
                 this.summaries = summaries;
                 this._groups = this.createGroupWidgets(summaries);
-    
+
                 frag = dojo.doc.createDocumentFragment();
                 zIndex = this._groups.length;
-    
+
                 //Create summary group widget and add it first to the fragment.
                 if (!this.summaryWidget) {
                     SummaryWidgetCtor = require(this.summaryGroupCtorName);
@@ -232,7 +232,7 @@ function (rd, dojo, dojox, Base, api, message, GenericGroup, SummaryGroup, fx, f
                     this.addSupporting(this.summaryWidget);
                     this.summaryWidget.placeAt(frag);
                 }
-    
+
                 //Add all the widgets to the DOM and ask them to display.
                 this.setZOrder(this._groups, function (group, i) {
                     group.placeAt(frag);
