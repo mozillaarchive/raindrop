@@ -29,7 +29,7 @@
 //though desktop Safari does. When it does support it you can remove this
 //goofiness. Right now this is technically not robust, but works out
 //since Dojo is always in the page before this model.
-var rd_stringify = typeof JSON !== "undefined" ? JSON.strinify : dojo.toJson;
+var rd_stringify = typeof JSON !== "undefined" ? JSON.stringify : dojo.toJson;
 
 require.def("rd/accountIds",
 [
