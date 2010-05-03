@@ -7,6 +7,10 @@
     margin-top: 20px;
 }
 
+.rdwWidgets .bulkEditExpanded .rdwSummaryGroup.WidgetBox {
+    margin-top: 0;
+}
+
 /* Style folders here */
 .rdwGenericGroup.rdwFolder {
     
