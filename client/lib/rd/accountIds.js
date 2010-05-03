@@ -24,11 +24,17 @@
 /*global require: false */
 "use strict";
 
-require.def("rd/accountIds",
 
+//Mobile Safari does not yet (as of 5/3/2010) a native JSON object, even
+//though desktop Safari does. When it does support it you can remove this
+//goofiness. Right now this is technically not robust, but works out
+//since Dojo is always in the page before this model.
+var rd_stringify = typeof JSON !== "undefined" ? JSON.strinify : dojo.toJson;
+
+require.def("rd/accountIds",
 [
     "rd",
-    "rdCouch!megaview:" + JSON.stringify({
+    "rdCouch!megaview:" + rd_stringify({
         key: ["schema_id", "rd.account"],
         reduce: false,
         include_docs: true

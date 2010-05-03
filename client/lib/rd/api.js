@@ -587,11 +587,11 @@ function (rd, dojo, rdCouch) {
             if (dojo.isArray(part2)) {
                 for (i = 0; i < part2.length; i++) {
                     piece = part2[i];
-                    temp += (i !== 0 ? ', ' : '') + JSON.stringify(piece);
+                    temp += (i !== 0 ? ', ' : '') + dojo.toJson(piece);
                 }
                 part2 = '[' + temp + ']';
             } else {
-                part2 = JSON.stringify(part2);
+                part2 = dojo.toJson(part2);
             }
 
             return "rc!" +

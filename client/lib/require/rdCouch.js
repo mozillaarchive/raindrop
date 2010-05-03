@@ -20,8 +20,8 @@
  *
  * Contributor(s):
  * */
-/*jslint plusplus: false */
-/*global require: false, XMLHttpRequest: false */
+/*jslint plusplus: false, evil: true */
+/*global require: false, XMLHttpRequest: false, dojo: false */
 
 "use strict";
 
@@ -81,7 +81,11 @@
         xhr: function (args, callback) {
             var url = args.url, xhr, bodyData = args.bodyData || null,
                 content = args.content || {}, empty = {}, prop, method, value,
-                safe = rdCouch.safeProps;
+                safe = rdCouch.safeProps,
+                //Mobile Safari does not yet (as of 5/3/2010) a native JSON object, even
+                //though desktop Safari does. When it does support it you can remove the
+                //dojo reference.
+                stringify = typeof JSON !== "undefined" ? JSON.stringify : dojo.toJson;
 
             //Pull out CouchDB-safe parameters.
             for (prop in args) {
@@ -90,7 +94,7 @@
                     //Couch likes all values as json data
                     // XXX - should we instead throw an error if we hit undefined?
                     if (value !== undefined) {
-                        value = JSON.stringify(value);
+                        value = stringify(value);
                     }
                     content[prop] = value;
                 }
@@ -123,7 +127,10 @@
                 //Do not explicitly handle errors, those should be
                 //visible via console output in the browser.
                 if (xhr.readyState === 4) {
-                    var obj = JSON.parse(xhr.responseText);
+                    //Mobile Safari does not yet (as of 5/3/2010) a native JSON object, even
+                    //though desktop Safari does. When it does support it you can remove the
+                    //eval reference.
+                    var obj = typeof JSON !== "undefined" ? JSON.parse(xhr.responseText) : eval('(' + xhr.responseText + ')');
 
                     if (callback) {
                         callback(obj);
@@ -220,7 +227,7 @@
         orderDeps: function (context) {
             //Clear up state since further processing could
             //add more things to fetch.
-            var i, dep, text, waiting = context.rdCouchWaiting;
+            var i, dep, waiting = context.rdCouchWaiting;
             context.rdCouchWaiting = [];
             for (i = 0; (dep = waiting[i]); i++) {
                 context.defined[dep.name] = context.rdCouch[dep.name];

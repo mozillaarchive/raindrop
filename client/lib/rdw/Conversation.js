@@ -294,7 +294,7 @@ function (require,   rd,   dojo,   dijit,   string,        api,      identity,
     
             //Set up the link for the full conversation view action, and set the subject.
             if (this.conversation.id) {
-                convoId = "rd:conversation:" + JSON.stringify(this.conversation.id);
+                convoId = "rd:conversation:" + dojo.toJson(this.conversation.id);
                 if (this.subjectNode) {
                     dojo.attr(this.subjectNode, "href", "#" + convoId);
                 }
