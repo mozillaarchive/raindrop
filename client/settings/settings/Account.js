@@ -131,7 +131,6 @@ function (require,   dojo,   rd,   api,      Widget,          Templated, templat
                         //and delete it.
                         rd.api().view('acct_protocols', {
                             key: "smtp",
-                            reduce: false,
                             include_docs: true
                         })
                         .ok(this, function (json) {

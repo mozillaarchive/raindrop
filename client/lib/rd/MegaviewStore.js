@@ -262,9 +262,11 @@ function (require, rd, dojo, DeferredList, api) {
             //name: a display name
             //type: the type of item. Should match the schemaQueryType that generated
             //these items.
-            this._items.push.apply(this._items, items);
+            if (items && items.length) {
+                this._items.push.apply(this._items, items);
+            }
         },
-    
+
         identityContactQuery: function (/*String*/query, /*Number*/ count) {
             //does an rd.identity.contacts query for the "identityContact" schemaQueryType.
             console.log("identityContactQuery", query, count);
@@ -343,15 +345,18 @@ function (require, rd, dojo, DeferredList, api) {
             //console.log("contactQuery", query, count);
             var dfd = new dojo.Deferred(),
                 args = {
-                    key: query,
-                    reduce: false,
                     ioPublish: false
                 };
-    
+
+            if (query) {
+                args.startkey = query;
+                args.endkey = query + MegaviewStore.textEndChar;
+            }
+
             if (count && count !== Infinity) {
                 args.limit = count;
             }
-    
+
             api().view('contact_name', args)
             .ok(this, function (json) {
                 var items = [], i, row, name;
@@ -372,16 +377,18 @@ function (require, rd, dojo, DeferredList, api) {
     
         locationTagQuery: function (/*String*/query, /*Number*/ count) {
             //does a locationTag query (imap folders) for the "locationTag" schemaQueryType.
-            //console.log("locationTagQuery", query, count);
             var dfd = new dojo.Deferred(),
                 args = {
-                    key: query,
                     reduce: true,
                     group: true,
                     ioPublish: false
                 };
 
-            console.log("XXXXXXX - check locationTagQuery:", query);    
+            if (query) {
+                args.startkey = [query];
+                args.endkey = [query + MegaviewStore.textEndChar];
+            }
+  
             if (count && count !== Infinity) {
                 args.limit = count;
             }
@@ -407,6 +414,9 @@ function (require, rd, dojo, DeferredList, api) {
             return dfd;
         }
     });
+
+    //End character for use in text startkey/endkey pairs to indicate "last possible character value".
+    MegaviewStore.textEndChar = "\u9999";
 
     return MegaviewStore;
 });

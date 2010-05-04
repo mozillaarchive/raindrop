@@ -52,7 +52,9 @@ function    (rd,   dojo,   dijit, ComboBox, i18n) {
                 headerNode = dojo.create('h4', null, menuitem),
                 matches = item.items, matchNode, listNode,
                 i, match, html = '', id;
-            
+
+            menuitem.item = matches[0];
+
             if (labelObject.html) {
                 headerNode.innerHTML += labelObject.label;
             } else {

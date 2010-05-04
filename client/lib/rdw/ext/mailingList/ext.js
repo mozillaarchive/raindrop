@@ -64,7 +64,7 @@ require.modify("rd/conversation", "rdw/ext/mailingList/ext-rd/conversation",
 
 require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
     ["rd", "dojo", "rd/api", "rd/MegaviewStore"],
-    function (rd, dojo, api) {
+    function (rd, dojo, api, MegaviewStore) {
         //Allow mailingList queries via the rd.MegaviewStore dojo.data store.
         rd.applyExtension("rdw/ext/mailingList/ext", "rd/MegaviewStore", {
             addToPrototype: {
@@ -80,11 +80,15 @@ require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
                 mailingListQuery: function (query, count) {
                     var dfd = new dojo.Deferred(),
                         args = {
-                        key: query,
                         reduce: false,
                         ioPublish: false
                     };
-    
+
+                    if (query) {
+                        args.startkey = query;
+                        args.endkey = query + MegaviewStore.textEndChar;
+                    }
+
                     if (count && count !== Infinity) {
                         args.limit = count;
                     }
