@@ -36,15 +36,15 @@
         require.ready(function () {
             //Fetch the schema names.
             api().megaview({
-                startkey: ["rd.core.content", "schema_id"],
-                endkey: ["rd.core.content", "schema_id", {}],
+                startkey: ["schema_id"],
+                endkey: ["schema_id", {}],
                 group: true
             }).ok(function(json) {
                 //Generate the HTML for each schema name.
                 var html = "";
                 dojo.forEach(json.rows, function(row) {
                     html += rd.template('<li><a href="schema.html#${name}">${name}</a></li>', {
-                        name: row.key[2]
+                        name: row.key[1]
                     })
                 });
           

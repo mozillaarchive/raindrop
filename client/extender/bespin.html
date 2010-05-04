@@ -27,6 +27,7 @@
 <html>
 <head>
     <title>The Bespin Editor Component</title>
+    <link href="../bespin/BespinEmbedded.compressed.css" type="text/css" rel="stylesheet">
     <style type="text/css"> html, body {
 	margin: 0;
 	padding: 0;
@@ -34,46 +35,40 @@
     }
     *:focus { outline: 0; }</style>
 
-    <!-- begin script tags -->
-	<script>
-		var djConfig = { parseOnLoad: false, isDebug: false, debugAtAllCosts: false };
-	</script>   
-
-    <script src="/raindrop/bespin/dojo/dojo.js"></script>
-    <script src="/raindrop/bespin/bespin/editor/embed.js"></script>
+    <script src="../bespin/BespinEmbedded.compressed.js"></script>
 	
-	<script>
-        var _editorComponent;
-        
-        // Loads and configures the objects that the editor needs
-        dojo.addOnLoad(function() {
-            _editorComponent = new bespin.editor.Component('editor', {
-                language: location.href.split("#")[1] || "js",
-                loadfromdiv: true
-            });
-	    
-	    onResize();
-	    dojo.connect(window, "onresize", onResize);
-        });
-        
-        function copyToTextarea() {
-            dojo.byId('inandout').value = _editorComponent.getContent();
+    <script>
+    var editorNode;
+    window.addEventListener("load", function () {
+        editorNode = document.getElementById("editor");
+
+        var syntax = location.href.split("#")[1], options;
+        if (!syntax) {
+            syntax = "js";
         }
 
-        function copyToEditor() {
-            _editorComponent.setContent(dojo.byId('inandout').value);
+        //Bespin 0.7.3 does not support python syntax at the moment.
+        if (syntax === "python") {
+            syntax = null;
         }
-        
-        function setSyntax(value) {
-            bespin.publish("bespin:settings:syntax", { language: value });
+
+        options = {
+            stealFocus: true
+        };
+        if (syntax) {
+            options.syntax = syntax;
         }
-	
-	function onResize() {
-	    var dimensions = dijit.getViewport();
-	    dojo.byId("editor").style.height = dimensions.h + "px";
-	}
-	</script>
-    <!-- end script tags -->
+
+        window.bespin = tiki.require("embedded").useBespin(editorNode, options);
+
+        window.setTimeout(onResize, 500);
+        window.addEventListener("resize", onResize, false);
+    }, false);
+
+    function onResize() {
+        editorNode.style.height = window.innerHeight + "px";
+    }
+    </script>
 </head>
 <body>
     <div id="editor" style="margin: 0; padding: 0; border: 0; height: 500px;">var foo = "whee";

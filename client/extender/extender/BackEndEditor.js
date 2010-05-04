@@ -77,11 +77,11 @@ function (require, rd, dojo, dijit, couch, Base, base64, template) {
             if (arguments.length) {
                 this.editorText = text;
                 if (this._iframeLoaded) {
-                    this.iframeNode.contentWindow._editorComponent.setContent(text);
+                    this.iframeNode.contentWindow.bespin.value = text;
                 }
                 return this.editorText;
             } else {
-                return this.iframeNode.contentWindow._editorComponent.getContent();
+                return this.iframeNode.contentWindow.bespin.value;
             }
         },
 
@@ -124,7 +124,7 @@ function (require, rd, dojo, dijit, couch, Base, base64, template) {
                     var _rev = response._rev;
                     
                     this.doc = response;
-                    this.doc.code = this.iframeNode.contentWindow._editorComponent.getContent();
+                    this.doc.code = this.iframeNode.contentWindow.bespin.value;
                     
                     dojo.xhrPut({
                         url: this.couchDocPath() + "?rev=" + _rev,

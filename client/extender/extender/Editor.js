@@ -149,11 +149,11 @@ function (require, rd, dojo, dijit, Base, api, util, template) {
             if (arguments.length) {
                 this.editorText = text;
                 if (this._iframeLoaded) {
-                    this.iframeNode.contentWindow._editorComponent.setContent(text);
+                    this.iframeNode.contentWindow.bespin.value = text;
                 }
                 return this.editorText;
             } else {
-                return this.iframeNode.contentWindow._editorComponent.getContent();
+                return this.iframeNode.contentWindow.bespin.value;
             }
         },
 
@@ -225,7 +225,7 @@ function (require, rd, dojo, dijit, Base, api, util, template) {
                         headers: {
                             "Content-Type": "application/javascript"
                         },
-                        putData: this.iframeNode.contentWindow._editorComponent.getContent(),
+                        putData: this.iframeNode.contentWindow.bespin.value,
                         handle: dojo.hitch(this, function (response, ioArgs) {
                             if (response instanceof Error) {
                                 this.updateStatus("Error: " + response);

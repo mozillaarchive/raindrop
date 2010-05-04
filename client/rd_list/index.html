@@ -50,24 +50,26 @@
   </style>
   <script data-appname="rd_list" src="/raindrop/lib/rdconfig.js" charset="utf-8"></script>
   <script type="text/javascript" charset="utf-8">
-    dojo.require("rd.api");
-    rd.addOnLoad(function(){
-      rd.api().megaview({
-        key: ['rd.core.content', 'ext_id-schema_id', ["rd.core","rd.ext.ui"]],
-        include_docs: true,
-        reduce : false
-      })
-      .ok(this, function(json) {
-         var html = "";
-         rd.forEach(json.rows, function(row) {
-           var doc = row.doc;
-           if (doc.rd_key[1] != "rd_list") {
-             html += '<li><a title="' + doc.info + '" href="' + doc.location + '">' + doc.name + '</a></li>';
-           }
-         });
+    require(["require", "dojo", "rd", "rd/api"], function (require, dojo, rd, api) {
 
-         rd.place(html, rd.query("ul")[0], "only");
-       });
+        require.ready(function(){
+          api().megaview({
+            key: ['ext_id-schema_id', ["rd.core","rd.ext.ui"]],
+            include_docs: true,
+            reduce : false
+          })
+          .ok(this, function(json) {
+             var html = "";
+             dojo.forEach(json.rows, function(row) {
+               var doc = row.doc;
+               if (doc.rd_key[1] != "rd_list") {
+                 html += '<li><a title="' + doc.info + '" href="' + doc.location + '">' + doc.name + '</a></li>';
+               }
+             });
+    
+             dojo.place(html, dojo.query("ul")[0], "only");
+           });
+        });
     });
   </script>
 </head>
