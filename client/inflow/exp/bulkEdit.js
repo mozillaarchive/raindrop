@@ -99,10 +99,8 @@ function (require,   dojo,   rd,   dijit,   Source,            Folder) {
             widgetBoxes.splice(0, 1);
 
             if (dojo.hasClass(domNode, "bulkEdit")) {
-                widgetBoxes.anim({marginTop: -30}, 1000, null, function () {
-                    widgetBoxes.style("marginTop", "");
-                    dojo.removeClass(domNode, "bulkEditExpanded");
-                });
+                widgetBoxes.style("marginTop", "");
+                dojo.removeClass(domNode, "bulkEditExpanded");
 
                 //Remove global click disable
                 if (clickDisableHandle) {
@@ -134,9 +132,7 @@ function (require,   dojo,   rd,   dijit,   Source,            Folder) {
                 newFolderNode.parentNode.removeChild(newFolderNode);
 
             } else {
-                widgetBoxes.anim({marginTop: 20}, 1000, null, function() {
-                    dojo.addClass(domNode, "bulkEditExpanded");
-                });
+                dojo.addClass(domNode, "bulkEditExpanded");
                 dojo.addClass(domNode, "bulkEdit");
 
                 //Disable A tags from changing the source. This is a bit crude,
