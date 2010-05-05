@@ -31,8 +31,6 @@ import sys
 import re
 import tempfile
 import zipfile
-import twisted.web.error
-from twisted.internet import defer
 import os, os.path, mimetypes, base64, pprint
 import model
 import hashlib
@@ -138,25 +136,11 @@ def get_client_dir():
     else:
         return os.path.join(root_dir, 'client')
 
-def install_client_files(whateva, options):
+def install_client_files(options):
     '''
     cram everyone in 'client' into the app database
     '''
     d = get_db()
-
-    def _update_failed(failure, what):
-        logger.error("update of %s failed: %s", what, failure)
-
-    def _opened_ok(doc):
-        logger.debug("document '%(_id)s' already exists at revision %(_rev)s",
-                    doc)
-        return doc
-
-    def _open_not_exists(failure, *args, **kw):
-        failure.trap(twisted.web.error.Error)
-        if failure.value.status != '404': # not found.
-            failure.raiseException()
-        return {} # return an empty doc.
 
     def _insert_file(path, couch_path, attachments, fp):
         minified_path = "%s.min" % path
@@ -230,11 +214,11 @@ def install_client_files(whateva, options):
         if options.force or design_doc.get('fingerprints') != new_prints:
             logger.info("client files in %r are different - updating doc", doc_name)
             design_doc['fingerprints'] = new_prints
-            return d.saveDoc(design_doc, doc_name)
+            design_doc['_id'] = doc_name
+            return d.updateDocuments([design_doc])
         logger.debug("client files are identical - not updating doc")
         return None
 
-    dl = []
     # we cannot go in a zipped egg...
     root_dir = path_part_nuke(model.__file__, 4)
     client_dir = get_client_dir()
@@ -246,15 +230,17 @@ def install_client_files(whateva, options):
         fq_child = os.path.join(client_dir, f)
         if os.path.isdir(fq_child):
             dfd = d.openDoc(f)
-            dfd.addCallbacks(_opened_ok, _open_not_exists)
-            dfd.addCallback(_maybe_update_doc, f)
-            dfd.addErrback(_update_failed, f)
-            dl.append(dfd)
+            if dfd != {}:
+                logger.debug(
+                    "document '%(_id)s' already exists at revision %(_rev)s",
+                    dfd)
+            try:
+                _maybe_update_doc(dfd, f)
+            except:
+                logger.exception("update of document '%s' from file '%s' failed", dfd['_id'], f)
 
-    return defer.DeferredList(dl)
 
-@defer.inlineCallbacks
-def insert_default_docs(whateva, options):
+def insert_default_docs(options):
     """
     Inserts documents from the couch_docs directory into the couch.
     """
@@ -348,7 +334,7 @@ def insert_default_docs(whateva, options):
     #the couch, then compare to see if any need to be updated.
     dids = [dm.get_doc_id_for_schema_item(i).encode('utf-8') for i in items]
 
-    result = yield dm.db.listDoc(keys=dids, include_docs=True)
+    result = dm.db.listDoc(keys=dids, include_docs=True)
     updates = []
     for did, item, r in zip(dids, items, result['rows']):
         if 'error' in r or 'deleted' in r['value']:
@@ -368,14 +354,14 @@ def insert_default_docs(whateva, options):
                 item['items']['_rev'] = existing['_rev']
                 updates.append(item)
     if updates:
-        _ = yield dm.create_schema_items(updates)
+        dm.create_schema_items(updates)
 
     #Use the dids to compare with UI extensions, if there is a UI extension
     #that is in the couch, but not on disk, delete it. In the long run,
     #this is hazardous because it may wipe out user-installed extensions,
     #but our more immediate need is to remove cruft as we continue development.
     #All the FE extensions are checked into the trunk at the moment.
-    results = yield dm.open_view(key=["schema_id", "rd.ext.uiext"], include_docs=True, reduce=False)
+    results = dm.open_view(key=["schema_id", "rd.ext.uiext"], include_docs=True, reduce=False)
     all_rows = results['rows']
     deletes = []
     for row in all_rows:
@@ -384,10 +370,9 @@ def insert_default_docs(whateva, options):
             deletes.append(row['doc'])
 
     if deletes:
-        _ = yield dm.delete_documents(deletes)
+        dm.delete_documents(deletes)
 
-@defer.inlineCallbacks
-def update_apps(whateva):
+def update_apps():
     """Updates the app config file using the latest app docs in the couch.
        Should be run after a UI app/extension is added or removed from the couch.
     """
@@ -399,7 +384,7 @@ def update_apps(whateva):
         ["schema_id", "rd.ext.ui"],
         ["schema_id", "rd.ext.uiext"],
     ]
-    results = yield dm.open_view(keys=keys, include_docs=True, reduce=False)
+    results = dm.open_view(keys=keys, include_docs=True, reduce=False)
     all_rows = results['rows']
 
     # Convert couch config value for module paths
@@ -468,7 +453,7 @@ def update_apps(whateva):
     subs = re.sub(",$", "", subs)
     subs += "],"
 
-    doc = yield db.openDoc(LIB_DOC, attachments=True)
+    doc = db.openDoc(LIB_DOC, attachments=True)
 
     # Find rdconfig.js skeleton on disk   
     # we cannot go in a zipped egg...
@@ -493,11 +478,11 @@ def update_apps(whateva):
     if doc["_attachments"]["rdconfig.js"] != new:
         logger.info("rdconfig.js in %r has changed; updating", doc['_id'])
         doc["_attachments"]["rdconfig.js"] = new
-        _ = yield db.saveDoc(doc, LIB_DOC)
+        doc['_id'] = LIB_DOC
+        db.updateDocuments([doc])
 
 
-@defer.inlineCallbacks
-def check_accounts(whateva, config=None):
+def check_accounts(config=None):
     db = get_db()
     dm = get_doc_model()
     if config is None:
@@ -509,7 +494,7 @@ def check_accounts(whateva, config=None):
         logger.debug("Checking account '%s'", acct_id)
         rd_key = ['raindrop-account', acct_id]
 
-        infos = yield dm.open_schemas([(rd_key, 'rd.account')])
+        infos = dm.open_schemas([(rd_key, 'rd.account')])
         assert len(infos) == 1
         # We use a 'whitelist' of attributes - these are only written for
         # convenience so queries can determine accounts of a particular
@@ -552,7 +537,7 @@ def check_accounts(whateva, config=None):
                         " - updating", new_info)
         else:
             logger.info("Adding account '%s'", acct_id)
-        _ = yield dm.create_schema_items([new_info])
+        dm.create_schema_items([new_info])
     # write a default 'inflow' grouping-tag, which catches messages tagged
     # with each of our identities.
     if all_idids:
@@ -563,16 +548,12 @@ def check_accounts(whateva, config=None):
                         'title' : "The inflow",
                         'grouping_tags': ['identity-' + '-'.join(idid) for idid in all_idids],
                         }}
-        _ = yield dm.create_schema_items([new_info])
+        dm.create_schema_items([new_info])
     
 
 
 # Functions working with design documents holding views.
-@defer.inlineCallbacks
-def install_views(whateva, options):
-    def _doc_not_found(failure):
-        return None
-
+def install_views(options):
     db = get_db()
     schema_src = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                               "../../../schema"))
@@ -584,8 +565,6 @@ def install_views(whateva, options):
     # sure JS is going to be faster forever :)
     extra_langs = []
     ignore_me = """
-    raw_config = yield db.get('/_config/native_query_servers')
-    config = json.loads(raw_config)
     if 'erlang' in config:
         extra_langs = [('.erl', 'erlang')]
     else:
@@ -602,31 +581,32 @@ def install_views(whateva, options):
     logger.debug("Found %d documents in '%s'", len(docs), schema_src)
     assert docs, 'surely I have *some* docs!'
     # ack - I need to open existing docs first to get the '_rev' property.
-    dl = []
+    results = []
     for doc in docs:
-        deferred = db.openDoc(doc['_id']).addErrback(_doc_not_found)
-        dl.append(deferred)
-
-    results = yield defer.DeferredList(dl)
+        try:
+            jsonDoc = db.openDoc(doc['_id'])
+        except db.NotFoundError:
+            jsonDoc = {}
+        results.append(jsonDoc)
 
     put_docs = []
-    for (whateva, existing), doc in zip(results, docs):
+    for existing, doc in zip(results, docs):
         if existing:
             assert existing['_id']==doc['_id']
             assert '_rev' not in doc
             if not options.force and \
-               doc['fingerprints'] == existing.get('fingerprints'):
-                logger.debug("design doc %r hasn't changed - skipping",
-                             doc['_id'])
-                continue
+                doc['fingerprints'] == existing.get('fingerprints'):
+                    logger.debug("design doc %r hasn't changed - skipping",
+                                 doc['_id'])
+                    continue
             existing.update(doc)
             doc = existing
         logger.info("design doc %r has changed - updating", doc['_id'])
         put_docs.append(doc)
     if put_docs:
-        _ = yield get_db().updateDocuments(put_docs)
+        get_db().updateDocuments(put_docs)
         # and update the views immediately...
-        _ = yield get_doc_model()._update_important_views()
+        get_doc_model()._update_important_views()
 
 
 def _build_views_doc_from_directory(ddir, extra_langs = []):

@@ -1,28 +1,23 @@
 from raindrop.model import get_doc_model
 from raindrop.pipeline import Pipeline
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
-from raindrop.proto.smtp import SMTPAccount, SMTPPostingClient, \
-                                SMTPClientFactory
+import raindrop.proto.smtp
+from raindrop import sync
 from raindrop.proc.base import Rat
 
-from twisted.protocols import basic, loopback
-from twisted.internet import defer
-
+import SocketServer
 import logging
+import time
+import threading
+import smtplib
 logger = logging.getLogger(__name__)
-
-# from twisted's test_smtp.py
-class LoopbackMixin:
-    def loopback(self, server, client):
-        return loopback.loopbackTCP(server, client)
 
 SMTP_SERVER_HOST='127.0.0.1'
 SMTP_SERVER_PORT=6578
 
-class FakeSMTPServer(basic.LineReceiver):
-    num_connections = 0
-
+class TestSMTPServer(SocketServer.ThreadingTCPServer):
     def __init__(self, *args, **kw):
+        SocketServer.ThreadingTCPServer.__init__(self, *args, **kw)
         # in a dict so test-cases can override defaults.
         self.responses = {
             "EHLO": "250 nice to meet you",
@@ -34,41 +29,81 @@ class FakeSMTPServer(basic.LineReceiver):
             ".": "250 gotcha",
         }
         self.connection_made_resp = '220 hello'
+        self.num_connections = 0
 
-    def connectionMade(self):
-        self.__class__.num_connections += 1
-        self.buffer = []
-        self.sendLine(self.connection_made_resp)
+
+class SMTPHandler(SocketServer.StreamRequestHandler):
+
+    def setup(self):
         self.receiving_data = False
+        SocketServer.StreamRequestHandler.setup(self)
 
-    def lineReceived(self, line):
-        self.buffer.append(line)
-        # *sob* - regex foo failed me.
-        for k, v in self.responses.iteritems():
-            if line.startswith(k):
-                if isinstance(v, Exception):
-                    raise v
-                handled = True
-                self.transport.write(v + "\r\n")
+    def handle(self):
+        self.server.num_connections += 1
+        self.wfile.write(self.server.connection_made_resp + "\r\n")
+        while True:
+            line = self.rfile.readline().strip()
+            if not line:
+                continue
+            # *sob* - regex foo failed me.
+            for k, v in self.server.responses.iteritems():
+                if line.upper().startswith(k):
+                    if isinstance(v, Exception):
+                        raise v
+                    handled = True
+                    self.wfile.write(v + "\r\n")
+                    break
+            else:
+                handled = False
+            if line.upper() == "QUIT":
                 break
-        else:
-            handled = False
-        if line == "QUIT":
-            self.transport.loseConnection()
-        elif line == "DATA":
-            self.receiving_data = True
-        elif self.receiving_data:
-            if line == ".":
-                self.receiving_data = False
-        else:
-            if not handled:
-                raise RuntimeError("test server not expecting %r", line)
+            elif line.upper() == "DATA":
+                self.receiving_data = True
+            elif self.receiving_data:
+                if line == ".":
+                    self.receiving_data = False
+            else:
+                if not handled:
+                    raise RuntimeError("test server not expecting %r" % (line,))
 
 
+class TestSMTPBase(TestCaseWithTestDB):
+    def setUp(self):
+        TestCaseWithTestDB.setUp(self)
+        self.conductor = self.get_conductor()
+        self._listenServer()
+        self.old_backoffs = (raindrop.proto.smtp.SMTPAccount.def_retry_count,
+                             raindrop.proto.smtp.SMTPAccount.def_retry_backoff,
+                             raindrop.proto.smtp.SMTPAccount.def_retry_backoff_max,
+                            )
+        raindrop.proto.smtp.SMTPAccount.def_retry_count = 1
+        raindrop.proto.smtp.SMTPAccount.def_retry_backoff = 0.01
+        raindrop.proto.smtp.SMTPAccount.def_retry_backoff_max = 0.01
+
+    def _listenServer(self):
+        self.server = TestSMTPServer((SMTP_SERVER_HOST, SMTP_SERVER_PORT),
+                                     SMTPHandler)
+        self.server_thread = threading.Thread(target=self.server.serve_forever)
+        self.server_thread.start()
+        time.sleep(0.01) # lame!  Ensure server listening...
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server_thread.join(5)
+        if self.server_thread.isAlive():
+            self.fail("test server didn't stop")
+        self.server.server_close()
+        (raindrop.proto.smtp.SMTPAccount.def_retry_count,
+         raindrop.proto.smtp.SMTPAccount.def_retry_backoff,
+         raindrop.proto.smtp.SMTPAccount.def_retry_backoff_max,
+                            ) = self.old_backoffs
+
+        return TestCaseWithTestDB.tearDown(self)
+
+    
 # Simple test case writes an outgoing smtp schema, and also re-uses that
 # same document for the 'sent' state.  This avoids any 'pipeline' work.
-class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
-    @defer.inlineCallbacks
+class TestSMTPSimple(TestSMTPBase):
     def _prepare_test_doc(self):
         doc_model = get_doc_model()
         # abuse the schema API to write the outgoing smtp data and the
@@ -80,116 +115,80 @@ class TestSMTPSimple(TestCaseWithTestDB, LoopbackMixin):
                  'sent_state': None,
                  'outgoing_state': 'outgoing',
                 }
-        result = yield doc_model.create_schema_items([
-                    {'rd_key': ['test', 'smtp_test'],
-                     'rd_ext_id': 'testsuite',
-                     'rd_schema_id': 'rd.msg.outgoing.smtp',
-                     'items': items,
-                     'attachments': {'smtp_body': {'data': body}},
-                    }])
-        src_doc = yield doc_model.db.openDoc(result[0]['id'])
-        defer.returnValue(src_doc)
+        sis = [
+                { 'rd_key': ['test', 'smtp_test'],
+                   'rd_ext_id': 'testsuite',
+                   'rd_schema_id': 'rd.some_src_schema',
+                   'items': {'outgoing_state': 'outgoing'},
+                },
+                {'rd_key': ['test', 'smtp_test'],
+                 'rd_ext_id': 'testsuite',
+                 'rd_schema_id': 'rd.msg.outgoing.smtp',
+                 'items': items,
+                 'attachments': {'smtp_body': {'data': body}},
+                },
+              ]
+        
+        doc_model.create_schema_items(sis)
+        dids = [doc_model.get_doc_id_for_schema_item(si) for si in sis]
+        return doc_model.open_documents_by_id(dids)
 
-    def _get_post_client(self, src_doc, raw_doc):
-        self.acct = SMTPAccount(get_doc_model(), {})
-        # we need a factory for error handling...
-        factory = SMTPClientFactory(None, None, src_doc, raw_doc)
-        c = SMTPPostingClient(self.acct, src_doc, raw_doc, 'secret', None, None, None)
-        c.factory = factory
-        c.deferred = defer.Deferred()
-        return c
+    def _send_test_doc(self, src_doc, raw_doc):
+        details = {'host': SMTP_SERVER_HOST, 'port': SMTP_SERVER_PORT,
+                   'id': 'smtp_test'}
+        self.acct = raindrop.proto.smtp.SMTPAccount(get_doc_model(), details)
+        self.acct.startSend(self.conductor, src_doc, raw_doc)
 
-    @defer.inlineCallbacks
     def test_simple(self):
-        src_doc = yield self._prepare_test_doc()
-        server = FakeSMTPServer()
-        client = self._get_post_client(src_doc, src_doc)
-        _ = yield self.loopback(server, client)
+        src_doc, out_doc = self._prepare_test_doc()
+        self._send_test_doc(src_doc, out_doc)
         # now re-open the doc and check the state says 'sent'
-        src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
+        src_doc = get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'sent')
-        self.failUnless(server.buffer) # must have connected to the test server.
+        self.failUnlessEqual(self.server.num_connections, 1) # must have connected to the test server.
         # check the protocol recorded the success
         status = self.acct.status
         self.failUnlessEqual(status.get('state'), Rat.GOOD, status)
         self.failUnlessEqual(status.get('what'), Rat.EVERYTHING, status)
 
-    @defer.inlineCallbacks
     def test_simple_rejected(self):
-        src_doc = yield self._prepare_test_doc()
-        server = FakeSMTPServer()
-        server.responses["MAIL FROM:"] = "500 sook sook sook"
+        src_doc, out_doc = self._prepare_test_doc()
+        def filter_log(rec):
+            return "sook sook sook" in rec.msg
+        self.log_handler.ok_filters.append(filter_log)
+        self.server.responses["MAIL FROM:"] = "500 sook sook sook"
 
-        client = self._get_post_client(src_doc, src_doc)
-        _ = yield self.loopback(server, client)
+        self._send_test_doc(src_doc, out_doc)
         # now re-open the doc and check the state says 'error'
-        src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
+        src_doc = get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'error')
+
         # check the protocol recorded the error.
         status = self.acct.status
         self.failUnlessEqual(status.get('state'), Rat.BAD, status)
         self.failUnlessEqual(status.get('what'), Rat.SERVER, status)
         self.failUnless('sook' in status.get('message', ''), status)
 
-    @defer.inlineCallbacks
-    def test_simple_failed(self):
-        src_doc = yield self._prepare_test_doc()
-        server = FakeSMTPServer()
-        client = self._get_post_client(src_doc, src_doc)
-        client.requireAuthentication = True # this causes failure!
-        _ = yield self.loopback(server, client)
-        # now re-open the doc and check the state says 'error'
-        src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
-        self.failUnlessEqual(src_doc['sent_state'], 'error')
-        # and check the protocol recorded the error.
-        status = self.acct.status
-        self.failUnlessEqual(status.get('state'), Rat.BAD, status)
-
-    @defer.inlineCallbacks
     def test_simple_connection_failed(self):
-        src_doc = yield self._prepare_test_doc()
-        server = FakeSMTPServer()
-        server.connection_made_resp = "452 Out of disk space; try later"
-        client = self._get_post_client(src_doc, src_doc)
-        _ = yield self.loopback(server, client)
+        def filter_log(rec):
+            return "Out of disk space; try later" in rec.msg
+        self.log_handler.ok_filters.append(filter_log)
+        self.server.connection_made_resp = "452 Out of disk space; try later"
+
+        src_doc, out_doc = self._prepare_test_doc()
+        self._send_test_doc(src_doc, out_doc)
         # now re-open the doc and check the state says 'error'
-        src_doc = yield get_doc_model().db.openDoc(src_doc['_id'])
+        src_doc = get_doc_model().db.openDoc(src_doc['_id'])
         self.failUnlessEqual(src_doc['sent_state'], 'error')
 
 # creates a real 'outgoing' schema, then uses the conductor to do whatever
 # it does...
-class TestSMTPSend(TestCaseWithTestDB, LoopbackMixin):
-    @defer.inlineCallbacks
+class TestSMTPSend(TestSMTPBase):
     def setUp(self):
-        _ = yield TestCaseWithTestDB.setUp(self)
-        self.serverDisconnected = defer.Deferred()
-        self.serverPort = self._listenServer(self.serverDisconnected)
+        TestSMTPBase.setUp(self)
         # init the conductor so it hooks itself up for sending.
-        _ = yield self.get_conductor()
-        #connected = defer.Deferred()
-        #self.clientDisconnected = defer.Deferred()
-        #self.clientConnection = self._connectClient(connected,
-        #                                            self.clientDisconnected)
-        #return connected
+        self.get_conductor()
 
-    def _listenServer(self, d):
-        from twisted.internet.protocol import Factory
-        from twisted.internet import reactor
-        f = Factory()
-        f.onConnectionLost = d
-        f.protocol = FakeSMTPServer
-        FakeSMTPServer.num_connections = 0
-        return reactor.listenTCP(SMTP_SERVER_PORT, f)
-
-    def tearDown(self):
-        self.serverPort.stopListening()
-        return TestCaseWithTestDB.tearDown(self)
-
-        # hrmph - aborted attempts to wait for the server...        
-        d = defer.maybeDeferred(self.serverPort.stopListening)
-        return defer.gatherResults([d, self.serverDisconnected])
-
-    @defer.inlineCallbacks
     def _prepare_test_doc(self):
         doc_model = get_doc_model()
         # write a simple outgoing schema
@@ -211,14 +210,14 @@ class TestSMTPSend(TestCaseWithTestDB, LoopbackMixin):
                  'sent_state': None,
                  'outgoing_state': 'outgoing',
                 }
-        result = yield doc_model.create_schema_items([
+        result = doc_model.create_schema_items([
                     {'rd_key': ['test', 'smtp_test'],
                      'rd_ext_id': 'testsuite',
                      'rd_schema_id': 'rd.msg.outgoing.simple',
                      'items': items,
                     }])
-        src_doc = yield doc_model.db.openDoc(result[0]['id'])
-        defer.returnValue(src_doc)
+        src_doc = doc_model.db.openDoc(result[0]['id'])
+        return src_doc
 
     def make_config(self):
         config = TestCaseWithTestDB.make_config(self)
@@ -233,40 +232,38 @@ class TestSMTPSend(TestCaseWithTestDB, LoopbackMixin):
         acct['ssl'] = False
         return config
 
-    @defer.inlineCallbacks
     def test_outgoing(self):
-        src_doc = yield self._prepare_test_doc()
-        _ = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(FakeSMTPServer.num_connections, 1)
+        src_doc = self._prepare_test_doc()
+        self.ensure_pipeline_complete()
+        self.failUnlessEqual(self.server.num_connections, 1)
 
-    @defer.inlineCallbacks
     def test_outgoing_with_unrelated(self):
-        src_doc = yield self._prepare_test_doc()
+        src_doc = self._prepare_test_doc()
         # make another document with the same rd_key, but also an empty
         # source.
         items = {'foo' : 'bar',}
-        result = yield self.doc_model.create_schema_items([
+        result = self.doc_model.create_schema_items([
                     {'rd_key': ['test', 'smtp_test'],
                      'rd_ext_id': 'testsuite',
                      'rd_schema_id': 'rd.msg.something-unrelated',
                      'items': items,
                     }])
 
-        _ = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(FakeSMTPServer.num_connections, 1)
+        self.ensure_pipeline_complete()
+        self.failUnlessEqual(self.server.num_connections, 1)
 
-    @defer.inlineCallbacks
     def test_outgoing_twice(self):
         doc_model = get_doc_model()
-        src_doc = yield self._prepare_test_doc()
-        nc = FakeSMTPServer.num_connections
-        _ = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(nc+1, FakeSMTPServer.num_connections)
-        nc = FakeSMTPServer.num_connections
+        src_doc = self._prepare_test_doc()
+        nc = self.server.num_connections
+        self.ensure_pipeline_complete()
+        self.failUnlessEqual(nc+1, self.server.num_connections)
+        nc = self.server.num_connections
         # sync again - better not make a connection this time!
         # XXX - this isn't testing what it should - it *should* ensure
         # the pipeline does see the message again, but the conductor refusing
         # to re-send it due to the 'outgoing_state'.
-        _ = yield self.ensure_pipeline_complete()
-        self.failUnlessEqual(nc, FakeSMTPServer.num_connections)
+        self.ensure_pipeline_complete()
+        self.failUnlessEqual(nc, self.server.num_connections)
+
 

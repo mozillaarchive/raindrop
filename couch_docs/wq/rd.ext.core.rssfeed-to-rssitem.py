@@ -59,8 +59,8 @@ def handler(doc):
     f = StringIO(content)
     headers = {}
     # turn back to single items.
-    for name, vals in doc['headers'].iteritems():
-        headers[name] = ';'.join(vals)
+    for name, val in doc['headers'].iteritems():
+        headers[name] = val
     # must provide a content-location for relative urls.
     if 'content-location' not in headers:
         headers['content-location'] = doc['uri']

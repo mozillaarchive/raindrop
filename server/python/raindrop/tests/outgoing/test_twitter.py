@@ -1,4 +1,3 @@
-from twisted.internet import defer
 from raindrop.tests import TestCaseWithTestDB
 from raindrop.sync import SyncConductor
 from raindrop.proc import base
@@ -10,7 +9,6 @@ class StubTwitter(base.AccountBase):
         self.testcase = testcase
         self.num_sends = 0
 
-    @defer.inlineCallbacks
     def startSend(self, conductor, src_doc, out_doc):
         self.testcase.failUnlessEqual(src_doc['outgoing_state'], 'outgoing')
         self.testcase.failUnlessEqual(src_doc['body'], 'this is a test tweet')
@@ -18,16 +16,16 @@ class StubTwitter(base.AccountBase):
         # Here we record the fact we have attempted a send and
         # save the state back now - this should cause conflict errors if we
         # accidently have 2 processes trying to send the same message.
-        _ = yield self._update_sent_state(src_doc, 'sending')
+        self._update_sent_state(src_doc, 'sending')
         # now is when we would do the actual twitter send.
-        _ = yield self._update_sent_state(src_doc, 'sent')
+        self._update_sent_state(src_doc, 'sent')
         # or for failure...
         # reason = (non_200_status_code, status_message) for example
-        #_ = yield self._update_sent_state(src_doc, 'error',
-        #                                  reason, "message for user",
-        #                                  # reset to 'outgoing' if temp error.
-        #                                  # or set to 'error' if permanent.
-        #                                  outgoing_state='outgoing')
+        # self._update_sent_state(src_doc, 'error',
+        #                         reason, "message for user",
+        #                         # reset to 'outgoing' if temp error.
+        #                         # or set to 'error' if permanent.
+        #                         outgoing_state='outgoing')
         self.num_sends += 1
 
 
@@ -52,12 +50,11 @@ class TestSendStub(TestCaseWithTestDB):
             self._conductor.initialize()
             # clobber the 'real' twitter account with out stub.
             self._conductor.outgoing_handlers['rd.msg.outgoing.tweet'] = [self.stub_twitter]
-        return defer.succeed(self._conductor)
+        return self._conductor
 
-    @defer.inlineCallbacks
     def test_simple(self):
         self.get_conductor()
-        result = yield self.doc_model.create_schema_items([
+        result = self.doc_model.create_schema_items([
                     {'rd_key': ['test', 'tweet_test'],
                      'rd_ext_id': 'testsuite',
                      'rd_schema_id': 'rd.msg.outgoing.tweet',
@@ -69,5 +66,5 @@ class TestSendStub(TestCaseWithTestDB):
                      },
                     }])
 
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
         self.failUnlessEqual(self.stub_twitter.num_sends, 1)

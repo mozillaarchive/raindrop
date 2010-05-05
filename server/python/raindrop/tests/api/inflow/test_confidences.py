@@ -65,30 +65,27 @@ def handler(doc):
     }
 }
 
-from twisted.internet import defer
 from raindrop.tests.api import APITestCaseWithCorpus
 from pprint import pformat
 
 class TestConfidencesBase(APITestCaseWithCorpus):
-    @defer.inlineCallbacks
     def prepare_test_db(self, config):
-        _ = yield APITestCaseWithCorpus.prepare_test_db(self, config)
+        APITestCaseWithCorpus.prepare_test_db(self, config)
         # add our test extension(s).
-        _ = yield self.doc_model.create_schema_items([self.extension])
+        self.doc_model.create_schema_items([self.extension])
 
-    @defer.inlineCallbacks
     def _test_override(self):
         # We should see the conversation including the message we "modified"
         our_msg = ('email', '07316ced2329a69aa169f3b9c6467703@bitbucket.org')
         # make a megaview request to determine the convo ID with our message.
         key = ['key-schema_id', [our_msg, 'rd.msg.conversation']]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         # should be exactly 1 record.
         self.failUnlessEqual(len(result['rows']), 1)
         our_conv_id = result['rows'][0]['doc']['conversation_id']
         seen = set()
-        result = yield self.call_api("inflow/conversations/identities",
+        result = self.call_api("inflow/conversations/identities",
                                      message_limit=100)
         # loop over the convos finding the one we care about.
         for convo in result:

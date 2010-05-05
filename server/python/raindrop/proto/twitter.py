@@ -33,8 +33,6 @@ from __future__ import with_statement
 import logging
 import sys
 import re
-import twisted.python.log
-from twisted.internet import defer, threads
 
 from ..proc import base
 
@@ -46,14 +44,6 @@ import hashlib
 import hmac
 from twitter.twitter_globals import POST_ACTIONS
 
-# See http://code.google.com/p/python-twitter/issues/detail?id=13 for info
-# about getting twisted support into the twitter package.
-# Sadly, the twisty-twitter package has issues of its own (like calling
-# delegates outside the deferred mechanism meaning you can't rely on callbacks
-# being completed when they say they are.)
-
-# So for now we are going with the blocking twitter package used via
-# deferToThread for all blocking operations...
 import twitter
 twitter.twitter_globals.POST_ACTIONS.append('retweet')
 
@@ -170,7 +160,7 @@ def call_twitter(account_details, twit_api, **args):
         new_args = sign_args(account_details, uri, method, **args)
     else:
         new_args = args
-    return threads.deferToThread(twit_api, **new_args)
+    return twit_api(**new_args)
 
 class TwitterProcessor(object):
     # The 'id' of this extension
@@ -185,8 +175,7 @@ class TwitterProcessor(object):
         self.twit = None
         self.seen_tweets = None
 
-    @defer.inlineCallbacks
-    def attach(self):
+    def go(self):
         logger.info("attaching to twitter...")
         ad = self.account.details
         twit = self.twit = create_api(ad)
@@ -201,7 +190,7 @@ class TwitterProcessor(object):
             # hourly_limit :            150
             # reset_time_in_seconds :   1266898973
         # }
-        rate_limit_status = yield call_twitter(ad, twit.account.rate_limit_status)
+        rate_limit_status = call_twitter(ad, twit.account.rate_limit_status)
 
         logger.info("rate limit status: %s more hits, resets at %s",
                     rate_limit_status.get("remaining_hits"),
@@ -232,10 +221,10 @@ class TwitterProcessor(object):
         since_id = 1
         startkey = ["rd.msg.tweet.raw", "twitter_id"]
         endkey = ["rd.msg.tweet.raw", "twitter_id", 999999999999]
-        results = yield self.doc_model.open_view(startkey=startkey, endkey=endkey,
-                                                 limit=1, reduce=False,
-                                                 descending=True,
-                                                 include_docs=False)
+        results = self.doc_model.open_view(startkey=startkey, endkey=endkey,
+                                           limit=1, reduce=False,
+                                           descending=True,
+                                           include_docs=False)
         # We grab the since_id but don't use it yet until we've got some unit
         # tests to show that this works correctly every time
         if len(results.get("rows")) > 0:
@@ -246,8 +235,7 @@ class TwitterProcessor(object):
         # as well as their identity info all in a single request
         # This doesn't get us all of our friends but with 200 tweets we'll at
         # least get your most chatty friends
-        tl= yield call_twitter(ad, self.twit.statuses.home_timeline,
-                               count=200)
+        tl= call_twitter(ad, self.twit.statuses.home_timeline, count=200)
         for status in tl:
             id = int(status.get("id"))
             rd_key = ['tweet', id]
@@ -259,7 +247,7 @@ class TwitterProcessor(object):
                 logger.info("Twitter status id: %s is a retweet", id)
 
         # Grab any direct messages that are waiting for us
-        ml = yield call_twitter(ad, self.twit.direct_messages)
+        ml = call_twitter(ad, self.twit.direct_messages)
         for dm in ml:
             id = int(dm.get("id"))
             rd_key = ['tweet-direct', id]
@@ -278,7 +266,7 @@ class TwitterProcessor(object):
         # execute a view to work out which of these tweets/messages are new
         # if we were using the since_id correctly this probably wouldn't be a
         # necessary step
-        results = yield self.doc_model.open_view(keys=keys, reduce=False)
+        results = self.doc_model.open_view(keys=keys, reduce=False)
         seen_tweets = set()
         for row in results['rows']:
             seen_tweets.add(row['value']['rd_key'][1])
@@ -301,8 +289,8 @@ class TwitterProcessor(object):
             keys.append(['key-schema_id',
                          [["identity", ["twitter", sn]], 'rd.identity.twitter']])
         # execute a view process these users.
-        results = yield self.doc_model.open_view(keys=keys, reduce=False,
-                                                 include_docs=True)
+        results = self.doc_model.open_view(keys=keys, reduce=False,
+                                           include_docs=True)
         seen_users = {}
         for row in results['rows']:
             _, idid = row['value']['rd_key']
@@ -326,36 +314,34 @@ class TwitterProcessor(object):
                           'items': items})
 
         if infos:
-            _ = yield self.conductor.provide_schema_items(infos)
+            self.conductor.provide_schema_items(infos)
 
 
 class TwitterAccount(base.AccountBase):
     rd_outgoing_schemas = ['rd.msg.outgoing.tweet']
 
-    @defer.inlineCallbacks
     def startSend(self, conductor, src_doc, dest_doc):
         logger.info("Sending tweet from TwitterAccount...")
 
         self.src_doc = src_doc
         twitter_api = create_api(self.details)
-
         logger.info("attached to twitter - sending tweet")
 
-        _ = yield self._update_sent_state(self.src_doc, 'sending')
+        self._update_sent_state(self.src_doc, 'sending')
 
         # Do the actual twitter send.
         try:
             if ('retweet_id' in self.src_doc):
                 # A retweet
                 retweet_id = str(self.src_doc['retweet_id'])
-                status = yield call_twitter(self.details, twitter_api.statuses.retweet, id=retweet_id)
+                status = call_twitter(self.details, twitter_api.statuses.retweet, id=retweet_id)
             else:
                 # A status update or a reply
                 extra_args = {}
                 if self.src_doc.get('in_reply_to'):
                     extra_args['in_reply_to'] = self.src_doc['in_reply_to']
 
-                status = yield call_twitter(self.details, twitter_api.statuses.update,
+                status = call_twitter(self.details, twitter_api.statuses.update,
                                status=self.src_doc['body'], **extra_args)
 
             # If status has an ID, then it saved. Otherwise,
@@ -364,28 +350,28 @@ class TwitterAccount(base.AccountBase):
             # replies and retweets in those cases?
             if ("id" in status):
                 # Success
-                _ = yield self._update_sent_state(self.src_doc, 'sent')
+                self._update_sent_state(self.src_doc, 'sent')
             else:
                 # Log error
                 logger.error("Twitter API status update failed: %s", status)
-                _ = yield self._update_sent_state(self.src_doc, 'error',
-                                              'Twitter API status update failed', status,
-                                              # reset to 'outgoing' if temp error.
-                                              # or set to 'error' if permanent.
-                                              outgoing_state='error')
+                self._update_sent_state(self.src_doc, 'error',
+                                        'Twitter API status update failed', status,
+                                        # reset to 'outgoing' if temp error.
+                                        # or set to 'error' if permanent.
+                                        outgoing_state='error')
 
         except Exception, e:
             logger.error("Twitter API status update failed: %s", str(e))
-            _ = yield self._update_sent_state(self.src_doc, 'error',
-                                          'Twitter API failed', str(e),
-                                          # reset to 'outgoing' if temp error.
-                                          # or set to 'error' if permanent.
-                                          outgoing_state='error')
+            self._update_sent_state(self.src_doc, 'error',
+                                    'Twitter API failed', str(e),
+                                    # reset to 'outgoing' if temp error.
+                                    # or set to 'error' if permanent.
+                                    outgoing_state='error')
 
-        defer.returnValue(True)
+        return True
 
     def startSync(self, conductor, options):
-        return TwitterProcessor(self, conductor, options).attach()
+        return TwitterProcessor(self, conductor, options).go()
 
     def get_identities(self):
         return [('twitter', self.details['username'])]

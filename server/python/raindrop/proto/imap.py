@@ -21,16 +21,29 @@
 # Contributor(s):
 #
 
-from twisted.internet import protocol, ssl, defer, error, task
-from twisted.mail import imap4
-from twisted.python.failure import Failure
-from zope.interface import implements
-
 import logging
 from email.utils import mktime_tz, parsedate_tz
 import time
 import re
-import base64
+import threading
+import socket
+import errno
+import Queue
+
+import sys
+try:
+  from raindrop.proto import imapclient
+  # hack 'imapclient' as a top-level package so relative imports work
+  sys.modules['imapclient'] = imapclient
+except ImportError:
+  import imapclient
+  # but check we have a good enough version.  Note sure what the 'correct'
+  # version is, but 0.5.2 used the 'old' interface - so assuming next will be
+  # 0.6 or greater...
+  if imapclient.__version__.split('.') < (0, 6, 0):
+    raise ImportError('need imapclient 0.6.0 or greater')
+
+import imaplib
 
 from ..proc import base
 from ..model import DocumentSaveError
@@ -42,28 +55,21 @@ logger = logging.getLogger(__name__)
 
 # Set this to see IMAP lines printed to the console.
 # NOTE: lines printed may include your password!
-TRACE_IMAP = False
+#imaplib.Debug = 9
 
 NUM_QUERYERS = 3
 NUM_FETCHERS = 3
 
-# magic numbers.  Some should probably come from the account info...
-NUM_CONNECT_RETRIES = 4
-RETRY_BACKOFF = 8
-MAX_BACKOFF = 600
-# timeouts should be rare - the server may be slow!  Errors are more likely
-# to be connection drops - so we leave this timeout fairly high...
-DEFAULT_TIMEOUT = 60*5
 # we fetch this many bytes or this many messages, whichever we hit first.
 MAX_BYTES_PER_FETCH = 500000
 MAX_MESSAGES_PER_FETCH = 30
 
+from imapclient.imap_utf7 import encode as encode_imap_utf7
+from imapclient.imap_utf7 import decode as decode_imap_utf7
 
 def log_exception(msg, *args):
-  # inlineCallbacks don't work well with the logging module's handling of
-  # exceptions - we need to use the Failure() object...
-  msg = (msg % args) + "\n" + Failure().getTraceback()
-  logger.error(msg)
+  # this made more sense when things were twisted :)
+  logger.exception(msg, *args)
 
 def get_rdkey_for_email(msg_id):
   # message-ids must be consistent everywhere we use them, and we decree
@@ -77,6 +83,7 @@ def get_rdkey_for_email(msg_id):
 # couch can't store it (except in attachments) and we can't do anything with
 # it anyway.  It *appears* from the IMAP spec that only 7bit data is valid,
 # so that is what we check
+# XXX - maybe utf-7 is what we want?
 def check_envelope_ok(env):
   # either strings, or (nested) lists of strings.
   def flatten(what):
@@ -84,12 +91,12 @@ def check_envelope_ok(env):
     for item in what:
       if item is None:
         pass
-      elif isinstance(what, str):
-        ret.append(what)
-      elif isinstance(what, list):
+      elif isinstance(item, (str, int, long)):
+        ret.append(str(item))
+      elif isinstance(item, (list, tuple)):
         ret.extend(flatten(item))
       else:
-        raise TypeError, what
+        raise TypeError, item
     return ret
 
   for item in flatten(env):
@@ -100,152 +107,22 @@ def check_envelope_ok(env):
   return True
 
 
-class IMAP4AuthException(imap4.IMAP4Exception):
+class IMAP4AuthException(Exception):
   def __init__(self, why, *args):
     self.why = why
-    imap4.IMAP4Exception.__init__(self, *args)
+    Exception.__init__(self, *args)
 
 
-class XOAUTHAuthenticator:
-    implements(imap4.IClientAuthentication)
+# Yuck yuck yuck - monkeypatch imaplib...
+def mp_open(self, host = '', port = imaplib.IMAP4_PORT):
+  # overridden for timeout management...
+  self.host = host
+  self.port = port
+  self.sock = socket.create_connection((host, port), self.connection_timeout)
+  self.sock.settimeout(self.response_timeout)
+  self.file = self.sock.makefile('rb')
 
-    def getName(self):
-      return "XOAUTH"
-
-    def challengeResponse(self, secret, chal):
-      return secret
-
-
-class ImapClient(imap4.IMAP4Client):
-  timeout = DEFAULT_TIMEOUT
-  _in_auth = False
-  def _defaultHandler(self, tag, rest):
-    # XXX - worm around a bug related to MismatchedQuoting exceptions.
-    # Probably: http://twistedmatrix.com/trac/ticket/1443
-    # "[imap4] mismatched quoting spuriously raised" - raised early 2006 :(
-    try:
-      imap4.IMAP4Client._defaultHandler(self, tag, rest)
-    except imap4.MismatchedQuoting, exc:
-      logger.warn('ignoring mismatched quoting error: %s', exc)
-      # The rest seems necessary to 'gracefully' ignore the error.
-      cmd = self.tags[tag]
-      cmd.defer.errback(exc)
-      del self.tags[tag]
-      self.waiting = None
-      self._flushQueue()
-      # *sob* - but it doesn't always do a great job at ignoring them - most
-      # other handlers of imap4.IMAP4Exceptions are also handling this :(
-
-  def timeoutConnection(self):
-    logger.warn("IMAP connection timed out")
-    return imap4.IMAP4Client.timeoutConnection(self)
-
-  @defer.inlineCallbacks
-  def serverGreeting(self, _):
-    #logger.debug("IMAP server greeting: capabilities are %s", caps)
-    caps = yield self.getCapabilities()
-    if 'AUTH' in caps and 'XOAUTH' in caps['AUTH']:
-      acct_det = self.account.details
-      if xoauth.AcctInfoSupportsOAuth(acct_det):
-        self.registerAuthenticator(XOAUTHAuthenticator())
-        logger.info("logging into account %r via oauth", acct_det['id'])
-        # do the xoauth magic.
-        xoauth_string = xoauth.GenerateXOauthStringFromAcctInfo('imap', acct_det)
-        try:
-          self._in_auth = True
-          try:
-            _ = yield self.authenticate(xoauth_string)
-          finally:
-            self._in_auth = False
-        # it isn't clear why we need to explicitly call the deferred callback
-        # here when we don't for login - but whateva...
-        except imap4.IMAP4Exception, exc:
-          new_exc = IMAP4AuthException(brat.OAUTH, *exc.args)
-          self.deferred.errback(Failure(new_exc))
-        else:
-          self.deferred.callback(self)
-        return
-      else:
-        logger.warn("This server supports OAUTH but no tokens or secrets are available to use - falling back to password")
-    _ = yield self._startLogin()
-
-  def _startLogin(self):
-    if self.account.details.get('crypto') == 'TLS':
-      d = self.startTLS(self.factory.ctx)
-      d.addCallback(self._doLogin)
-    else:
-      d = self._doLogin()
-    def done(result):
-      td, self.deferred = self.deferred, None
-      if isinstance(result, Failure):
-        # throw the connection away - we will (probably) retry...
-        def fire_errback(_):
-          # this kinda sucks - there doesn't seem to be a good way to check
-          # if the underlying error was password related.  Errors like
-          # timeouts have their own error class, so we assume anything which
-          # is a 'vanilla' IMAP exception is password related.
-          if type(result.value) == imap4.IMAP4Exception:
-            exc = IMAP4AuthException(brat.PASSWORD, *result.value.args)
-          else:
-            exc = result.value
-          td.errback(Failure(exc))
-        defer.maybeDeferred(self.transport.loseConnection
-                           ).addBoth(fire_errback)
-      else:
-        td.callback(self)
-    return d.addBoth(done)
-
-  def _doLogin(self, *args, **kwargs):
-    return self.login(self.account.details['username'].encode('imap4-utf-7'),
-                      self.account.details['password'])
-
-  def xlist(self, reference, wildcard):
-    # like 'list', but does XLIST.  Caller is expected to have checked the
-    # server offers this capability.
-    cmd = 'XLIST'
-    args = '"%s" "%s"' % (reference, wildcard.encode('imap4-utf-7'))
-    resp = ('XLIST',)
-    # Have I mentioned I hate the twisted IMAP client yet today?
-    # Tell the Command class about the new XLIST command...
-    cmd = imap4.Command(cmd, args, wantResponse=resp)
-    cmd._1_RESPONSES = cmd._1_RESPONSES  + ('XLIST',)
-    d = self.sendCommand(cmd)
-    d.addCallback(self.__cbXList, 'XLIST')
-    return d
-
-  # *sob* - duplicate the callback due to twisted using private '__'
-  # attributes...
-  def __cbXList(self, (lines, last), command):
-    results = []
-    for L in lines:
-        parts = imap4.parseNestedParens(L)
-        if len(parts) != 4:
-            raise imap4.IllegalServerResponse, L
-        if parts[0] == command:
-            parts[1] = tuple(parts[1])
-            results.append(tuple(parts[1:]))
-    return results
-
-  def sendLine(self, line):
-    # twisted has a bug where it base64 encodes our xoauth secret, and while
-    # it strips \n chars from the end, it does *not* remove them from the
-    # middle.  So we have around this here...
-    if self._in_auth:
-      line = line.replace("\n", "")
-    # and support our tracing.
-    if TRACE_IMAP:
-      print 'C: %08x: %s' % (id(self), repr(line))
-    return imap4.IMAP4Client.sendLine(self, line)
-  
-  if TRACE_IMAP:
-    def lineReceived(self, line):
-      if len(line) > 50:
-        lrepr = repr(line[:50]) + (' <+ %d more bytes>' % len(line[50:]))
-      else:
-        lrepr = repr(line)
-      print 'S: %08x: %s' % (id(self), lrepr)
-      return imap4.IMAP4Client.lineReceived(self, line)
-
+imaplib.IMAP4.open = mp_open
 
 class ImapProvider(object):
   # The 'id' of this extension
@@ -259,15 +136,14 @@ class ImapProvider(object):
     self.conductor = conductor
     self.doc_model = account.doc_model
     # We have a couple of queues to do the work
-    self.query_queue = defer.DeferredQueue() # IMAP folder etc query requests 
-    self.fetch_queue = defer.DeferredQueue() # IMAP message fetch requests
+    self.query_queue = Queue.Queue() # IMAP folder etc query requests 
+    self.fetch_queue = Queue.Queue()
     self.updated_folder_infos = None
 
-  @defer.inlineCallbacks
   def write_items(self, items):
     try:
       if items:
-        _ = yield self.conductor.provide_schema_items(items)
+        self.conductor.provide_schema_items(items)
     except DocumentSaveError, exc:
       # So - conflicts are a fact of life in this 'queue' model: we check
       # if a record exists and it doesn't, so we queue the write.  By the
@@ -291,29 +167,27 @@ class ImapProvider(object):
       logger.debug('ignored %d conflict errors writing this batch (first 3=%r)',
                    len(conflicts), conflicts[:3])
 
-  @defer.inlineCallbacks
   def maybe_queue_fetch_items(self, folder_path, infos):
     if not infos:
       return
-    by_uid = yield self._findMissingItems(folder_path, infos)
+    by_uid = self._findMissingItems(folder_path, infos)
     if not by_uid:
       return
     self.fetch_queue.put((False, self._processFolderBatch, (folder_path, by_uid)))
 
-  @defer.inlineCallbacks
   def _reqList(self, conn, *args, **kwargs):
     self.account.reportStatus(brat.EVERYTHING, brat.GOOD)
     acct_id = self.account.details.get('id','')
-    caps = yield conn.getCapabilities()
+    caps = conn.capabilities()
     if 'XLIST' in caps:
-      result = yield conn.xlist('', '*')
+      result = conn.xlist_folders('', '*')
       kind = self.account.details.get('kind','')
       if kind is '':
         logger.warning("set kind=gmail for account %s in your .raindrop for correct settings",
                         acct_id)
     else:
       logger.warning("This IMAP server doesn't support XLIST, so performance may suffer")
-      result = yield conn.list('', '*')
+      result = conn.list_folders('', '*')
     # quickly scan through the folders list building the ones we will
     # process and the order.
     logger.info("examining folders")
@@ -324,7 +198,7 @@ class ImapProvider(object):
     else:
       to_exclude = set()
     for flags, delim, name in result:
-      name = name.decode('imap4-utf-7') # twisted gives back the encoded str.
+      name = decode_imap_utf7(name)
       ok = True
       for flag in (r'\Noselect', r'\AllMail', r'\Trash', r'\Spam'):
         if flag in flags:
@@ -370,7 +244,7 @@ class ImapProvider(object):
           else:
             todo_top.append(folder_info)
     else:
-      # older mapi server - just try and find the inbox.
+      # older imap server - just try and find the inbox.
       for flags, delim, name in folders_use:
         folder_info = (delim, name)
         if delim in name:
@@ -382,40 +256,42 @@ class ImapProvider(object):
     
     todo = todo_special_folders + todo_top + todo_sub
     try:
-      _ = yield self._updateFolders(conn, todo)
+      self._updateFolders(conn, todo)
     except:
       log_exception("Failed to update folders for account %r", acct_id)
     # and tell the query queue everything is done.
     self.query_queue.put(None)
 
-  @defer.inlineCallbacks
   def _checkQuickRecent(self, conn, folder_path, max_to_fetch):
     logger.debug("_checkQuickRecent for %r", folder_path)
-    _ = yield conn.select(folder_path)
-    nitems = yield conn.search("((OR UNSEEN (OR RECENT FLAGGED))"
-                               " UNDELETED SMALLER 50000)", uid=True)
+    # XXX - imapclient doesn't expose 'examine'
+    conn.select_folder(folder_path, True)
+    nitems = conn.search("((OR UNSEEN (OR RECENT FLAGGED))"
+                         " UNDELETED SMALLER 50000)")
     if not nitems:
       logger.debug('folder %r has no quick items', folder_path)
       return
     nitems = nitems[-max_to_fetch:]
-    batch = imap4.MessageSet(nitems[0], nitems[-1])
-    results = yield conn.fetchAll(batch, uid=True)
+    batch = "%s:%s" % (nitems[0], nitems[-1])
+    results = conn.fetch(batch, ("FLAGS", "INTERNALDATE", "RFC822.SIZE", "ENVELOPE"))
+    for uid, result in results.iteritems():
+      result['UID'] = uid
+      result['INTERNALDATE'] = result['INTERNALDATE'].isoformat()
     logger.info('folder %r has %d quick items', folder_path, len(results))
     # Make a simple list.
     infos = [results[seq] for seq in sorted(int(k) for k in results)
              if self.shouldFetchMessage(results[seq])]
-    _ = yield self.maybe_queue_fetch_items(folder_path, infos)
+    self.maybe_queue_fetch_items(folder_path, infos)
 
-  @defer.inlineCallbacks
   def _updateFolders(self, conn, all_names):
     # Fetch all state cache docs for all mailboxes in one go.
     # XXX - need key+schema here, but we don't use multiple yet.
     acct_id = self.account.details.get('id')
     startkey = ['key', ['imap-mailbox', [acct_id]]]
     endkey = ['key', ['imap-mailbox', [acct_id, {}]]]
-    results = yield self.doc_model.open_view(startkey=startkey,
-                                             endkey=endkey, reduce=False,
-                                             include_docs=True)
+    results = self.doc_model.open_view(startkey=startkey,
+                                       endkey=endkey, reduce=False,
+                                       include_docs=True)
     # build a map of the docs keyed by folder-name.
     caches = {}
     for row in results['rows']:
@@ -443,15 +319,14 @@ class ImapProvider(object):
     for delim, name in all_names:
       self.query_queue.put((False, self._updateFolderFromCache, (caches, delim, name)))
 
-  @defer.inlineCallbacks
   def _updateFolderFromCache(self, conn, cache_docs, folder_delim, folder_name):
     # Now queue the updates of the folders
     acct_id = self.account.details.get('id')
-    info = yield conn.select(folder_name)
+    info = conn.select_folder(folder_name, True)
     logger.debug("info for %r is %r", folder_name, info)
 
     cache_doc = cache_docs.get(folder_name, {})
-    dirty = yield self._syncFolderCache(conn, folder_name, info, cache_doc)
+    dirty = self._syncFolderCache(conn, folder_name, info, cache_doc)
 
     if dirty:
       logger.debug("need to update folder cache for %r", folder_name)
@@ -473,13 +348,13 @@ class ImapProvider(object):
 
     # fetch folder info, and delete information about 'stale' locations
     # before fetching the actual messages.
-    loc_to_nuke, loc_needed = yield self._makeLocationInfos(folder_name,
-                                                            folder_delim,
-                                                            sync_items)
+    loc_to_nuke, loc_needed = self._makeLocationInfos(folder_name,
+                                                      folder_delim,
+                                                      sync_items)
 
     # queue the write of location records we want to nuke first.
     if loc_to_nuke:
-      _ = yield self.write_items(loc_to_nuke)
+      self.write_items(loc_to_nuke)
 
     todo = sync_items[:]
     while todo:
@@ -491,7 +366,7 @@ class ImapProvider(object):
           if self.shouldFetchMessage(mi):
               batch.insert(0, mi)
       logger.log(1, 'queueing check of %d items in %r', len(batch), folder_name)
-      _ = yield self.maybe_queue_fetch_items(folder_name, batch)
+      self.maybe_queue_fetch_items(folder_name, batch)
       # see if these items also need location records...
       new_locs = []
       for mi in batch:
@@ -501,10 +376,9 @@ class ImapProvider(object):
           pass
       if new_locs:
         logger.debug('queueing %d new location records', len(new_locs))
-        _ = yield self.write_items(new_locs)
+        self.write_items(new_locs)
     # XXX - todo - should nuke old folders which no longer exist.
 
-  @defer.inlineCallbacks
   def _syncFolderCache(self, conn, folder_path, server_info, cache_doc):
     # Queries the server for the current state of a folder.  Returns True if
     # the cache document was updated so needs to be written back to couch.
@@ -528,26 +402,23 @@ class ImapProvider(object):
 
     suidn = int(server_info.get('UIDNEXT', -1))
 
-    try:
-      if suidn == -1 or suidn > cached_uid_next:
-        if suidn == -1:
-          logger.warn("This server doesn't provide UIDNEXT - it will take longer to synch...")
-        logger.debug('requesting info for items in %r from uid %r', folder_path,
-                     cached_uid_next)
-        new_infos = yield conn.fetchAll("%d:*" % (cached_uid_next,), True)
-      else:
-        logger.info('folder %r has no new messages', folder_path)
-        new_infos = {}
-      # Get flags for all 'old' messages.
-      if cached_uid_next > 1:
-        updated_flags = yield conn.fetchFlags("1:%d" % (cached_uid_next-1,), True)
-      else:
-        updated_flags = {}
-    except imap4.MismatchedQuoting, exc:
-      acct_id = self.account.details.get('id','')
-      log_exception("failed to fetchAll/fetchFlags folder %r on account %r",
-                    folder_path, acct_id)
+    if suidn == -1 or suidn > cached_uid_next:
+      if suidn == -1:
+        logger.warn("This IMAP server doesn't provide UIDNEXT - it will take longer to synch...")
+      logger.debug('requesting info for items in %r from uid %r', folder_path,
+                   cached_uid_next)
+      batch = "%d:*" % (cached_uid_next,)
+      new_infos = conn.fetch(batch, ("FLAGS", "INTERNALDATE", "RFC822.SIZE", "ENVELOPE"))
+      for uid, result in new_infos.iteritems():
+        result['UID'] = uid
+        result['INTERNALDATE'] = result['INTERNALDATE'].isoformat()
+    else:
+      logger.info('folder %r has no new messages', folder_path)
       new_infos = {}
+    # Get flags for all 'old' messages.
+    if cached_uid_next > 1:
+      updated_flags = conn.fetch("1:%d" % (cached_uid_next-1,), ("FLAGS",))
+    else:
       updated_flags = {}
     logger.info("folder %r has %d new items, %d flags for old items",
                 folder_path, len(new_infos), len(updated_flags))
@@ -555,9 +426,8 @@ class ImapProvider(object):
     # Turn the dicts back into the sorted-by-UID list it started as, nuking
     # old messages
     infos_ndx = 0
-    for seq in sorted(int(k) for k in updated_flags):
-      info = updated_flags[seq]
-      this_uid = int(info['UID'])
+    for this_uid in sorted(int(k) for k in updated_flags):
+      info = updated_flags[this_uid]
       # remove items which no longer exist.
       while int(infos[infos_ndx]['UID']) < this_uid:
         old = infos.pop(infos_ndx)
@@ -583,12 +453,11 @@ class ImapProvider(object):
         continue
     # Records we had in the past now have accurate flags; next up is to append
     # new message info we just received...
-    for seq in sorted(int(k) for k in new_infos):
-      info = new_infos[seq]
+    for this_uid in sorted(int(k) for k in new_infos):
+      info = new_infos[this_uid]
       # Sadly, asking for '900:*' in gmail may return a single item
       # with UID of 899 - and that is already in our list.  So only append
       # new items when they are > then what we know about.
-      this_uid = int(info['UID'])
       if this_uid < cached_uid_next:
         continue
       # Some items from some IMAP servers don't have an ENVELOPE record, and
@@ -609,9 +478,8 @@ class ImapProvider(object):
       cached_uid_next = this_uid + 1
       infos.append(info)
       dirty = True
-    defer.returnValue(dirty)
+    return dirty
 
-  @defer.inlineCallbacks
   def _makeLocationInfos(self, folder_name, delim, results):
     # We used to write all location records - even those we were never going
     # to fetch - in one hit - after fetchng the messages.  For large IMAP
@@ -648,8 +516,8 @@ class ImapProvider(object):
     # location and (b) was tagged by this mapi account.  We do (a) via the
     # key param, and filter (b) here...
     key = [['imap', acct_id], folder_path]
-    existing = yield self.doc_model.open_view(viewId='msg_location_by_source',
-                                              key=key)
+    existing = self.doc_model.open_view(viewId='msg_location_by_source',
+                                        key=key)
     scouch = set()
     to_nuke = []
     for row in existing['rows']:
@@ -678,9 +546,8 @@ class ImapProvider(object):
       to_add[uid] = new_item
     logger.debug("folder %r info needs to update %d and delete %d location records",
                  folder_name, len(to_add), len(to_nuke))
-    defer.returnValue((to_nuke, to_add))
+    return to_nuke, to_add
 
-  @defer.inlineCallbacks
   def _findMissingItems(self, folder_path, results):
     # Transform a list of IMAP infos into a map with the results keyed by the
     # 'rd_key' (ie, message-id)
@@ -698,7 +565,7 @@ class ImapProvider(object):
     # Get all messages that already have this schema
     keys = [['key-schema_id', [k, 'rd.msg.rfc822']]
             for k in msg_infos.keys()]
-    result = yield self.doc_model.open_view(keys=keys, reduce=False)
+    result = self.doc_model.open_view(keys=keys, reduce=False)
     seen = set([tuple(r['value']['rd_key']) for r in result['rows']])
     # convert each key elt to a list like we get from the views.
     remaining = set(msg_infos)-set(seen)
@@ -713,12 +580,11 @@ class ImapProvider(object):
       if uid in rem_uids:
         info['RAINDROP_KEY'] = key
         by_uid[uid] = info
-    defer.returnValue(by_uid)
+    return by_uid
 
-  @defer.inlineCallbacks
   def _processFolderBatch(self, conn, folder_path, by_uid):
     """Called asynchronously by a queue consumer"""
-    conn.select(folder_path) # should check if it already is selected?
+    conn.select_folder(folder_path, True) # should check if it already is selected?
     acct_id = self.account.details.get('id')
     num = 0
     # fetch most-recent (highest UID) first...
@@ -740,27 +606,15 @@ class ImapProvider(object):
       logger.debug("starting fetch of %d items from %r (%d bytes)",
                    len(this), folder_path, nbytes)
       to_fetch = ",".join(str(v) for v in this)
-      # We need to use fetchSpecific so we can 'peek' (ie, not reset the
-      # \\Seen flag) - note that gmail does *not* reset the \\Seen flag on
-      # a fetchMessages, but rfc-compliant servers do...
-      results = yield conn.fetchSpecific(to_fetch, uid=True, peek=True)
+      results = conn.fetch(to_fetch, ("BODY.PEEK[]",))
       logger.debug("fetch from %r got %d", folder_path, len(results))
-      #results = yield conn.fetchMessage(to_fetch, uid=True)
+      #results = conn.fetchMessage(to_fetch, uid=True)
       # Run over the results stashing in our by_uid dict.
       infos = []
-      for info in results.values():
-        # hrmph - fetchSpecific's return value is undocumented and strange!
-        assert len(info)==1
-        uidlit, uid, bodylit, req_data, content = info[0]
-        assert uidlit=='UID'
-        assert bodylit=='BODY'
-        assert not req_data, req_data # we didn't request headers etc.
-        uid = int(uid)
-        # but if we used fetchMessage:
-        #   uid = int(info['UID'])
-        #   content = info['RFC822']
+      for uid, info in results.iteritems():
         flags = by_uid[uid]['FLAGS']
         rdkey = by_uid[uid]['RAINDROP_KEY']
+        content = info['BODY[]']
         mid = rdkey[-1]
         # XXX - we need something to make this truly unique.
         logger.debug("new imap message %r (flags=%s)", mid, flags)
@@ -776,8 +630,8 @@ class ImapProvider(object):
                       'items': {},
                       'attachments': attachments,})
       num += len(infos)
-      _ = yield self.write_items(infos)
-    defer.returnValue(num)
+      self.write_items(infos)
+    return num
 
   def shouldFetchMessage(self, msg_info):
     if "\\deleted" in [f.lower() for f in msg_info['FLAGS']]:
@@ -806,16 +660,15 @@ class ImapUpdater:
     self.doc_model = account.doc_model
 
   # Outgoing items related to IMAP - eg, \\Seen flags, deleted, etc...
-  @defer.inlineCallbacks
   def handle_outgoing(self, conductor, src_doc, dest_doc):
     account = self.account
     # Establish a connection to the server
     logger.debug("setting flags for %(rd_key)r: folder %(folder)r, uuid %(uid)s",
                  dest_doc)
-    client = yield get_connection(account, conductor)
-    _ = yield client.select(dest_doc['folder'])
+    client = get_connection(account, conductor)
+    client.select_folder(dest_doc['folder'])
     # Write the fact we are about to try and (un-)set the flag.
-    _ = yield account._update_sent_state(src_doc, 'sending')
+    account._update_sent_state(src_doc, 'sending')
     try:
       try:
         # *sigh* - twisted doesn't encode the flags.
@@ -835,20 +688,18 @@ class ImapUpdater:
       # XXX - we need to differentiate between a 'fatal' error, such as
       # when the message has been deleted, or a transient error which can be
       # retried.  For now, assume retryable...
-      _ = yield account._update_sent_state(src_doc, 'error', exc,
+      account._update_sent_state(src_doc, 'error', exc,
                                            outgoing_state='outgoing')
     else:
-      _ = yield account._update_sent_state(src_doc, 'sent')
+      account._update_sent_state(src_doc, 'sent')
       logger.debug("successfully adjusted flags for %(rd_key)r", src_doc)
     client.logout()
     defer.returnValue(True)
 
-
-def failure_to_status(failure):
-  exc = failure.value
+def failure_to_status(exc):
   what = brat.SERVER
   duration = brat.TEMPORARY
-  if isinstance(exc, error.ConnectionRefusedError):
+  if isinstance(exc, socket.error) and exc.errno==errno.ECONNREFUSED:
     why = brat.UNREACHABLE
   elif isinstance(exc, IMAP4AuthException):
     what = brat.ACCOUNT
@@ -857,109 +708,100 @@ def failure_to_status(failure):
     # it isn't clear how to differentiate a "bad password" response (which
     # is permanent) from a 'too many concurrent connections' type response
     # which is temporary - so we assume all are temporary.
-  elif isinstance(exc, error.TimeoutError):
+  elif isinstance(exc, socket.timeout):
     why = brat.TIMEOUT
+  elif isinstance(exc, imapclient.IMAPClient.Error):
+    logger.warn('unexpected IMAP error: %s', exc)
+    why = brat.UNKNOWN
   else:
+    logger.exception('unexpected exception')
     why = brat.UNKNOWN
   return {'what': what,
           'state': brat.BAD,
           'why': why,
           'duration': duration,
-          'message': failure.getErrorMessage()}
+          'message': str(exc)}
+
+def _do_get_connection(account, conductor):
+  details = account.details
+  host = details.get('host')
+  is_gmail = details.get('kind')=='gmail'
+  if not host and is_gmail:
+    host = 'imap.gmail.com'
+  if not host:
+    raise ValueError, "this account has no 'host' configured"
+
+  ssl = details.get('ssl')
+  if ssl is None and is_gmail:
+    ssl = True
+  port = details.get('port')
+  if not port:
+    port = 993 if ssl else 143
+
+  if details.get('crypto') == 'TLS':
+    # a few options exist here, but none of them great.
+    # Notably, the "TLS Lite" package and http://bugs.python.org/issue4471
+    raise RuntimeError, "hrm - need TLS support"
+  logger.debug('attempting to connect to %s:%d (ssl: %s)', host, port, ssl)
+  # oh man, this sucks...
+  cto = details.get('timeout_connect', account.def_timeout_connect)
+  rto = details.get('timeout_response', account.def_timeout_response)
+  imaplib.IMAP4.connection_timeout = cto
+  imaplib.IMAP4.response_timeout = rto
+  ret = imapclient.IMAPClient(host, port, ssl=ssl)
+  do_oauth = ret.has_capability('AUTH=XOAUTH')
+  if do_oauth:
+    if not xoauth.AcctInfoSupportsOAuth(details):
+      logger.warn("This server supports OAUTH but no tokens or secrets are available to use - falling back to password")
+      do_oauth = False
+    else:
+      logger.info("logging into account %r via oauth", details['id'])
+
+  if do_oauth:
+    xoauth_string = xoauth.GenerateXOauthStringFromAcctInfo('imap', details)
+    try:
+      ret._imap.authenticate('XOAUTH', lambda x: xoauth_string)
+    except ret.Error, exc:
+      raise IMAP4AuthException(account.OAUTH, exc.args[0])
+  else:
+    if 'username' not in details or 'password' not in details:
+      raise ValueError, "Account has no username or password"
+    # XXX - is this encoding of 'username' correct?  We've already determined
+    # experimentally it is *not* correct for the password...
+    try:
+      ret.login(encode_imap_utf7(details['username']), details['password'])
+    except ret.Error, exc:
+      raise IMAP4AuthException(account.PASSWORD, exc.args[0])
+  account.reportStatus(brat.EVERYTHING, brat.GOOD)
+  return ret
+
+RETRYABLE_EXCEPTIONS = (imaplib.IMAP4.abort, imaplib.IMAP4.error,
+                        socket.timeout, socket.error, IMAP4AuthException)
 
 def get_connection(account, conductor):
-    ready = defer.Deferred()
-    _do_get_connection(account, conductor, ready, NUM_CONNECT_RETRIES, RETRY_BACKOFF)
-    return ready
+  acct_id = account.details['id']
+
+  def _on_connection_failed(exc):
+    account.reportStatus(**failure_to_status(exc))
+    if not isinstance(exc, RETRYABLE_EXCEPTIONS):
+      raise
+    logger.info("Failed to get a connection for '%s' - will retry: %s",
+                acct_id, exc)
+
+  return conductor.apply_with_retry(account, _on_connection_failed,
+                                    _do_get_connection, account, conductor)
 
 
-@defer.inlineCallbacks  
-def _do_get_connection(account, conductor, ready, retries_left, backoff):
-    this_ready = defer.Deferred()
-    factory = ImapClientFactory(account, conductor, this_ready)
-    factory.connect()
+def drop_connection(conn):
+  if conn is not None:
     try:
-      conn = yield this_ready
-      # yay - report we are good and tell the real callback we have it.
-      account.reportStatus(brat.EVERYTHING, brat.GOOD)
-      ready.callback(conn)
+      conn.logout()
+    except imaplib.IMAP4.error:
+      # *sometimes* we get a connection lost exception trying this.
+      # Is it possible gmail just aborts the connection?
+      logger.debug("ignoring ConnectionLost exception when logging out")
     except Exception, exc:
-      fail = Failure()
-      logger.debug("first chance connection error handling: %s\n%s",
-                   fail.getErrorMessage(), fail.getBriefTraceback())
-      retries_left -= 1
-      if retries_left <= 0:
-        ready.errback(fail)
-      else:
-        status = failure_to_status(fail)
-        account.reportStatus(**status)
-        acct_id = account.details.get('id','')
-        if status.get('duration') == account.PERMANENT:
-          logger.error('Permanent failure connecting to account %r: %s',
-                       acct_id, fail.getErrorMessage())
-          ready.errback(fail)
-        else:
-          logger.warning('Failed to connect to account %r, will retry after %s secs: %s',
-                         acct_id, backoff, fail.getErrorMessage())
-          next_backoff = min(backoff * 2, MAX_BACKOFF) # magic number
-          conductor.reactor.callLater(backoff,
-                                      _do_get_connection,
-                                      account, conductor, ready,
-                                      retries_left, next_backoff)
-
-
-class ImapClientFactory(protocol.ClientFactory):
-  protocol = ImapClient
-  def __init__(self, account, conductor, def_ready):
-    # base-class has no __init__
-    self.account = account
-    self.conductor = conductor
-    self.doc_model = account.doc_model # this is a little confused...
-    # The deferred triggered after connection and the greeting/auth handshake
-    self.def_ready = def_ready
-    self.ctx = ssl.ClientContextFactory()
-
-  def buildProtocol(self, addr):
-    p = self.protocol(self.ctx)
-    p.factory = self
-    p.account = self.account
-    p.doc_model = self.account.doc_model
-    p.deferred = self.def_ready
-    return p
-
-  def clientConnectionFailed(self, connector, reason):
-    logger.debug("clientConnectionFailed: %s", reason)
-    d, self.def_ready = self.def_ready, None
-    d.errback(reason)
-
-  def clientConnectionLost(self, connector, reason):
-    # this is called even for 'normal' and explicit disconnections; debug
-    # logging might help diagnose other problems though...
-    logger.debug("clientConnectionLost: %s", reason)
-
-  def connect(self):
-    details = self.account.details
-    host = details.get('host')
-    is_gmail = details.get('kind')=='gmail'
-    if not host and is_gmail:
-      host = 'imap.gmail.com'
-    if not host:
-      raise ValueError, "this account has no 'host' configured"
-
-    ssl = details.get('ssl')
-    if ssl is None and is_gmail:
-      ssl = True
-    port = details.get('port')
-    if not port:
-      port = 993 if ssl else 143
-
-    logger.debug('attempting to connect to %s:%d (ssl: %s)', host, port, ssl)
-    reactor = self.conductor.reactor
-    if ssl:
-      ret = reactor.connectSSL(host, port, self, self.ctx)
-    else:
-      ret = reactor.connectTCP(host, port, self)
-    return ret
+      log_exception('failed to logout from the connection')
 
 
 class IMAPAccount(base.AccountBase):
@@ -978,162 +820,111 @@ class IMAPAccount(base.AccountBase):
     updater = ImapUpdater(self, conductor)
     return updater.handle_outgoing(conductor, src_doc, dest_doc)
 
-  @defer.inlineCallbacks
   def startSync(self, conductor, options):
+    done = threading.Event()
     prov = ImapProvider(self, conductor, options)
 
-    @defer.inlineCallbacks
-    def consume_connection_queue(q, def_done, retries_left=None, backoff=None):
-      if retries_left is None: retries_left = NUM_CONNECT_RETRIES
-      if backoff is None: backoff = RETRY_BACKOFF
-      try:
-        _ = yield _do_consume_connection_queue(q, def_done, retries_left, backoff)
-      except GeneratorExit: # ahh, the joys of twisted and errors...
-        logger.info("connection queue terminating prematurely")
-        def_done.errback(Failure())
-      except Exception:
-        # We only get here when all retries etc have failed and a queue has
-        # given up for good.
-        acct_id = self.details.get('id','')
-        log_exception("failed to process a queue for account %r", acct_id)
-        def_done.errback(Failure())
-
-    @defer.inlineCallbacks
-    def _do_consume_connection_queue(q, def_done, retries_left, backoff):
+    def consume_connection_queue(q):
       """Processes the query queue."""
-      conn = None
+      acct_id = self.details['id']
+      qitem = None
+      context = {'conn': None}
       try:
         while True:
-          result = yield q.get()
-          if result is None:
+          qitem = q.get()
+          if qitem is None:
             logger.debug('queue processor stopping')
             q.put(None) # tell other consumers to stop
-            def_done.callback(None)
             break
-          seeder, func, xargs = result
-          # else a real item to process.
-          if conn is None or conn.tags is None:
-            if conn is not None:
-              logger.warn('unexpected IMAP connection failure - reconnecting')
-            # getting the initial connection has its own retry semantics
-            try:
-              conn = yield get_connection(self, conductor)
-              assert conn.tags is not None, "got disconnected connection??"
-            except:
-              # can't get a connection - must re-add the item to the queue
-              # then re-throw the error back out so this queue stops.
-              if seeder:
-                q.put(None) # give up and let all consumers stop.
-              else:
-                q.put(result) # retry - if we wind up failing later, big deal...
+          seeder, func, xargs = qitem
+          # a real item to process.
+          # Have a connection - do the work.
+          def _doit():
+            if context['conn'] is None:
+              context['conn'] = get_connection(self, conductor)
+            args = (context['conn'],) + xargs
+            func(*args)
+
+          def _on_failure(exc):
+            self.reportStatus(**failure_to_status(exc))
+            if not isinstance(exc, RETRYABLE_EXCEPTIONS):
               raise
+            logger.warning('Failed to process queue for %r (%s) - will retry',
+                           acct_id, exc)
+            drop_connection(context['conn'])
+            context['conn'] = None
+
           try:
-            args = (conn,) + xargs
-            _ = yield func(*args)
-            # if we got this far we successfully processed an item - report that.
-            self.reportStatus(brat.EVERYTHING, brat.GOOD)
-            # It is possible the server disconnected *after* sending a
-            # response - handle it here so we get a more specific log message.
-            if conn.tags is None:
-              logger.warn("unexpected connection failure after calling %r", func)
-              logger.log(1, "arguments were %s", xargs)
-              self.reportStatus(brat.SERVER, brat.BAD)
-              conn = None
-          except imap4.IMAP4Exception, exc:
-            # put the item back in the queue for later or for another successful
-            # connection.
-            q.put(result)
-  
-            retries_left -= 1
-            if retries_left <= 0:
-              # We are going to give up on this entire connection...
-              if seeder:
-                # If this is the queue seeder, we must post a stop request.
-                q.put(None)
-              raise
-            fail = Failure()
-            status = failure_to_status(fail)
-            self.reportStatus(**status)
-            logger.warning('Failed to process queue, will retry after %s secs: %s',
-                           backoff, fail.getErrorMessage())
-            next_backoff = min(backoff * 2, MAX_BACKOFF) # magic number
-            conductor.reactor.callLater(backoff,
-                                        consume_connection_queue,
-                                        q, def_done, retries_left, next_backoff)
-            return
-          except Exception:
-            if not conductor.reactor.running:
-              break
-            # some other bizarre error - just skip this batch and continue
-            self.reportStatus(**failure_to_status(Failure()))
+            conductor.apply_with_retry(self, _on_failure, _doit)
+          except Exception, exc:
+            # some other error, or the 'retry' failed - just skip this req
+            # and continue
+            drop_connection(context['conn'])
+            context['conn'] = None
+            self.reportStatus(**failure_to_status(exc))
             log_exception('failed to process an IMAP query request for account %r',
-                          self.details.get('id',''))
-            # This was the queue seeding request; looping again to fetch a
-            # queue item is likely to hang (as nothing else is in there)
-            # There is no point doing a retry; this doesn't seem to be
-            # connection or server related; so post a stop request and bail.
+                          acct_id)
             if seeder:
               q.put(None)
-              raise
       finally:
-        # checking conn.tags is the only reliable way I can see to detect
-        # premature disconnection inside twisted etc...
-        if conn is not None and conn.tags is not None:
-          # should be no need to ever 'close' - we can re-select new mailboxes
-          # or just disconnect with logout...
-          try:
-            _ = yield conn.logout()
-          except error.ConnectionLost:
-            # *sometimes* we get a connection lost exception trying this.
-            # Is it possible gmail just aborts the connection?
-            logger.debug("ignoring ConnectionLost exception when logging out")
-          except Exception:
-            log_exception('failed to logout from the connection')
-          # and we are done (we've probably already lost the connection whe
-          # doing the logout, but better safe than sorry...)
-          try:
-            _ = yield defer.maybeDeferred(conn.transport.loseConnection)
-          except Exception:
-            log_exception("failed to drop the connection")
+        drop_connection(context['conn'])
 
-    @defer.inlineCallbacks
-    def start_queryers(n):
-      ds = []
+    def run_queryers(n):
+      threads = []
       for i in range(n):
-        d = defer.Deferred()
-        consume_connection_queue(prov.query_queue, d)
-        ds.append(d)
-      _ = yield defer.DeferredList(ds)
+        t = threading.Thread(target=consume_connection_queue,
+                             args=(prov.query_queue,))
+        t.start()
+        threads.append(t)
+      # wait for them all to complete
+      for t in threads:
+        t.join()
       # queryers done - post to the fetch queue telling it everything is done.
       acid = self.details.get('id','')
       logger.info('%r imap querying complete - waiting for fetch queue',
                   acid)
       prov.fetch_queue.put(None)
 
-    @defer.inlineCallbacks
-    def start_fetchers(n):
-      ds = []
+    def run_fetchers(n):
+      threads = []
       for i in range(n):
-        d = defer.Deferred()
-        consume_connection_queue(prov.fetch_queue, d)
-        ds.append(d)
-      _ = yield defer.DeferredList(ds)
+        t = threading.Thread(target=consume_connection_queue,
+                             args=(prov.fetch_queue,))
+        t.start()
+        threads.append(t)
+      for t in threads:
+        t.join()
       # fetchers done - write the cache docs last.
       if prov.updated_folder_infos:
-        _ = yield prov.write_items(prov.updated_folder_infos)
+        prov.write_items(prov.updated_folder_infos)
 
-    @defer.inlineCallbacks
     def start_producing(conn):
-      _ = yield prov._reqList(conn)
+      prov._reqList(conn)
 
-    def log_status():
-      nf = sum(len(i[2][1]) for i in prov.fetch_queue.pending if i is not None)
-      if nf:
-        logger.info('%r fetch queue has %d messages',
-                    self.details.get('id',''), nf)
+    def log_status(until_threads):
+      alive_threads = until_threads[:]
+      next = time.time() + 10
+      while alive_threads:
+        t = alive_threads[0]
+        t.join(timeout=next-time.time())
+        if t.isAlive():
+          # timed-out.
+          # A RuntimeError can happen if the queue mutates while we are
+          # counting
+          for i in range(5):
+            try:
+              nf = sum(len(i[2][1]) for i in prov.fetch_queue.queue if i is not None)
+              if nf:
+                logger.info('%r fetch queue has %d messages',
+                            self.details.get('id',''), nf)
+              break
+            except RuntimeError:
+              pass
+          next = time.time() + 10
+        else:
+          # this thread has stopped.
+          alive_threads.pop(0)
 
-    lc = task.LoopingCall(log_status)
-    lc.start(10)
     # put something in the fetch queue to fire things off, noting that
     # this is the 'queue seeder' - it *must* succeed so it writes a None to
     # the end of the queue so the queue stops.  The retry semantics of the
@@ -1143,10 +934,18 @@ class IMAPAccount(base.AccountBase):
     prov.query_queue.put((True, start_producing, ()))
 
     # fire off the producer and queue consumers.
-    _ = yield defer.DeferredList([start_queryers(NUM_QUERYERS),
-                                  start_fetchers(NUM_FETCHERS)])
-
-    lc.stop()
+    threads = []
+    threads.append(threading.Thread(target=run_queryers,
+                                    args=(NUM_QUERYERS,)))
+    threads.append(threading.Thread(target=run_fetchers,
+                                    args=(NUM_FETCHERS,)))
+    for t in threads:
+      t.start()
+    status_thread = threading.Thread(target=log_status, args=(threads,))
+    status_thread.start()
+    for t in threads:
+      t.join()
+    status_thread.join()
 
   def get_identities(self):
     addresses = self.details.get('addresses')

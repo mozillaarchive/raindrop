@@ -23,7 +23,6 @@
 
 import logging
 import time
-from twisted.internet import defer
 
 __all__ = ['Rat', 'AccountBase', 'OutgoingAccountBase']
 
@@ -107,6 +106,13 @@ class Rat(object):
 
 class AccountBase(Rat):
   rd_outgoing_schemas = None # list of 'raw' schemas we can send.
+  # magic numbers defaults - read from self.details (and therefore via couch)
+  def_retry_count = 4
+  def_retry_backoff = 8 # seconds
+  def_retry_backoff_max = 60 # seconds
+  def_timeout_response = 60*5
+  def_timeout_connect = 20
+
   def __init__(self, doc_model, details):
     self.doc_model = doc_model
     self.details = details
@@ -171,7 +177,6 @@ class AccountBase(Rat):
     return False
 
   # helper function to manage the 'sent state' for an item.
-  @defer.inlineCallbacks
   def _update_sent_state(self, src_doc, new_state, reason=None, message=None,
                          outgoing_state=None):
     # update the doc
@@ -192,8 +197,7 @@ class AccountBase(Rat):
         outgoing_state = new_state
     src_doc['outgoing_state'] = outgoing_state
     assert '_id' in src_doc and '_rev' in src_doc, src_doc
-    did = self.doc_model.quote_id(src_doc['_id'])
-    result = yield self.doc_model.db.saveDoc(src_doc, did)
+    result = self.doc_model.update_documents([src_doc])[0]
     # track the _rev for next time...
     src_doc['_rev'] = result['rev']
     logger.debug('set sent state to %(sent_state)r at rev %(_rev)s', src_doc)

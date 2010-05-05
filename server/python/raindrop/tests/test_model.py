@@ -2,8 +2,6 @@
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
 from raindrop.model import get_doc_model
 
-from twisted.internet import defer
-
 class TestSchemas(TestCaseWithTestDB):
     def _make_test_schema_item(self, attach_data="hello\0there"):
         items = {'field' : 'value',
@@ -135,34 +133,31 @@ class TestSchemas(TestCaseWithTestDB):
         # si2 should be the only schema left
         self._check_only_schema_in_doc(doc, si2)
 
-    @defer.inlineCallbacks
     def test_create_single_item(self):
         si = self._make_test_schema_item()
-        info = (yield self.doc_model.create_schema_items([si]))[0]
-        doc = (yield self.doc_model.open_documents_by_id([info['id']],
-                                                         attachments=True))[0]
+        info = self.doc_model.create_schema_items([si])[0]
+        doc = self.doc_model.open_documents_by_id([info['id']],
+                                                  attachments=True)[0]
         self._check_only_schema_in_doc(doc, si)
 
-    @defer.inlineCallbacks
     def test_create_remove_single_item(self):
         si = self._make_test_schema_item()
-        info = (yield self.doc_model.create_schema_items([si]))[0]
+        info = self.doc_model.create_schema_items([si])[0]
         si['_deleted'] = True
         si['_rev'] = info['rev']
-        info = (yield self.doc_model.create_schema_items([si]))[0]
+        info = self.doc_model.create_schema_items([si])[0]
         # attempt to open the doc - we should get back none.
-        doc = (yield self.doc_model.open_documents_by_id([info['id']]))[0]
+        doc = self.doc_model.open_documents_by_id([info['id']])[0]
         self.failUnlessEqual(doc, None)
 
 
 class TestAttachments(TestCaseWithTestDB):
-    @defer.inlineCallbacks
     def _check_rev_last(self, id, rev, attach_data):
-        docs = yield self.doc_model.open_documents_by_id([id])
+        docs = self.doc_model.open_documents_by_id([id])
         self.failUnlessEqual(len(docs), 1)
         self.failUnlessEqual(docs[0]['_id'], id)
         self.failUnlessEqual(docs[0]['_rev'], rev)
-        got = yield self.doc_model.db.openDoc(id, attachment='rd.testsuite/test')
+        got = self.doc_model.db.openDoc(id, attachment='rd.testsuite/test')
         # first test lengths are the same to mostly avoid dumping big strings
         self.failUnlessEqual(len(got), len(attach_data))
         self.failUnlessEqual(got, attach_data)
@@ -182,22 +177,19 @@ class TestAttachments(TestCaseWithTestDB):
               }
         return si
 
-    @defer.inlineCallbacks
     def test_create_schema_items_small(self, attach_data='foo\0bar'):
         si = self._make_test_schema_item(attach_data)
-        ret = yield self.doc_model.create_schema_items([si])
-        _ = yield self._check_rev_last(ret[0]['id'], ret[0]['rev'], attach_data)
+        ret = self.doc_model.create_schema_items([si])
+        self._check_rev_last(ret[0]['id'], ret[0]['rev'], attach_data)
 
-    @defer.inlineCallbacks
     def test_create_schema_items_large(self):
         data = '\0' * (self.doc_model.MAX_INLINE_ATTACH_SIZE+10)
-        _ = yield self.test_create_schema_items_small(data)
+        self.test_create_schema_items_small(data)
 
-    @defer.inlineCallbacks
     def test_update_docs_small(self, attach_data='foo\0bar'):
         si = self._make_test_schema_item(attach_data)
-        ret = yield self.doc_model.create_schema_items([si])
-        docs = yield self.doc_model.open_documents_by_id([ret[0]['id']])
+        ret = self.doc_model.create_schema_items([si])
+        docs = self.doc_model.open_documents_by_id([ret[0]['id']])
         doc = docs[0]
         doc['field'] = 'new_value'
         doc['_attachments'] = {'rd.testsuite/test' :
@@ -205,10 +197,9 @@ class TestAttachments(TestCaseWithTestDB):
                                  'content_type': 'application/octect-stream',
                                 }
                               }
-        ret = yield self.doc_model.update_documents([doc])
-        _ = yield self._check_rev_last(ret[0]['id'], ret[0]['rev'], attach_data*2)
+        ret = self.doc_model.update_documents([doc])
+        self._check_rev_last(ret[0]['id'], ret[0]['rev'], attach_data*2)
 
-    @defer.inlineCallbacks
     def test_update_docs_large(self, attach_data='foo\0bar'):
         data = '\0' * (self.doc_model.MAX_INLINE_ATTACH_SIZE+10)
-        _ = yield self.test_update_docs_small(data)
+        self.test_update_docs_small(data)

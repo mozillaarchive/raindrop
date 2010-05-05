@@ -1,13 +1,17 @@
 # The raindrop test suite...
 from __future__ import with_statement
 
+import sys
 import os
 import glob
 import base64
+import time
 from email import message_from_string
-from twisted.trial import unittest
-from twisted.internet import defer
-from twisted.web.error import Error
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 try:
     import json
@@ -16,7 +20,7 @@ except ImportError:
 
 import raindrop.config
 from raindrop.model import get_db, fab_db, get_doc_model
-from ..pipeline import Pipeline
+import raindrop.pipeline
 from raindrop import bootstrap
 from raindrop import sync
 from raindrop.proto.imap import get_rdkey_for_email
@@ -30,6 +34,7 @@ import logging
 logging.basicConfig()
 if 'RAINDROP_LOG_LEVELS' in os.environ:
     # duplicated from run-raindrop...
+    init_errors = []
     for val in os.environ['RAINDROP_LOG_LEVELS'].split(';'):
         try:
             name, level = val.split("=", 1)
@@ -48,6 +53,8 @@ if 'RAINDROP_LOG_LEVELS' in os.environ:
                 continue
         l = logging.getLogger(name)
         l.setLevel(level)
+    for e in init_errors:
+        logging.getLogger().error(e)
 
 
 class TestLogHandler(logging.Handler):
@@ -73,6 +80,7 @@ class FakeOptions:
     no_process = False
     repeat_after = 0
     folders = []
+    max_age = 0
     continuous = False
 
 class TestCase(unittest.TestCase):
@@ -104,21 +112,19 @@ class TestCase(unittest.TestCase):
         return unittest.TestCase.tearDown(self)
 
 class TestCaseWithDB(TestCase):
-    @defer.inlineCallbacks
     def tearDown(self):
         if self.pipeline is not None:
-            _ = yield self.pipeline.finalize()
-        _ = yield TestCase.tearDown(self)
+            self.pipeline.finalize()
+        TestCase.tearDown(self)
 
     def get_options(self):
         opts = FakeOptions()
         return opts
 
-    @defer.inlineCallbacks
     def ensure_pipeline_complete(self, n_expected_errors=0):
         # later we will support *both* backlog and incoming at the
         # same time, but currently the test suite done one or the other...
-        nerr = yield self.pipeline.start_processing(False, None)
+        nerr = self.pipeline.start_processing(None)
         self.failUnlessEqual(n_expected_errors, nerr)
 
     """A test case that is setup to work with a temp database"""
@@ -126,34 +132,15 @@ class TestCaseWithDB(TestCase):
         # change the name of the DB used.
         dbinfo = config.couches['local']
         # then blindly nuke it.
-        db = get_db('local', None)
-        def _nuke_failed(failure, retries_left):
-            # worm around a bug on windows in couch 0.9:
-            # https://issues.apache.org/jira/browse/COUCHDB-326
-            # We just need to wait a little and try again...
-            failure.trap(Error)
-            if failure.value.status == '500' and retries_left:
-                import time;time.sleep(0.5)
-                return db.deleteDB(dbinfo['name']
-                    ).addCallbacks(_nuked_ok, _nuke_failed,
-                                   errbackArgs=(retries_left-1,)
-                    )
+        db = get_db('local', dbinfo['name'])
 
-            if failure.value.status != '404':
-                failure.raiseException()
-
-        def _nuked_ok(d):
-            pass
-
-        @defer.inlineCallbacks
-        def del_non_test_accounts(result):
+        def del_non_test_accounts():
             # 'insert_default_docs' may have created an account (eg RSS) which
             # may get in the way of testing; nuke any which aren't in our
             # config.
-            got = yield db.openView(dbinfo['name'],
-                                    'raindrop!content!all', 'megaview',
-                                    key=['schema_id', 'rd.account'],
-                                    include_docs=True, reduce=False)
+            got = db.openView('raindrop!content!all', 'megaview',
+                              key=['schema_id', 'rd.account'],
+                              include_docs=True, reduce=False)
             wanted_ids = set(acct['id']
                              for acct in config.accounts.itervalues())
             to_del = [{'_id': r['doc']['_id'],
@@ -161,40 +148,33 @@ class TestCaseWithDB(TestCase):
                        '_deleted': True,
                        }
                       for r in got['rows'] if r['doc']['id'] not in wanted_ids]
-            _ = yield db.updateDocuments(dbinfo['name'], to_del)
+            db.updateDocuments(to_del)
 
+        db.deleteDB()
+        fab_db()
         opts = self.get_options()
-        return db.deleteDB(dbinfo['name']
-                ).addCallbacks(_nuked_ok, _nuke_failed, errbackArgs=(5,)
-                ).addCallback(fab_db
-                ).addCallback(bootstrap.install_views, opts
-                ).addCallback(bootstrap.check_accounts, config
-                # client files are expensive (particularly dojo) and not
-                # necessary yet...
-                #).addCallback(bootstrap.install_client_files, opts
-                #).addCallback(bootstrap.update_apps
-                ).addCallback(bootstrap.insert_default_docs, opts
-                ).addCallback(del_non_test_accounts
-                )
-
-    def failUnlessView(self, did, vid, expect, **kw):
-        # Expect is a list of (key, value) tuples.  couch always returns
-        # sorted keys, so we can just sort the expected items.
-        def check_result(result):
-            sexpect = sorted(expect)
-            ex_keys = [i[0] for i in sexpect]
-            got_keys = [r['key'] for r in result['rows']]
-            self.failUnlessEqual(got_keys, ex_keys)
-            ex_vals = [i[1] for i in sexpect]
-            got_vals = [r['value'] for r in result['rows']]
-            self.failUnlessEqual(got_vals, ex_vals)
-
-        return self.get_doc_model().open_view(did, vid, **kw
-                    ).addCallback(check_result
-                    )
-
-    def deferFailUnlessView(self, result, *args, **kw):
-        return self.failUnlessView(*args, **kw)
+        bootstrap.install_views(opts)       
+        bootstrap.check_accounts(config)
+        bootstrap.install_views(opts)
+        # client files are expensive (particularly dojo) and not
+        # necessary yet...
+        #bootstrap.install_client_files(opts)
+        #bootstrap.update_apps()
+        bootstrap.insert_default_docs(opts)
+        del_non_test_accounts()
+        if not getattr(self, 'no_sync_status_doc', False):
+            # and make a dummy 'sync-status' doc so we don't attempt to send
+            # welcome emails.
+            items = {'new_items': 0,
+                     'num_syncs': 2,
+            }
+            si = {'rd_key': ["raindrop", "sync-status"],
+                  'rd_schema_id': 'rd.core.sync-status',
+                  'rd_source': None,
+                  'rd_ext_id': 'rd.core',
+                  'items': items,
+            }
+            self.doc_model.create_schema_items([si])
 
     def failUnlessDocEqual(self, doc, expected_doc):
         # Generate a list of the properties of the document.
@@ -216,22 +196,20 @@ class TestCaseWithDB(TestCase):
             self.failUnlessEqual(doc[property], expected_doc[property],
                                  repr(doc['rd_key']) + '::' + property)
         
-
 class TestCaseWithTestDB(TestCaseWithDB):
     """A test case that is setup to work with a temp database pre-populated
     with 'test protocol' raw messages.
     """
-    @defer.inlineCallbacks
     def setUp(self):
+        TestCaseWithDB.setUp(self)
         self._conductor = None
-        _ = yield TestCaseWithDB.setUp(self)
         raindrop.config.CONFIG = None
         self.config = self.make_config()
         opts = self.get_options()
         self.doc_model = get_doc_model()
-        self.pipeline = Pipeline(self.doc_model, opts)
-        _ = yield self.prepare_test_db(self.config)
-        _ = yield self.pipeline.initialize()
+        self.pipeline = raindrop.pipeline.Pipeline(self.doc_model, opts)
+        self.prepare_test_db(self.config)
+        self.pipeline.initialize()
 
     def make_config(self):
         # change the name of the DB used.
@@ -250,19 +228,16 @@ class TestCaseWithTestDB(TestCaseWithDB):
         acct['id'] = 'test'
         return config
 
-    @defer.inlineCallbacks
     def get_conductor(self):
         if self._conductor is None:
-            self._conductor = yield sync.get_conductor(self.pipeline)
-        defer.returnValue(self._conductor)
+            self._conductor = sync.get_conductor(self.pipeline)
+        return self._conductor
 
-    @defer.inlineCallbacks
     def deferMakeAnotherTestMessage(self, _):
         # We need to reach into the impl to trick the test protocol
         test_proto.test_num_test_docs += 1
-        c = yield self.get_conductor()
-        _ = yield c.sync(self.pipeline.options)
-
+        c = self.get_conductor()
+        c.sync(self.pipeline.options, wait=True)
 
 class TestCaseWithCorpus(TestCaseWithDB):
     def prepare_corpus_environment(self, corpus_name):
@@ -275,10 +250,9 @@ class TestCaseWithCorpus(TestCaseWithDB):
         dbinfo['port'] = 5984
         opts = self.get_options()
         self.doc_model = get_doc_model()
-        self.pipeline = Pipeline(self.doc_model, opts)
-        return self.prepare_test_db(self.config
-            ).addCallback(lambda _: self.pipeline.initialize()
-            )
+        self.pipeline = raindrop.pipeline.Pipeline(self.doc_model, opts)
+        self.prepare_test_db(self.config)
+        self.pipeline.initialize()
 
     def rfc822_to_schema_item(self, fp):
         data = fp.read() # we need to use the data twice...
@@ -352,14 +326,12 @@ class TestCaseWithCorpus(TestCaseWithDB):
         self.failUnless(num, "failed to load any docs from %r matching %r" %
                         (corpus_name, item_spec))
 
-    @defer.inlineCallbacks
     def init_corpus(self, corpus_name):
-        _ = yield self.prepare_corpus_environment(corpus_name)
+        self.prepare_corpus_environment(corpus_name)
 
-    @defer.inlineCallbacks
     def load_corpus(self, corpus_name, corpus_spec="*"):
-        _ = yield self.init_corpus(corpus_name)
+        self.init_corpus(corpus_name)
         items = [i for i in self.gen_corpus_schema_items(corpus_name, corpus_spec)]
         # this will do until we get lots...
-        _ = yield self.doc_model.create_schema_items(items)
-        defer.returnValue(len(items))
+        self.doc_model.create_schema_items(items)
+        return len(items)

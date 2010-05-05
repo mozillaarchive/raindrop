@@ -25,15 +25,12 @@
 # data from the feed - extensions then do all the heavy lifting.
 
 import logging
-from twisted.internet import protocol, ssl, defer, error
-from twisted.web.client import HTTPClientFactory
-import twisted.web.error
 from ..proc import base
 from urlparse import urlparse
+import httplib2
 
 logger = logging.getLogger(__name__)
 
-@defer.inlineCallbacks
 def maybe_update_doc(conductor, doc_model, doc, options):
     uri = doc['uri'].encode("utf-8")
     parsed = urlparse(uri)
@@ -43,65 +40,66 @@ def maybe_update_doc(conductor, doc_model, doc, options):
         doc_headers = doc['headers']
         if 'date-modified' in doc_headers:
             req_headers['If-Modified-Since'] = \
-                    doc_headers['date-modified'][0].encode('utf-8')
+                    doc_headers['date-modified'].encode('utf-8')
         if 'etag' in doc_headers:
-            req_headers['If-None-Match'] = doc_headers['etag'][0].encode('utf-8')
+            req_headers['If-None-Match'] = doc_headers['etag'].encode('utf-8')
 
     # Issue the request.
-    if parsed.scheme == 'http':
-        # Note we *must* use the full uri here and not just the path portion
-        # or getsatisfaction returns invalid urls...
-        factory = HTTPClientFactory(uri, headers=req_headers)
-    else:
+    if parsed.scheme != 'http':
         logger.error("Can't fetch URI %r - unknown scheme", uri)
         return
-    from twisted.internet import reactor
-    reactor.connectTCP(parsed.hostname, parsed.port or 80, factory)
+
+    # Note we *must* use the full uri here and not just the path portion
+    # or getsatisfaction returns invalid urls...
     try:
-        result = yield factory.deferred
-    except twisted.web.error.Error, exc:
-        if exc.status == '304':
-            # yay - nothing to update!
-            logger.info('rss feed %r is up-to-date', uri)
-            return
-        logger.error("fetching rss feed %r failed: %s", uri, exc)
+        conn = httplib2.Http()
+        response, content = conn.request(uri, headers=req_headers)
+    except Exception:
+        logger.exception("fetching rss feed %r failed", uri)
         return
 
-    assert factory.status=='200', factory.status # everything else is an exc?
+    if response.status == 304:
+        # yay - nothing to update!
+        logger.info('rss feed %r is up-to-date', uri)
+        response.close()
+        return
+
+    if response.status != 200:
+        logger.exception("bad response fetching rss feed %r: %s (%s)",
+                         uri, response.status, response.reason)
+        return
     logger.debug('rss feed %r has changed', uri)
-    # update the headers - twisted already has them in the format we need
-    # (ie, lower-cased keys, each item is a list)
+    # update the headers.
     items = {
-        'headers': factory.response_headers.copy()
+        'headers': response.copy()
     }
     a = {}
-    a['response'] = {'content_type': items['headers']['content-type'][0],
-                     'data': result}
+    a['response'] = {'content_type': items['headers']['content-type'],
+                     'data': content}
     si = doc_model.doc_to_schema_items(doc).next()
     si['items'] = items
     si['attachments'] = a
     si['_rev'] = doc['_rev']
-    _ = yield conductor.provide_schema_items([si])
+    conductor.provide_schema_items([si])
     logger.info('updated feed %r', uri)
 
 
 class RSSAccount(base.AccountBase):
-    @defer.inlineCallbacks
     def startSync(self, conductor, options):
         # Find all RSS documents.
         key = ['schema_id', 'rd.raw.rss']
-        result = yield self.doc_model.open_view(key=key, reduce=False,
+        result = self.doc_model.open_view(key=key, reduce=False,
                                                  include_docs=True)
         rows = result['rows']
         logger.info("have %d rss feeds to check", len(rows))
         dl = []
+        # XXX - should do these in parallel...
         for row in rows:
             doc = row['doc']
             if doc.get('disabled', False):
                 logger.debug('rss feed %(id)r is disabled - skipping', row)
                 continue
-            dl.append(maybe_update_doc(conductor, self.doc_model, doc, options))
-        _ = yield defer.DeferredList(dl)
+            maybe_update_doc(conductor, self.doc_model, doc, options)
 
     def get_identities(self):
         return []

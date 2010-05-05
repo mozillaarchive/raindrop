@@ -75,19 +75,11 @@ def _check_version_attr(module, required):
     return bits >= required
 
 deps = [
-    ('twisted', '>=8.2', True),
-    ('pyOpenSSL', '', True),
-    ('paisley', '', True),
     ('feedparser', '>=4.1', False),
     ('Skype4Py', '', False),
     ('twitter', '', False),
     ('PIL', '', False),
 ]
-
-if sys.version_info < (2,6) and sys.platform=="win32":
-    warn("Python 2.6 is recommended on Windows; you may have trouble finding\n"
-         "an openssl binary package for Python 2.5")
-
 
 def check_import(pkg, version):
     try:
@@ -104,7 +96,10 @@ def check_import(pkg, version):
     except ImportError:
         return False
 
-
+# This should probably be re-done to avoid using pkg_resources.require and
+# just attempt the import and check a version attribute.  It was originally
+# done this way to work with edge cases with twisted and the python-twitter
+# packages - but we don't use them any more...
 def check_deps():
     xtra = "" if options.configure else \
            "\n(re-running this script with --configure may be able to install this for you)"
@@ -160,14 +155,22 @@ def check_deps():
             else:
                 ui("module '%s' is missing%s", full, xtra)
 
-    # twisted on windows needs pywin32 which isn't currently available via
-    # setuptools
-    if sys.platform == "win32":
+    # check we have the correct twitter package
+    try:
+        import twitter
+    except ImportError:
+        # presumably noted above...
+        pass
+    else:
         try:
-            import win32api
+            from twitter import twitter_globals
         except ImportError:
-            fail("The pywin32 package is not available - please download and install\n"
-                 "the installer from http://sourceforge.net/projects/pywin32/files/")
+            msg = """\
+An incorrect 'twitter' package is installed.  Please remove your existing
+'twitter' package then visit http://pypi.python.org/pypi/twitter
+for the latest version (or remove the old package then re-execute this
+script with '--configure')"""
+            fail(msg)
 
 
 def is_local_host(host):
@@ -280,10 +283,6 @@ def check_couch():
         if exc.code != 404:
             raise
 
-    # XXX - we currently don't take advantage of that...
-    #check_couch_external(url, configure)
-    # TODO: native erlang views - when they work :(
-
 
 def main():
     parser = optparse.OptionParser(
@@ -303,8 +302,11 @@ def main():
     check_deps()
     note("The raindrop python environment seems to be OK - checking couchdb")
     check_couch()
-    note("raindrop appears configured and ready to run.\n"
-         "Please execute 'run-raindrop.py' to create the database and open the app.")
+    # We used to print instructions to run-raindrop etc - but we don't have
+    # a good story for that yet (eg, they need to run-raindrop, then hit the
+    # signup/account settings URL or manually configure ~/.raindrop, then
+    # do a sync-messages, then back to the browser to see things...)
+    note("raindrop appears configured and ready to run.\n")
 
     
 if __name__=='__main__':

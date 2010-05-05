@@ -1,7 +1,6 @@
 # The first raindrop unittest!
 
-from twisted.internet import defer
-
+import re
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
 from raindrop.model import get_doc_model
 from raindrop.proto import test as test_proto
@@ -23,11 +22,10 @@ class TestPipelineBase(TestCaseWithTestDB):
         ret.protocols = ['test']
         return ret
 
-    @defer.inlineCallbacks
     def process_doc(self, expected_errors=0):
         # populate our test DB with the raw message(s).
-        _ = yield self.deferMakeAnotherTestMessage(None)
-        _ = yield self.ensure_pipeline_complete(expected_errors)
+        self.deferMakeAnotherTestMessage(None)
+        self.ensure_pipeline_complete(expected_errors)
 
     def get_last_by_seq(self, n=1):
         def extract_rows(result):
@@ -45,11 +43,10 @@ class TestPipelineBase(TestCaseWithTestDB):
             assert len(ret)==n # may have too many deleted items and need to re-request?
             return ret
 
-        return get_doc_model().db.listDocsBySeq(limit=n*2,
-                                                descending=True,
-                                                include_docs=True
-                ).addCallback(extract_rows
-                )
+        result = get_doc_model().db.listDocsBySeq(limit=n*2,
+                                                  descending=True,
+                                                  include_docs=True)
+        return extract_rows(result)
 
 
 class TestPipeline(TestPipelineBase):
@@ -68,15 +65,13 @@ class TestPipeline(TestPipelineBase):
 
         def check_targets(result, target_types):
             # Our targets should be the last written
-            return self.get_last_by_seq(len(target_types),
-                        ).addCallback(check_targets_last, target_types
-                        )
+            result = self.get_last_by_seq(len(target_types),)
+            return check_targets_last(result, target_types)
 
         targets = set(('rd.msg.body', 'rd.msg.email', 'rd.msg.flags', 'rd.tags',
                        'rd.msg.rfc822', 'rd.msg.test.raw'))
-        return self.process_doc(
-                ).addCallback(check_targets, targets
-                )
+        result = self.process_doc()
+        return check_targets(result, targets)
 
     def test_one_again_does_nothing(self):
         # Test that attempting to process a message which has already been
@@ -87,26 +82,22 @@ class TestPipeline(TestPipelineBase):
             self.failUnlessEqual(db_types, targets_b4)
 
         def check_nothing_done(whateva, targets_b4):
-            return self.get_last_by_seq(len(targets_b4),
-                        ).addCallback(check_targets_same, targets_b4
-                        )
+            result = self.get_last_by_seq(len(targets_b4),)
+            return check_targets_same(result, targets_b4)
 
         def reprocess(targets_b4):
-            return self.process_doc(
-                        ).addCallback(check_nothing_done, targets_b4)
+            result = self.process_doc()
+            return check_nothing_done(result, targets_b4)
 
-        return self.test_one_step(
-                ).addCallback(reprocess
-                )
+        return reprocess(self.test_one_step())
 
 class TestErrors(TestPipelineBase):
     extensions = ['rd.test.core.test_converter']
 
-    @defer.inlineCallbacks
     def setUp(self):
-        _ = yield super(TestErrors, self).setUp()
+        super(TestErrors, self).setUp()
         # We expect the following warning records when running this test.
-        f = lambda record: "exceptions.RuntimeError: This is a test failure" in record.getMessage()
+        f = lambda record: re.match("Extension u?'rd.test.core.test_converter' failed to process document", record.getMessage()) is not None
         self.log_handler.ok_filters.append(f)
 
     def test_error_stub(self):
@@ -121,10 +112,9 @@ class TestErrors(TestPipelineBase):
 
         # open the test document to get its ID and _rev, and indicate how many
         # errors we expect.
-        return self.process_doc(1
-                ).addCallback(lambda whateva: self.get_last_by_seq(2)
-                ).addCallback(check_target_last
-                )
+        test_doc = self.process_doc(1)
+        seq = self.get_last_by_seq(2)
+        return check_target_last(seq)
 
     def test_reprocess_errors(self):
         # Test that reprocessing an error results in the correct thing.
@@ -140,11 +130,10 @@ class TestErrors(TestPipelineBase):
 
         # after the retry we should have the 3 schemas created by our test proto
         expected = set(('rd.msg.flags', 'rd.tags', 'rd.msg.rfc822', 'rd.msg.test.raw'))
-        return self.test_error_stub(
-                ).addCallback(start_retry
-                ).addCallback(lambda whateva: self.get_last_by_seq(len(expected)
-                ).addCallback(check_target_last, expected)
-                )
+        error_stub = self.test_error_stub()
+        retry = start_retry(error_stub)
+        seq = self.get_last_by_seq(len(expected))
+        return check_target_last(seq, expected)
 
     def test_all_steps(self):
         # We test the right thing happens running a 'full' pipeline
@@ -159,7 +148,6 @@ class TestErrors(TestPipelineBase):
             self.failUnlessEqual(got, expected)
 
         test_proto.set_test_options(next_convert_fails=True)
-        return self.process_doc(1
-                ).addCallback(lambda whateva: self.get_last_by_seq(2)
-                ).addCallback(check_last_doc
-                )
+        doc = self.process_doc(1)
+        seq = self.get_last_by_seq(2)
+        return check_last_doc(seq)

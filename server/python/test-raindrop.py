@@ -22,26 +22,63 @@
 # Contributor(s):
 #
 
-
-# Twisted's 'trial' package has its own idea of logging and cmdline args etc -
-# we still need to work out how to best integrate our world and theirs - for
-# now we just do the simplest thing possible...
-
 import sys
 import os
 import tempfile
+import raindrop.tests
 
-# If no args specified run all tests...
-if len(sys.argv)==1:
-    sys.argv.append('raindrop.tests')
+# explicit python version check here incase they haven't installed
+# unittest2 - we don't want auto fallback to the old one.
+if sys.hexversion > (2,7):
+    import unittest
+else:
+    try:
+        import unittest2 as unittest
+    except ImportError:
+        print >> sys.stderr, "The raindrop tests require the 'unittest2' package."
+        print >> sys.stderr, "Please 'easy_install unittest2' and try again."
+        sys.exit(1)
 
-import twisted.scripts.trial
+# All we are doing here is (a) auto-discovery of tests and (b) supporting
+# an optional list of matching test names to run on the cmd-line.
+class TestProgram(unittest.TestProgram):
+    def parseArgs(self, argv):
+        import optparse
+        parser = optparse.OptionParser()
+        parser.add_option('-v', '--verbose', dest='verbose', default=False,
+                          help='Verbose output', action='store_true')
 
-# poke into twisted to change one or 2 defaults - these can still be adjusted
-# via cmdline args...
-for opt in twisted.scripts.trial.Options.optParameters:
-    if opt[0]=='temp-directory' and opt[2]=='_trial_temp':
-        opt[2] = os.path.join(tempfile.gettempdir(), 'raindrop_trial_temp')
+        options, args = parser.parse_args(argv[1:])
+        if options.verbose:
+            self.verbosity = 2
+
+        start_dir = raindrop.tests.__path__[0]
+        pattern = "test*.py"
+        top_level_dir = None
+
+        loader = unittest.loader.TestLoader()
+        test = loader.discover(start_dir, pattern, top_level_dir)
+        if args:
+            # saly we get back a test suite, so dig inside.
+            self.test = loader.suiteClass()
+            self._find_matching(test, args)
+            if not self.test._tests:
+                parser.error("No tests match %s" % (args,))
+        else:
+            self.test = test
+
+    def _find_matching(self, tests, patterns):
+        # recursively walks down test suite objects and adds matching tests
+        # to *our* test suite object...
+        for t in tests:
+            if isinstance(t, self.test.__class__):
+                # a test suite - walk its tests...
+                self._find_matching(t, patterns)
+            else:
+                for p in patterns:
+                    if t.id().startswith(p):
+                        self.test.addTest(t)
 
 # now run it...
-twisted.scripts.trial.run()
+if __name__=='__main__':
+    TestProgram()

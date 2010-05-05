@@ -1,19 +1,15 @@
-from twisted.internet import defer
-
 from raindrop.tests import TestCaseWithCorpus
 
-
 class TestSimpleCorpus(TestCaseWithCorpus):
-    @defer.inlineCallbacks
     def test_simple_email(self):
-        ndocs = yield self.load_corpus("hand-rolled", "sent-email-simple")
+        ndocs = self.load_corpus("hand-rolled", "sent-email-simple")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # There should be exactly one 'rd.msg.email' mail in our DB - check that.
         key = ["schema_id", "rd.msg.email"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1, rows)
         doc = rows[0]['doc']
@@ -26,16 +22,15 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         self.failUnless(len(headers['x-raindrop-note'])==2, str(headers['x-raindrop-note']))
         self.failUnlessEqual(headers['date'][0], 'Sat, 21 Jul 2009 12:13:14 -0000')
 
-    @defer.inlineCallbacks
     def test_simple_body(self):
-        ndocs = yield self.load_corpus("hand-rolled", "sent-email-simple")
+        ndocs = self.load_corpus("hand-rolled", "sent-email-simple")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # There should be exactly one 'rd.msg.body' mail in our DB - check that
         key = ["schema_id", "rd.msg.body"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1, rows)
         doc = rows[0]['doc']
@@ -53,11 +48,10 @@ class TestSimpleCorpus(TestCaseWithCorpus):
                              sorted(['Raindrop Test Recipient 2',
                                      'Raindrop Test Recipient 3']))
 
-    @defer.inlineCallbacks
     def test_simple_recips(self):
-        ndocs = yield self.load_corpus("hand-rolled", "sent-email-simple")
+        ndocs = self.load_corpus("hand-rolled", "sent-email-simple")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # All people we sent mail to should get an identity and contact
         # record.
@@ -67,27 +61,26 @@ class TestSimpleCorpus(TestCaseWithCorpus):
             rd_key = ['identity', ['email', addy]]
             sch_id = 'rd.identity.exists'
             key = ["key-schema_id", [rd_key, sch_id]]
-            result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                    include_docs=True)
+            result = self.doc_model.open_view(key=key, reduce=False,
+                                              include_docs=True)
             self.failUnlessEqual(len(result['rows']), 1, addy)
             # and the contact
             
             key = ["key-schema_id", [rd_key, "rd.identity.contacts"]]
-            result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                    include_docs=True)
+            result = self.doc_model.open_view(key=key, reduce=False,
+                                              include_docs=True)
             self.failUnlessEqual(len(result['rows']), 1, addy)
 
-    @defer.inlineCallbacks
     # Test for ticket #66 fix.
     def test_simple_quoted(self):
-        ndocs = yield self.load_corpus("hand-rolled", "quoted-simple")
+        ndocs = self.load_corpus("hand-rolled", "quoted-simple")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # load the hyperlinks document and compare the results.
         key = ["schema_id", "rd.msg.body.quoted"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         
         # Make sure we got one result.
         self.failUnlessEqual(len(result['rows']), 1)
@@ -96,16 +89,15 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         doc = result['rows'][0]['doc']
         self.failUnlessEqual(2, len(doc['parts']))
 
-    @defer.inlineCallbacks
     def test_quoted_hyperlinks(self):
-        ndocs = yield self.load_corpus("hand-rolled", "quoted-hyperlinks")
+        ndocs = self.load_corpus("hand-rolled", "quoted-hyperlinks")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # load the hyperlinks document and compare the results.
         key = ["schema_id", "rd.msg.body.quoted.hyperlinks"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         
         # Make sure we got one result.
         self.failUnlessEqual(len(result['rows']), 1)
@@ -216,34 +208,34 @@ class TestSimpleCorpus(TestCaseWithCorpus):
                              ], cmp=lambda x,y: cmp(x['hostname'], y['hostname']))
                             )
 
-    @defer.inlineCallbacks
     def test_twitter_notification(self):
-        ndocs = yield self.load_corpus("hand-rolled", "twitter-notification")
+        ndocs = self.load_corpus("hand-rolled", "twitter-notification")
         self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag document and compare the results.
         key = ["schema_id", "rd.msg.grouping-tag"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
 
         # Make sure we got one result with type twitter
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
         self.failUnlessEqual(rows[0]['doc']['tag'], "twitter-notification");
 
-    @defer.inlineCallbacks
     def test_facebook_notification(self):
         # Load all facebook docs, but only facebook-friend should generate
         # an rd.msg.notification schema.
-        ndocs = yield self.load_corpus("hand-rolled", "facebook-*")
+        ndocs = self.load_corpus("hand-rolled", "facebook-*")
         self.failUnlessEqual(ndocs, 3) # failed to load any corpus docs???
-        _ = yield self.ensure_pipeline_complete()
+        self.ensure_pipeline_complete()
 
         # load the rd.msg.grouping-tag documents and compare the results.
         key = ["schema_id", "rd.msg.grouping-tag"]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
 
         # Each of the test messages get a different 'tag'
         rows = result['rows']

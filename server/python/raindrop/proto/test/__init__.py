@@ -23,7 +23,6 @@
 
 # This is an implementation of a 'test' protocol.
 import logging
-from twisted.internet import defer, error, task
 
 logger = logging.getLogger(__name__)
 
@@ -68,23 +67,22 @@ class TestMessageProvider(object):
             num_docs = int(self.account.details.get('num_test_docs', 5))
         logger.info("Creating %d test documents", num_docs)
         for i in xrange(num_docs):
-            yield self.check_test_message(i)
+            self.check_test_message(i)
         if self.bulk_docs:
             conductor = self.conductor
-            yield conductor.provide_schema_items(self.bulk_docs
-                    ).addCallback(self.saved_bulk_messages, len(self.bulk_docs),
-                    )
+            conductor.provide_schema_items(self.bulk_docs)
+            self.saved_bulk_messages(len(self.bulk_docs))
 
     def attach(self):
         logger.info("preparing to synch test messages...")
         self.bulk_docs = [] # anything added here will be done in bulk
-        return task.coiterate(self.sync_generator())
+        self.sync_generator()
 
     def check_test_message(self, i):
         logger.debug("seeing if message with ID %d exists", i)
         rd_key = ['email', 'TestMessage%d' % i]
-        return self.doc_model.open_schemas([(rd_key, "rd.msg.test.raw")]
-                        ).addCallback(self.process_test_message, i)
+        messages = self.doc_model.open_schemas([(rd_key, "rd.msg.test.raw")])
+        return self.process_test_message(messages, i)
 
     def process_test_message(self, schemas, doc_num):
         if schemas[0] is None:
@@ -127,13 +125,13 @@ class TestMessageProvider(object):
                         doc_num)
             # we are done.
 
-    def saved_bulk_messages(self, result, n):
+    def saved_bulk_messages(self, n):
         logger.debug("Finished saving %d test messages in bulk", n)
         # done
 
 class TestAccount(base.AccountBase):
     def startSync(self, conductor, options):
-        return TestMessageProvider(self, conductor).attach()
+        TestMessageProvider(self, conductor).attach()
 
     def get_identities(self):
         return [('test_identity', 'me')]

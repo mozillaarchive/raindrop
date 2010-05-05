@@ -27,12 +27,8 @@ from urllib import quote
 import base64
 import itertools
 
-import twisted.web.error
-from twisted.internet import defer, reactor
-from twisted.internet.task import coiterate
-
 from .config import get_config
-from .wetpaisley import CouchDB
+from .wetpaisley import CouchDB, CouchError
 
 try:
     import json
@@ -182,11 +178,10 @@ class DocumentModel(object):
                      docId, viewId, args, kwargs)
         return self.db.openView(docId, viewId, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def open_documents_by_id(self, doc_ids, **kw):
         """Open documents by the already constructed docid"""
         logger.debug("attempting to open documents %r", doc_ids)
-        results = yield self.db.listDoc(keys=doc_ids, include_docs=True, **kw)
+        results = self.db.listDoc(keys=doc_ids, include_docs=True, **kw)
         rows = results['rows']
         assert len(rows)==len(doc_ids)
         ret = []
@@ -208,7 +203,7 @@ class DocumentModel(object):
                 logger.debug("opened document %(_id)r at revision %(_rev)s",
                              row['doc'])
                 ret.append(row['doc'])
-        defer.returnValue(ret)
+        return ret
 
     def get_doc_id_for_schema_item(self, si):
         """Returns an *unquoted* version of the doc ID"""
@@ -242,11 +237,10 @@ class DocumentModel(object):
             rdkey = enc_rdkey
         return rt, rdkey, schema
 
-    @defer.inlineCallbacks
     def delete_documents(self, docs):
         for doc in docs:
             doc['_deleted'] = True
-        results = yield self.db.updateDocuments(docs)
+        results = self.db.updateDocuments(docs)
         # XXX - this error handling is also duplicated below.
         errors = []
         for doc, dinfo in zip(docs, results):
@@ -255,15 +249,14 @@ class DocumentModel(object):
                 errors.append(dinfo)
         if errors:
             raise DocumentSaveError(errors)
-        defer.returnValue(results)
+        return results
 
-    @defer.inlineCallbacks
     def update_documents(self, docs):
         assert docs, "don't call me when you have no docs!"
         logger.debug("attempting to update %d documents", len(docs))
 
         attachments = self._prepare_attachments(docs)
-        results = yield self.db.updateDocuments(docs)
+        results = self.db.updateDocuments(docs)
         # yuck - this is largely duplicated below :(
         errors = []
         update_items = []
@@ -279,15 +272,15 @@ class DocumentModel(object):
                     docid = dinfo['id']
                     revision = dinfo['rev']
                     logger.debug('saving attachment %r to doc %r', name, docid)
-                    dinfo = yield self.db.saveAttachment(self.quote_id(docid),
-                                   self.quote_id(name), info['data'],
-                                   content_type=info['content_type'],
-                                   revision=revision)
+                    dinfo = self.db.saveAttachment(self.quote_id(docid),
+                             self.quote_id(name), info['data'],
+                             content_type=info['content_type'],
+                             revision=revision)
 
                 real_ret.append(dinfo)
         if errors:
             raise DocumentSaveError(errors)
-        defer.returnValue(real_ret)
+        return real_ret
 
     # Some functions for working/splitting documents and schemas.
     def _aggregate_doc(self, doc):
@@ -455,7 +448,6 @@ class DocumentModel(object):
             si[ext_id]['rd_deps'] = item['rd_deps']
         self._aggregate_doc(doc)
 
-    @defer.inlineCallbacks
     def create_schema_items(self, item_defs):
         """Main entry-point to create new (or updated) 'schema items' in
         the database."""
@@ -463,7 +455,7 @@ class DocumentModel(object):
         # first build a map of all doc IDs we care about
         ids = set(self.get_doc_id_for_schema_item(si) for si in item_defs)
         # open any docs which already exist.
-        docs = yield self.open_documents_by_id(list(ids))
+        docs = self.open_documents_by_id(list(ids))
         # map them based on the ID
         doc_map = {}
         orig_doc_map = {}
@@ -500,11 +492,11 @@ class DocumentModel(object):
         # and update the docs - but even though we must have been called with
         # schema items, we may have detected duplicates and removed them...
         if to_up:
-            updated_docs = yield self.update_documents(to_up)
+            updated_docs = self.update_documents(to_up)
         else:
             updated_docs = []
         logger.debug("create_schema_items made %r", updated_docs)
-        defer.returnValue(updated_docs)
+        return updated_docs
 
     def open_schemas(self, wanted):
         dids = []
@@ -572,7 +564,6 @@ class DocumentModel(object):
         assert len(all_attachments)==len(docs)
         return all_attachments
 
-    @defer.inlineCallbacks
     def _cb_saved_docs(self, result, item_defs, attachments):
         # Detects document errors and updates any attachments which were too
         # large to send in the 'body'.  Updating attachments is complicated
@@ -601,7 +592,7 @@ class DocumentModel(object):
                     docid = dinfo['id']
                     revision = dinfo['rev']
                     logger.debug('saving attachment %r to doc %r', name, docid)
-                    dinfo = yield self.db.saveAttachment(self.quote_id(docid),
+                    dinfo = self.db.saveAttachment(self.quote_id(docid),
                                    self.quote_id(name), info['data'],
                                    content_type=info['content_type'],
                                    revision=revision)
@@ -618,7 +609,7 @@ class DocumentModel(object):
         if errors:
             raise DocumentSaveError(errors)
 
-        defer.returnValue(real_result)
+        return real_result
 
     @classmethod
     def get_schema_attachment_info(cls, doc, attach_base_name):
@@ -651,12 +642,12 @@ class DocumentModel(object):
         # Something else periodically updates our important views.
         if not self._important_views:
             # these keys come from jquery.couch.js
-            return self.db.listDoc(startkey="_design", endkey="_design0",
+            docs = self.db.listDoc(startkey="_design", endkey="_design0",
                                    include_docs=True,
-                                   ).addCallback(self._do_update_views)
+                                   )
+            return self._do_update_views(docs)
         return self._do_update_views(None)
 
-    @defer.inlineCallbacks
     def _do_update_views(self, result):
         if result is not None:
             self._important_views = []
@@ -681,7 +672,7 @@ class DocumentModel(object):
             tst = time.time()
             # limit=0 updates without giving us rows.
             for vn in vns:
-                _ = yield self.open_view(did, vn, limit=0)
+                self.open_view(did, vn, limit=0)
             took = time.time() - tst
             if took > slowest:
                 slowest = took
@@ -700,22 +691,16 @@ def get_doc_model():
         _doc_model = DocumentModel(get_db())
     return _doc_model
 
-def fab_db(whateva):
+def fab_db():
     couch_name = 'local'
     db = get_db(couch_name, None)
     dbinfo = get_config().couches[couch_name]
 
-    def _create_failed(failure, *args, **kw):
-        failure.trap(twisted.web.error.Error)
-        if failure.value.status != '412': # precondition failed.
-            failure.raiseException()
-        logger.info("couch database %(name)r already exists", dbinfo)
-        return False
-
-    def _created_ok(d):
-        logger.info("created new database")
-        return True
-
-    return db.createDB(dbinfo['name']
-                ).addCallbacks(_created_ok, _create_failed
-                )
+    try:
+        server = CouchDB(dbinfo['host'], dbinfo['port'], dbinfo['name'])
+        server.createDB()
+    except CouchError, exc:
+        if exc.status != 412: # precondition failed...
+            raise
+        # DB already exists!
+        pass

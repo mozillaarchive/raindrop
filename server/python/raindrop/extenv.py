@@ -24,9 +24,6 @@
 # The raindrop 'extension environment'.  Responsible for setting up all the
 # globals available to extensions.
 import uuid
-from twisted.internet import defer, threads
-from twisted.internet import reactor
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -122,32 +119,25 @@ def get_ext_env(doc_model, context, src_doc, ext):
         dm = doc_model
         found, info = dm.get_schema_attachment_info(src, attachment)
         logger.debug("attempting to open attachment %s/%s", doc_id, found)
-        return threads.blockingCallFromThread(reactor,
-                    dm.db.openDoc, dm.quote_id(doc_id),
-                    attachment=found, **kw)
+        return dm.db.openDoc(dm.quote_id(doc_id), attachment=found, **kw)
 
     def open_attachment(doc_id, attach_id):
         "A function to abstract document storage requirements away..."
         dm = doc_model
         logger.debug("attempting to open attachment %s/%s", doc_id, attach_id)
-        return threads.blockingCallFromThread(reactor,
-                    dm.db.openDoc, dm.quote_id(doc_id),
-                    attachment=attach_id)
+        return dm.db.openDoc(dm.quote_id(doc_id), attachment=attach_id)
 
     def open_view(*args, **kw):
         context['did_query'] = True
-        return threads.blockingCallFromThread(reactor,
-                    doc_model.open_view, *args, **kw)
+        return doc_model.open_view(*args, **kw)
 
     def open_schemas(*args, **kw):
-        return threads.blockingCallFromThread(reactor,
-                    doc_model.open_schemas, *args, **kw)
+        return doc_model.open_schemas(*args, **kw)
 
     def update_documents(docs):
         context['did_query'] = True
         assert docs, "please fix the extension to not bother calling with no docs!"
-        return threads.blockingCallFromThread(reactor,
-                    doc_model.update_documents, docs)
+        return doc_model.update_documents(docs)
 
     def get_my_identities():
         # XXX - can't use globals here - so we cheat!
@@ -161,8 +151,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
         # could listen for changes to account schemas in the pipeline and
         # invalidate...
         if not _my_identities:
-            result = threads.blockingCallFromThread(reactor,
-                        doc_model.open_view,
+            result = doc_model.open_view(
                         viewId='acct_identities',
                         reduce=True,
                         group=True,
@@ -181,10 +170,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
         # at runtime.
         # If the grouping-tag is already associated with a different rd.grouping
         # schema, no action is taken.
-        result = threads.blockingCallFromThread(reactor,
-                        doc_model.open_view,
-                        viewId='grouping_info_tags',
-                        key=tag)
+        result = doc_model.open_view(viewId='grouping_info_tags', key=tag)
         if result['rows']:
             return # this grouping already exists.
         # create a new 'info' schema marked as 'dynamic' so it can be deleted
@@ -251,8 +237,7 @@ def items_from_related_identities(doc_model, idrels, def_contact_props, ext_id):
         rdkey = ['identity', iid]
         wanted.append((rdkey, 'rd.identity.contacts'))
 
-    results = threads.blockingCallFromThread(reactor,
-                    doc_model.open_schemas, wanted)
+    results = doc_model.open_schemas(wanted)
 
     assert len(results)==len(idrels), (results, idrels)
 
@@ -334,8 +319,7 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
     results = []
     keys = [['key-schema_id', [rdkey, 'rd.msg.conversation']]
             for rdkey in msg_keys]
-    results = threads.blockingCallFromThread(reactor,
-                    doc_model.open_view, keys=keys, include_docs=True, reduce=False)
+    results = doc_model.open_view(keys=keys, include_docs=True, reduce=False)
     # run over the results - in the perfect world there would be exactly
     # one (or zero) convo IDs returned.  More than 1 means something is
     # out of synch.
@@ -380,9 +364,8 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
                    'items': {'conversation_id': conv_id}}
     # find all existing items in all convos to merge, and update every message
     # in those convos to point at this one.
-    results = threads.blockingCallFromThread(reactor,
-                    doc_model.open_view, viewId="msg_conversation_id",
-                    keys=list(convos_to_merge))
+    results = doc_model.open_view(viewId="msg_conversation_id",
+                                  keys=list(convos_to_merge))
     for row in results['rows']:
         yield {'rd_key': row['value']['rd_key'],
                'rd_schema_id': 'rd.msg.conversation',

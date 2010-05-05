@@ -1,5 +1,3 @@
-from twisted.internet import defer, reactor
-
 from raindrop.tests import TestCaseWithCorpus
 
 # Generic cases to test:
@@ -62,40 +60,36 @@ class TestCaseWithMailingListCorpus(TestCaseWithCorpus):
             self.failUnlessEqual(doc[property], expected_doc[property],
                                  repr(doc['rd_key']) + '::' + property)
 
-    @defer.inlineCallbacks
     def get_docs(self, key, expected=None):
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         rows = result['rows']
         if expected is not None:
             self.failUnlessEqual(len(rows), expected,
                                  'num rows for key ' + repr(key))
-        docs = [row['doc'] for row in rows]
-        defer.returnValue(docs)
+        return [row['doc'] for row in rows]
 
-    @defer.inlineCallbacks
     def put_docs(self, corpus_name, corpus_spec="*", expected=None):
         items = [d for d in self.gen_corpus_schema_items(corpus_name, corpus_spec)]
         if expected is not None:
             self.failUnlessEqual(len(items), expected)
-        _ = yield self.doc_model.create_schema_items(items)
-        _ = yield self.ensure_pipeline_complete()
+        self.doc_model.create_schema_items(items)
+        self.ensure_pipeline_complete()
 
 # Test a generic mailing list.
 class TestGenericMailingList(TestCaseWithMailingListCorpus):
-    @defer.inlineCallbacks
     def test_mailing_list_message(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process one message from a mailing list.
-        yield self.put_docs('mailing-list', 'simple-message', 1)
+        self.put_docs('mailing-list', 'simple-message', 1)
 
         mail_key = ['schema_id', 'rd.msg.email.mailing-list']
         list_key = ['schema_id', 'rd.mailing-list']
 
         # There should be one rd.msg.email.mailing-list document.
-        doc = (yield self.get_docs(mail_key, expected=1))[0]
+        doc = self.get_docs(mail_key, expected=1)[0]
 
         # The document should have the expected properties/values.
         expected_doc = {
@@ -104,7 +98,7 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # There should be one rd.mailing-list document.
-        doc = (yield self.get_docs(list_key, expected=1))[0]
+        doc = self.get_docs(list_key, expected=1)[0]
 
         # The document should have the expected properties/values.
         expected_doc = {
@@ -123,17 +117,17 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # Process a second, later message from the same mailing list.
-        yield self.put_docs('mailing-list', 'simple-message-2', 1)
+        self.put_docs('mailing-list', 'simple-message-2', 1)
 
         # There should now be two rd.msg.email.mailing-list documents.
-        yield self.get_docs(mail_key, expected=2)
+        self.get_docs(mail_key, expected=2)
 
         # There should only be one rd.msg.email.mailing-list document
         # with the key of the message we just processed.
         message_key = ['key-schema_id',
                 [['email', '40c05b9d93ba4695a30e72174c5c8126@example.com'],
                 'rd.msg.email.mailing-list']]
-        doc = (yield self.get_docs(message_key, expected=1))[0]
+        doc = self.get_docs(message_key, expected=1)[0]
 
         # The document should have the expected properties/values.
         expected_doc = {
@@ -142,7 +136,7 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # There should still be just one rd.mailing-list document.
-        doc = (yield self.get_docs(list_key, expected=1))[0]
+        doc = self.get_docs(list_key, expected=1)[0]
 
         # The document should have the expected properties/values.
         #
@@ -174,18 +168,17 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         }
         self.ensure_doc(doc, expected_doc)
 
-    @defer.inlineCallbacks
     def test_mailing_list_grouping(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process one message from a mailing list.
-        yield self.put_docs('mailing-list', 'simple-message', 1)
+        self.put_docs('mailing-list', 'simple-message', 1)
 
         list_id = 'test.lists.example.com'
         # we should now have one 'rd.grouping.info' doc with the mailing-list's tag
         key = ['rd.grouping.info', 'title', list_id]
-        result = yield self.doc_model.open_view("raindrop!content!tests",
+        result = self.doc_model.open_view("raindrop!content!tests",
                                                 "grouping_info_by_title",
                                                 key=list_id, include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)
@@ -194,8 +187,8 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
         self.failUnlessEqual(doc['grouping_tags'], ['mailing-list-' + list_id])
         # Now find the 'summary' doc for this grouping.
         key = ['key-schema_id', [doc['rd_key'], 'rd.grouping.summary']]
-        result = yield self.doc_model.open_view(key=key, reduce=False,
-                                                include_docs=True)
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
         self.failUnlessEqual(len(result['rows']), 1)
         sdoc = result['rows'][0]['doc']
         # this is the convo-id created for the test message.
@@ -205,78 +198,73 @@ class TestGenericMailingList(TestCaseWithMailingListCorpus):
 
 # Test Mailman.
 class TestMailman(TestCaseWithMailingListCorpus):
-    @defer.inlineCallbacks
     def test_message_older_unsub_conf_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'mailman-message-older', 1)
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'mailman-message-older', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_message_newer_unsub_conf_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'mailman-message-newer', 1)
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'mailman-message-newer', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_newer_message_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a newer unsubscribe confirmation then an older message.
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
-        yield self.put_docs('mailing-list', 'mailman-message-older', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'mailman-message-older', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_older_message_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older unsubscribe confirmation then a newer message.
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-older', 1)
-        yield self.put_docs('mailing-list', 'mailman-message-newer', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'mailman-message-newer', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
 
     # Just an unsubscribe confirmation from a Mailman list.  The list should be
     # created, and its status should be "unsubscribed".
-    @defer.inlineCallbacks
     def test_unsub_conf(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-newer', 1)
 
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key, expected=1))[0]
+        doc = self.get_docs(list_key, expected=1)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Mailman list status is unsubscribed'))
 
@@ -285,19 +273,18 @@ class TestMailman(TestCaseWithMailingListCorpus):
     # the user that someone *else* has been unsubscribed.  The list status
     # should remain "subscribed" in this case, since it isn't the user
     # who was unsubscribed.
-    @defer.inlineCallbacks
     def test_unsub_note(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a message to create the mailing list record.
-        yield self.put_docs('mailing-list', 'mailman-message-older', 1)
+        self.put_docs('mailing-list', 'mailman-message-older', 1)
 
         # Process the unsubscribe notification.
-        yield self.put_docs('mailing-list', 'mailman-unsub-note', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-note', 1)
 
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key, expected=1))[0]
+        doc = self.get_docs(list_key, expected=1)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Mailman list status is subscribed'))
 
@@ -305,26 +292,25 @@ class TestMailman(TestCaseWithMailingListCorpus):
     # receives a request to confirm unsubscription.  Raindrop should create
     # a message confirming the unsubscription and set the list state to
     # "unsubscribe-confirmed".
-    @defer.inlineCallbacks
     def test_unsub_conf_req(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a message to create the mailing list record.
-        yield self.put_docs('mailing-list', 'mailman-message-older', 1)
+        self.put_docs('mailing-list', 'mailman-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         doc['status'] = "unsubscribe-pending"
-        _ = yield self.doc_model.db.updateDocuments([doc])
+        self.doc_model.db.updateDocuments([doc])
 
         # Process the confirm unsubscribe request.
-        yield self.put_docs('mailing-list', 'mailman-unsub-conf-req', 1)
+        self.put_docs('mailing-list', 'mailman-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
         message_key = ['schema_id', 'rd.msg.outgoing.simple']
-        doc = (yield self.get_docs(message_key, expected=1))[0]
+        doc = self.get_docs(message_key, expected=1)[0]
 
         # The outgoing message should have the expected properties/values.
         expected_doc = {
@@ -340,109 +326,103 @@ class TestMailman(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # The status of the mailing list should be "unsubscribe-confirmed".
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribe-confirmed',
                              repr('list status is unsubscribe-confirmed'))
 
 # Test the old version of Google Groups.
 class TestGoogleGroups(TestCaseWithMailingListCorpus):
-    @defer.inlineCallbacks
     def test_message_older_unsub_conf_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_message_newer_unsub_conf_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_newer_message_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a newer unsubscribe confirmation then an older message.
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_older_message_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older unsubscribe confirmation then a newer message.
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-older', 1)
-        yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-newer', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
 
     # Just an unsubscribe confirmation from a Google Groups list.  The list
     # should be created, and its status should be set to "unsubscribed".
-    @defer.inlineCallbacks
     def test_unsub_conf(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-newer', 1)
 
         list_key = ['schema_id', 'rd.mailing-list']
-        yield self.get_docs(list_key, expected=1)
+        self.get_docs(list_key, expected=1)
 
     # The mailing list is in the "unsubscribe-pending" state, and Raindrop
     # receives a request to confirm unsubscription.  Raindrop should create
     # a message confirming the unsubscription and set the list state to
     # "unsubscribe-confirmed".
-    @defer.inlineCallbacks
     def test_unsub_conf_req(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a message to create the mailing list record.
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         doc['status'] = "unsubscribe-pending"
-        _ = yield self.doc_model.db.updateDocuments([doc])
+        self.doc_model.db.updateDocuments([doc])
 
         # Process the confirm unsubscribe request.
-        yield self.put_docs('mailing-list', 'google-groups-unsub-conf-req', 1)
+        self.put_docs('mailing-list', 'google-groups-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
         message_key = ['schema_id', 'rd.msg.outgoing.simple']
-        doc = (yield self.get_docs(message_key, expected=1))[0]
+        doc = self.get_docs(message_key, expected=1)[0]
 
         # The outgoing message should have the expected properties/values.
         expected_doc = {
@@ -458,110 +438,104 @@ class TestGoogleGroups(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # The status of the mailing list should be "unsubscribe-confirmed".
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribe-confirmed',
                              repr('list status is unsubscribe-confirmed'))
 
 # Test the new version of Google Groups.
 class TestGoogleGroups2(TestCaseWithMailingListCorpus):
-    @defer.inlineCallbacks
     def test_message_older_unsub_conf_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_message_newer_unsub_conf_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older message then a newer unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-older', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_newer_message_older(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a newer unsubscribe confirmation then an older message.
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer', 1)
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # The list status should be "unsubscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribed',
                              repr('Google Groups list status is unsubscribed'))
 
-    @defer.inlineCallbacks
     def test_unsub_conf_older_message_newer(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an older unsubscribe confirmation then a newer message.
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-older', 1)
-        yield self.put_docs('mailing-list', 'google-groups-message-newer', 1)
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-newer', 1)
 
         # The list status should be "subscribed".
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'subscribed',
                              repr('Google Groups list status is subscribed'))
 
     # Just an unsubscribe confirmation from a Google Groups list.  The list
     # should be created, and its status should be set to "unsubscribed".
-    @defer.inlineCallbacks
     def test_unsub_conf(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process an unsubscribe confirmation.
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer',
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-newer',
                             1)
 
         list_key = ['schema_id', 'rd.mailing-list']
-        yield self.get_docs(list_key, expected=1)
+        self.get_docs(list_key, expected=1)
 
     # The mailing list is in the "unsubscribe-pending" state, and Raindrop
     # receives a request to confirm unsubscription.  Raindrop should create
     # a message confirming the unsubscription and set the list state to
     # "unsubscribe-confirmed".
-    @defer.inlineCallbacks
     def test_unsub_conf_req(self):
         # Initialize the corpus & database.
-        yield self.init_corpus('mailing-list')
+        self.init_corpus('mailing-list')
 
         # Process a message to create the mailing list record.
-        yield self.put_docs('mailing-list', 'google-groups-message-older', 1)
+        self.put_docs('mailing-list', 'google-groups-message-older', 1)
 
         # Put the mailing list record into the "unsubscribe-pending" state.
         list_key = ['schema_id', 'rd.mailing-list']
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         doc['status'] = "unsubscribe-pending"
-        _ = yield self.doc_model.db.updateDocuments([doc])
+        self.doc_model.db.updateDocuments([doc])
 
         # Process the confirm unsubscribe request.
-        yield self.put_docs('mailing-list', 'google-groups-2-unsub-conf-req', 1)
+        self.put_docs('mailing-list', 'google-groups-2-unsub-conf-req', 1)
 
         # There should be an outgoing message confirming the unsubscription.
         message_key = ['schema_id', 'rd.msg.outgoing.simple']
-        doc = (yield self.get_docs(message_key, expected=1))[0]
+        doc = self.get_docs(message_key, expected=1)[0]
 
         # The outgoing message should have the expected properties/values.
         expected_doc = {
@@ -577,7 +551,7 @@ class TestGoogleGroups2(TestCaseWithMailingListCorpus):
         self.ensure_doc(doc, expected_doc)
 
         # The status of the mailing list should be "unsubscribe-confirmed".
-        doc = (yield self.get_docs(list_key))[0]
+        doc = self.get_docs(list_key)[0]
         self.failUnlessEqual(doc['status'], 'unsubscribe-confirmed',
                              repr('list status is unsubscribe-confirmed'))
 

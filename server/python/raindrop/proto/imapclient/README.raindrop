@@ -1,0 +1,6 @@
+This is a copy of imapcliemt trunk - see http://imapclient.freshfoo.com/
+
+At time up checking this in, the most recently released version was 0.5.2 
+which doesn't support what we need - but the trunk does.
+
+This package can be removed as soon as 0.6 is released.

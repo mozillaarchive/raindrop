@@ -21,26 +21,22 @@
 # Contributor(s):
 #
 
-# paisley with raindrops on it...
-
 import sys
 from urllib import urlencode, quote
+import httplib
 import base64
+import socket
+import errno
+from collections import deque
+import time
 
-import twisted.web.error
-from twisted.internet import defer, reactor
-from twisted.python.failure import Failure
-from twisted.internet.task import coiterate
-from twisted.web.client import HTTPClientFactory, HTTPPageGetter
-from twisted.web import http
+import logging
+logger=logging.getLogger(__name__)
 
 try:
-    import json # Python 2.6
-    sys.modules['simplejson'] = json # for paisley on 2.6...
-except ImportError:
     import simplejson as json
-
-import paisley
+except ImportError:
+    import json # Python 2.6
 
 # from the couchdb package; not sure what makes these names special...
 def _encode_options(options):
@@ -52,13 +48,99 @@ def _encode_options(options):
         retval[name] = value
     return retval
 
+class CouchError(Exception):
+    def __init__(self, status, reason, body):
+        self.status = status
+        self.reason = reason
+        self.body = body
+        Exception.__init__(self, status, reason, body)
 
-class CouchDB(paisley.CouchDB):
+class CouchNotFoundError(CouchError):
+    pass
+
+class CouchDB():
     _has_adbs = None # does this couch support the old _all_docs_by_seq api?
+    Error = CouchError
+    NotFoundError = CouchNotFoundError
     def __init__(self, host, port=5984, dbName=None, username=None, password=None):
-        paisley.CouchDB.__init__(self, host, port, dbName)
+        self.host = host
+        self.port = port
+        self.dbName = dbName
         self.username = username
         self.password = password
+        self.connections_available = deque()
+
+    def _check_error(self, response):
+        status = int(response.status)
+        if 200 <= status < 300:
+            return
+        # it is an error - some errors get their own class.
+        if status == 404:
+            exc_class = self.NotFoundError
+        else:
+            exc_class = self.Error
+        raise exc_class(status, response.reason, response.read())
+        
+    def _request(self, method, uri, body = None, headers = None):
+        return json.loads(self._rawrequest(method, uri, body, headers))
+
+    def _rawrequest(self, method, uri, body = None, headers = None):
+        if headers is None:
+            headers = {}
+        if 'Accept' not in headers:
+            headers['Accept'] = 'application/json'
+
+        new_con_retries = 3
+        while True: # retry on exceptions using pooled connections
+            try:
+                conn = self.connections_available.popleft()
+                reused = True
+            except IndexError:
+                conn = httplib.HTTPConnection(self.host, self.port)
+                reused = False
+            response = None
+            try:
+                try:
+                    conn.request(method, uri, body, headers)
+                    response = conn.getresponse()
+                    self._check_error(response)
+                    return response.read()
+                except (httplib.BadStatusLine, socket.error), exc:
+                    # couch may discard old connections resulting in these
+                    # exceptions
+                    if isinstance(exc, socket.error) and \
+                       exc.errno not in [errno.ECONNRESET, errno.ECONNABORTED]:
+                        logger.warn("non retryable error: %s", exc)
+                        raise
+                    conn.close()
+                    conn = response = None
+                    if not reused:
+                        if new_con_retries <= 0:
+                            logger.warn("ran out of retries on brand-new connection: %s", exc)
+                            raise
+                        logger.info("retryable error on brand-new connection")
+                        new_con_retries -= 1
+                        # we might be out of sockets or hit some other
+                        # load-based error, so sleep a little...
+                        time.sleep(2)
+                        continue
+                    logger.debug("re-connecting after error using pooled connection: %s",
+                                exc)
+    
+            finally:
+                if conn is None and response is None:
+                    pass
+                elif response is None:
+                    conn.close()
+                elif response.will_close or len(self.connections_available)>10:
+                    # can't/won't reuse this connection.
+                    conn.close()
+                else:
+                    # just incase someone hasn't read it yet.
+                    response.read()
+                    self.connections_available.append(conn)
+                    logger.debug("reusing connection - now %d available",
+                                 len(self.connections_available))
 
     def _getPage(self, uri, **kwargs):
         """
@@ -71,58 +153,54 @@ class CouchDB(paisley.CouchDB):
         if self.username:
             auth = base64.b64encode(self.username + ":" + self.password)
             headers["Authorization"] = "Basic " + auth
-        factory = HTTPClientFactory(url, **kwargs)
-        reactor.connectTCP(self.host, self.port, factory)
-        return factory.deferred
-
+        _request('GET', uri, None, headers)
 
     def postob(self, uri, ob):
-        # This seems to not use keep-alives etc where using twisted.web
-        # directly does?
         body = json.dumps(ob, allow_nan=False)
         assert isinstance(body, str), body # must be ready to send on the wire
         return self.post(uri, body)
 
-    #def openView(self, *args, **kwargs):
-        # paisley doesn't handle encoding options...
-        #return super(CouchDB, self).openView(*args, **_encode_options(kwargs)
-        #                )
-        # Ack - couch 0.9 view syntax...
-    def openView(self, dbName, docId, viewId, **kwargs):
-        #uri = "/%s/_view/%s/%s" % (dbName, docId, viewId)
-        uri = "/%s/_design/%s/_view/%s" % (dbName, docId, viewId)
-        uri = uri.encode('utf-8')
+    def openView(self, docId, viewId, **kwargs):
+        try:
+            headers = {"Accept": "application/json"}
+            uri = "/%s/_design/%s/_view/%s" % (self.dbName, docId, viewId)
 
-        opts = kwargs.copy()
-        if 'keys' in opts:
-            requester = self.post
-            body_ob = {'keys': opts.pop('keys')}
-            body = json.dumps(body_ob, allow_nan=False)
-            assert isinstance(body, str), body
-            xtra = (body,)
-        else:
-            requester = self.get
-            xtra = ()
-        args = _encode_options(opts)
-        if args:
-            uri += "?%s" % (urlencode(args),)
-        return requester(uri, *xtra
-            ).addCallback(self.parseResult)
+            opts = kwargs.copy()
+            if 'keys' in opts:
+                method = 'POST'
+                body_ob = {'keys': opts.pop('keys')}
+                body = json.dumps(body_ob, allow_nan=False)
+                assert isinstance(body, str), body
+            else:
+                method = 'GET'
+                body = None
+            args = _encode_options(opts)
+            if args:
+                uri += "?%s" % (urlencode(args),)
 
-    def openDoc(self, dbName, docId, revision=None, full=False, attachment="",
+            return self._request(method, uri, body, headers)
+        except:
+            raise
+            return {}
+
+    def openDoc(self, docId, revision=None, full=False, attachment="",
                 attachments=False):
-        # paisley appears to use an old api for attachments?
         if attachment:
-            uri = "/%s/%s/%s" % (dbName, docId, quote(attachment))
-            return  self.get(uri)
-        # XXX - hack 'attachments' in...
-        if attachments:
-            docId += "?attachments=true"
-        return super(CouchDB, self).openDoc(dbName, docId, revision, full)
+            uri = "/%s/%s/%s" % (self.dbName, docId, quote(attachment))
+            return self._rawrequest('GET', uri)
 
-    # This is a potential addition to the paisley API;  It is hard to avoid
-    # a hacky workaround due to the use of 'partial' in paisley...
-    def saveAttachment(self, dbName, docId, name, data,
+        uri = "/%s/%s" % (self.dbName, docId)
+        try:
+            obj = self._request('GET', uri, None, None)
+        except CouchNotFoundError:
+            # XXX - what is the story here?  0.10 sure returns a 404, but
+            # does anyone else return a 200 with 'error'?
+            return {}
+        if 'error' in obj and obj['error'] == 'not_found':
+            return {}
+        return obj
+
+    def saveAttachment(self, docId, name, data,
                        content_type="application/octet-stream",
                        revision=None):
         """
@@ -149,27 +227,15 @@ class CouchDB(paisley.CouchDB):
         """
         # Responses: ???
         # 409 Conflict, 500 Internal Server Error
-        url = "/%s/%s/%s" % (dbName, docId, name)
+        url = "/%s/%s/%s" % (self.dbName, docId, name)
         if revision:
             url = url + '?rev=' + revision
-        # *sob* - and I can't use put as it doesn't allow custom headers :(
-        # and neither does _getPage!!
-        # ** start of self._getPage clone setup...** (plus an import or 2...)
-        from twisted.web.client import HTTPClientFactory
-        kwargs = {'method': 'PUT',
-                  'postdata': data}
-        kwargs["headers"] = {"Accept": "application/json",
-                             "Content-Type": content_type,
-                             }
-        factory = HTTPClientFactory(url.encode('utf-8'), **kwargs)
-        from twisted.internet import reactor
-        reactor.connectTCP(self.host, self.port, factory)
-        d = factory.deferred
-        # ** end of self._getPage clone **
-        d.addCallback(self.parseResult)
-        return d
+        headers = {"Accept": "application/json",
+                   "Content-Type": content_type,
+                  }
+        return self._request('PUT', url, data, headers)
 
-    def updateDocuments(self, dbName, user_docs):
+    def updateDocuments(self, user_docs):
         # update/insert/delete multiple docs in a single request using
         # _bulk_docs
         # from couchdb-python.
@@ -181,43 +247,59 @@ class CouchDB(paisley.CouchDB):
                 docs.append(dict(doc.items()))
             else:
                 raise TypeError('expected dict, got %s' % type(doc))
-        url = "/%s/_bulk_docs" % dbName
+        uri = "/%s/_bulk_docs" % self.dbName
         body = json.dumps({'docs': docs})
-        return self.post(url, body
-                    ).addCallback(self.parseResult
-                    )
+        headers = {"Accept": "application/json"}
+        return self._request('POST', uri, body, headers)
 
-    def feedContinuousChanges(self, dbName, sink, **kw):
-        """Interface to the _changes feed.
-        """
-        uri = "/%s/_changes" % (dbName,)
-        assert 'feed' not in kw, kw
-        kw['feed'] = 'continuous'
-        # suck the kwargs in
-        args = _encode_options(kw)
-        if args:
-            uri += "?%s" % (urlencode(args),)
+    def infoDB(self):
+        uri = '/%s/' % self.dbName
+        headers = {"Accept": "application/json"}
+        return self._request('GET', uri, None, headers)
 
-        factory = ChangesFactory(uri)
-        factory.change_sink = sink
-        reactor.connectTCP(self.host, self.port, factory)
-        return factory.deferred
+    def createDB(self):
+        self._request('PUT', '/%s/' % self.dbName)
 
-    def listChanges(self, dbName, **kw):
+    def deleteDB(self):
+        uri = '/%s/' % self.dbName
+        for i in xrange(5):
+            # worm around a bug on windows in couch 0.9:
+            # https://issues.apache.org/jira/browse/COUCHDB-326
+            # We just need to wait a little and try again...
+            # (after closing all outstanding connections...)
+            while self.connections_available:
+                self.connections_available.pop().close()
+            try:
+                self._request('DELETE', uri)
+                # and delete the connection we just made!
+                while self.connections_available:
+                    self.connections_available.pop().close()
+                break
+            except CouchNotFoundError:
+                break
+            except CouchError, exc:
+                if exc.status != 500:
+                    raise
+                if i == 4:
+                    raise
+                import time
+                time.sleep(0.1)
+
+
+    def listChanges(self, **kw):
         """Interface to the _changes feed.
         """
         # XXX - this need more work to better support feed=continuous - in
         # that case we need to process the response by line, rather than in
         # its entirity as done here and everywhere else...
-        uri = "/%s/_changes" % (dbName,)
+        uri = "/%s/_changes" % (self.dbName,)
         # suck the kwargs in
         args = _encode_options(kw)
         if args:
             uri += "?%s" % (urlencode(args),)
-        return self.get(uri
-                ).addCallback(self.parseResult)
+        return self._request('GET', uri)
         
-    def listDocsBySeq_Orig(self, dbName, **kw):
+    def listDocsBySeq_Orig(self, **kw):
         """
         List all documents in a given database by the document's sequence number
         """
@@ -226,13 +308,12 @@ class CouchDB(paisley.CouchDB):
         # {"id":"test","key":1,"value":{"rev":"4104487645"}},
         # {"id":"skippyhammond","key":2,"value":{"rev":"121469801"}},
         # ...
-        uri = "/%s/_all_docs_by_seq" % (dbName,)
+        uri = "/%s/_all_docs_by_seq" % (self.dbName,)
         # suck the kwargs in
         args = _encode_options(kw)
         if args:
             uri += "?%s" % (urlencode(args),)
-        return self.get(uri
-            ).addCallback(self.parseResult)
+        return self._request('GET', uri)
 
     def _changes_row_to_old(self, seq):
         # Converts a row returned by _changes to a row that looks like
@@ -249,8 +330,7 @@ class CouchDB(paisley.CouchDB):
             row['doc'] = seq['doc']
         return row
 
-    @defer.inlineCallbacks
-    def listDocsBySeq_Changes(self, dbName, **kw):
+    def listDocsBySeq_Changes(self, **kw):
         """
         List all documents in a given database by the document's sequence 
         number using the _changes API.
@@ -263,100 +343,56 @@ class CouchDB(paisley.CouchDB):
         if 'startkey' in kwuse:
             kwuse['since'] = kwuse.pop('startkey')
 
-        result = yield self.listChanges(**kwuse)
+        result = self.listChanges(**kwuse)
         # convert it back to the 'old' format.
         rows = []
         for seq in result['results']:
             row = self._changes_row_to_old(seq)
             rows.append(row)
-        defer.returnValue({'rows': rows})
+        return {'rows': rows}
 
-    @defer.inlineCallbacks
-    def listDocsBySeq(self, dbName, **kw):
+    def listDocsBySeq(self, **kw):
         # determine what API we should use.  Note that even though _changes
         # appeared in 0.10, support for 'limit=' didn't appear until 0.11 - 
         # after _all_docs_by_seq was removed.  So we must use _all_docs_by_seq
         # if it exists.
         if self._has_adbs is None:
             try:
-                ret = yield self.listDocsBySeq_Orig(dbName, **kw)
+                ret = self.listDocsBySeq_Orig(**kw)
                 self._has_adbs = True
-                defer.returnValue(ret)
-            except twisted.web.error.Error, exc:
-                if exc.status != '404':
-                    raise
+                return ret
+            except CouchNotFoundError, exc:
                 self._has_adbs = False
         if self._has_adbs:
-            ret = yield self.listDocsBySeq_Orig(dbName, **kw)
+            ret = self.listDocsBySeq_Orig(**kw)
         else:
-            ret = yield self.listDocsBySeq_Changes(dbName, **kw)
-        defer.returnValue(ret)
-
-    # Hack so our new bound methods work.
-    def bindToDB(self, dbName):
-        super(CouchDB, self).bindToDB(dbName)
-        partial = paisley.partial # it works hard to get this!
-        for methname in ["saveAttachment", "updateDocuments",
-                         "listDocsBySeq", "listChanges",
-                         "feedContinuousChanges"]:
-            method = getattr(self, methname)
-            newMethod = partial(method, dbName)
-            setattr(self, methname, newMethod)
+            ret = self.listDocsBySeq_Changes(**kw)
+        return ret
 
     # *sob* - base class has no 'endkey' - plus I've renamed the param from
     # 'startKey' to 'startkey' so the same param is used with the other
     # functions which take **kw...
     # AND support for keys/POST
-    def listDoc(self, dbName, **kw):
+    def listDoc(self, **kw):
         """
         List all documents in a given database.
         """
+
         # Responses: {u'rows': [{u'_rev': -1825937535, u'_id': u'mydoc'}],
         # u'view': u'_all_docs'}, 404 Object Not Found
-        uri = "/%s/_all_docs" % (dbName,)
+        uri = "/%s/_all_docs" % (self.dbName,)
         opts = kw.copy()
         if 'keys' in opts:
-            requester = self.post
+            method = 'POST'
             body_ob = {'keys': opts.pop('keys')}
             body = json.dumps(body_ob, allow_nan=False)
-            xtra = (body,)
         else:
-            requester = self.get
-            xtra = ()
+            method = 'GET'
+            body = None
         args = _encode_options(opts)
         if args:
             uri += "?%s" % (urlencode(args),)
-        return requester(uri, *xtra
-            ).addCallback(self.parseResult)
 
-# A custom factory for a 'continious' _changes feed.  I'm sure this could
-# be done better...
-class ChangesProtocol(HTTPPageGetter):
-    inBody = False
-    def lineReceived(self, line):
-        if self.firstLine:
-            return HTTPPageGetter.lineReceived(self, line)
-        if not self.inBody:
-            if line: # still a header line
-                return HTTPPageGetter.lineReceived(self, line)
-            self.inBody = True
-            # json from couch uses \n delims.
-            self.delimiter = '\n'
-            self.factory.deferred.callback(self.transport.loseConnection)
-            return
+        headers = {"Accept": "application/json"}
+        return self._request(method, uri, body, headers)
 
-        self.handleChange(json.loads(line))
-
-    def handleChange(self, change):
-        cs = self.factory.change_sink 
-        if cs is not None:
-            cs(self, change)
-
-    def connectionLost(self, reason):
-        # don't call base-class as it calls our deferred.
-        if not self.quietLoss:
-            http.HTTPClient.connectionLost(self, reason)
-
-class ChangesFactory(HTTPClientFactory):
-    protocol = ChangesProtocol
-    change_sink = None # function called with each _changes row.

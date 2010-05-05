@@ -1,6 +1,5 @@
 # Test the 'identity spawner pipeline'
-
-from twisted.internet import task, defer
+from pprint import pformat
 
 from raindrop.tests import TestCaseWithTestDB, FakeOptions
 from raindrop.model import get_doc_model
@@ -16,22 +15,20 @@ class TestIDPipelineBase(TestCaseWithTestDB):
         ret.exts = ['rd.test.core.test_converter']
         return ret
 
-    @defer.inlineCallbacks
     def process_doc(self, emit_common_ids=True):
         test_proto.set_test_options(emit_identities=True,
                                     emit_common_identities=emit_common_ids)
-        _ = yield self.deferMakeAnotherTestMessage(None)
-        _ = yield self.ensure_pipeline_complete()
+        self.deferMakeAnotherTestMessage(None)
+        self.ensure_pipeline_complete()
 
 
 class TestIDPipeline(TestIDPipelineBase):
     # Test extracting identities and contacts test protocol messages
     # work as expected.
-    @defer.inlineCallbacks
-    def deferVerifyCounts(self, _, contact_count, identity_count):
+    def verifyCounts(self, contact_count, identity_count):
         # First determine the contact ID.
         key = ['schema_id', 'rd.contact']
-        result = yield get_doc_model().open_view(key=key, reduce=False)
+        result = get_doc_model().open_view(key=key, reduce=False)
         self.failUnlessEqual(len(result['rows']), contact_count, repr(result))
 
         # each identity should have got 2 schema instances.
@@ -39,44 +36,39 @@ class TestIDPipeline(TestIDPipelineBase):
                 ['schema_id', 'rd.identity.contacts'],
                ]
 
-        result = yield get_doc_model().open_view(keys=keys, reduce=False)
+        result = get_doc_model().open_view(keys=keys, reduce=False)
         self.failUnlessEqual(len(result['rows']), identity_count*2, repr(result))
 
     def test_one_testmsg(self):
         # When processing a single test message we end up with 2 identies
         # both associated with the same contact
 
-        @defer.inlineCallbacks
-        def check_it(result):
-            dm = get_doc_model()
-            # First determine the contact ID.
-            key = ['schema_id', 'rd.contact']
-            result = yield dm.open_view(key=key, reduce=False, include_docs=True)
+        result = self.process_doc()
+        dm = get_doc_model()
+        # First determine the contact ID.
+        key = ['schema_id', 'rd.contact']
+        result = dm.open_view(key=key, reduce=False, include_docs=True)
 
-            rows = result['rows']
-            # Should be exactly 1 record with a 'contact' schema.
-            self.failUnlessEqual(len(rows), 1, str(rows))
-            key_type, cid = rows[0]['doc']['rd_key']
-            self.failUnlessEqual(key_type, 'contact')
+        rows = result['rows']
+        # Should be exactly 1 record with a 'contact' schema.
+        self.failUnlessEqual(len(rows), 1, str(rows))
+        key_type, cid = rows[0]['doc']['rd_key']
+        self.failUnlessEqual(key_type, 'contact')
 
-            # should be exact 2 rd.identity.contacts records, each pointing
-            # at my contact.
-            key = ['schema_id', 'rd.identity.contacts']
-            result = yield dm.open_view(key=key, reduce=False, include_docs=True)
-            rows = result['rows']
-            self.failUnlessEqual(len(rows), 2, str(rows))
-            docs = [r['doc'] for r in rows]
-            for doc in docs:
-                contacts = doc['contacts']
-                self.failUnlessEqual(len(contacts), 1, contacts)
-                this_id, this_rel = contacts[0]
-                self.failUnlessEqual(this_id, cid)
-                self.failUnless(this_rel in ['personal', 'public'], this_rel)
-            # and that will do!
-
-        return self.process_doc(
-                ).addCallback(check_it,
-                )
+        # should be exact 2 rd.identity.contacts records, each pointing
+        # at my contact.
+        key = ['schema_id', 'rd.identity.contacts']
+        result = dm.open_view(key=key, reduce=False, include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 2, str(rows))
+        docs = [r['doc'] for r in rows]
+        for doc in docs:
+            contacts = doc['contacts']
+            self.failUnlessEqual(len(contacts), 1, contacts)
+            this_id, this_rel = contacts[0]
+            self.failUnlessEqual(this_id, cid)
+            self.failUnless(this_rel in ['personal', 'public'], this_rel)
+        # and that will do!
 
     def test_one_testmsg_common(self):
         # Here we process 2 test messages which result in both messages
@@ -85,83 +77,72 @@ class TestIDPipeline(TestIDPipelineBase):
         # is already associated with the contact we created first time round,
         # with the end result we still end up with a single contact, but now
         # have *three* identities for him
-        @defer.inlineCallbacks
-        def check_it(result):
-            # First determine the contact ID.
-            key = ['schema_id', 'rd.contact']
-            result = yield get_doc_model().open_view(key=key, reduce=False,
-                                             include_docs=True)
+        self.test_one_testmsg()
+        result = self.process_doc()
+        # First determine the contact ID.
+        key = ['schema_id', 'rd.contact']
+        result = get_doc_model().open_view(key=key, reduce=False,
+                                           include_docs=True)
 
-            rows = result['rows']
-            # Should be exactly 1 record with a 'contact' schema.
-            self.failUnlessEqual(len(rows), 1, str(rows))
-            key_type, cid = rows[0]['doc']['rd_key']
-            self.failUnlessEqual(key_type, 'contact')
+        rows = result['rows']
+        # Should be exactly 1 record with a 'contact' schema.
+        self.failUnlessEqual(len(rows), 1, str(rows))
+        key_type, cid = rows[0]['doc']['rd_key']
+        self.failUnlessEqual(key_type, 'contact')
 
-            # should be exact 3 rd.identity.contacts records, each pointing
-            # at my contact.
-            key = ['schema_id', 'rd.identity.contacts']
-            result = yield get_doc_model().open_view(key=key,
-                                             reduce=False,
-                                             include_docs=True)
+        # should be exact 3 rd.identity.contacts records, each pointing
+        # at my contact.
+        key = ['schema_id', 'rd.identity.contacts']
+        result = get_doc_model().open_view(key=key,
+                                           reduce=False,
+                                           include_docs=True)
 
-            rows = result['rows']
-            self.failUnlessEqual(len(rows), 3, str(rows))
-            docs = [r['doc'] for r in rows]
-            for doc in docs:
-                contacts = doc['contacts']
-                self.failUnlessEqual(len(contacts), 1, contacts)
-                this_id, this_rel = contacts[0]
-                self.failUnlessEqual(this_id, cid)
-                self.failUnless(this_rel in ['personal', 'public'], this_rel)
-            # and that will do!
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 3, str(rows))
+        docs = [r['doc'] for r in rows]
+        for doc in docs:
+            contacts = doc['contacts']
+            self.failUnlessEqual(len(contacts), 1, contacts)
+            this_id, this_rel = contacts[0]
+            self.failUnlessEqual(this_id, cid)
+            self.failUnless(this_rel in ['personal', 'public'], this_rel)
 
-        return self.test_one_testmsg(
-                ).addCallback(lambda _: self.process_doc()
-                ).addCallback(check_it,
-                ).addCallback(self.deferVerifyCounts, 1, 3
-                )
+        self.verifyCounts(1, 3)
 
     def test_one_testmsg_unique(self):
         # Here we process 2 test messages but none of the messages emit a
         # common identity ID.  The end result is we end up with 2 contacts;
         # one with 2 identities (from reusing test_one_testmsg), then a second
         # contact with only a single identity
-        @defer.inlineCallbacks
-        def check_it(result):
-            # First determine the 2 contact IDs.
-            key = ['schema_id', 'rd.contact']
-            result = yield get_doc_model().open_view(key=key, reduce=False,
-                                             include_docs=True)
+        self.test_one_testmsg()
+        result = self.process_doc(False)
+        # First determine the 2 contact IDs.
+        key = ['schema_id', 'rd.contact']
+        result = get_doc_model().open_view(key=key, reduce=False,
+                                           include_docs=True)
 
-            rows = result['rows']
-            # Should be exactly 2 records with a 'contact' schema.
-            self.failUnlessEqual(len(rows), 2, str(rows))
-            key_type, cid1 = rows[0]['doc']['rd_key']
-            self.failUnlessEqual(key_type, 'contact')
-            key_type, cid2 = rows[1]['doc']['rd_key']
-            self.failUnlessEqual(key_type, 'contact')
+        rows = result['rows']
+        # Should be exactly 2 records with a 'contact' schema.
+        self.failUnlessEqual(len(rows), 2, pformat(rows))
+        key_type, cid1 = rows[0]['doc']['rd_key']
+        self.failUnlessEqual(key_type, 'contact')
+        key_type, cid2 = rows[1]['doc']['rd_key']
+        self.failUnlessEqual(key_type, 'contact')
 
-            # should be exact 3 rd.identity.contacts records, each pointing
-            # at my contact.
-            key = ['schema_id', 'rd.identity.contacts']
-            result = yield get_doc_model().open_view(key=key, reduce=False,
-                                                     include_docs=True)
+        # should be exact 3 rd.identity.contacts records, each pointing
+        # at my contact.
+        key = ['schema_id', 'rd.identity.contacts']
+        result = get_doc_model().open_view(key=key, reduce=False,
+                                           include_docs=True)
 
-            rows = result['rows']
-            self.failUnlessEqual(len(rows), 3, str(rows))
-            docs = [r['doc'] for r in rows]
-            for doc in docs:
-                contacts = doc['contacts']
-                self.failUnlessEqual(len(contacts), 1, contacts)
-                this_id, this_rel = contacts[0]
-                self.failUnless(this_id in [cid1, cid2])
-                self.failUnless(this_rel in ['personal', 'public'], this_rel)
-            # and that will do!
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 3, str(rows))
+        docs = [r['doc'] for r in rows]
+        for doc in docs:
+            contacts = doc['contacts']
+            self.failUnlessEqual(len(contacts), 1, contacts)
+            this_id, this_rel = contacts[0]
+            self.failUnless(this_id in [cid1, cid2])
+            self.failUnless(this_rel in ['personal', 'public'], this_rel)
 
-
-        return self.test_one_testmsg(
-                ).addCallback(lambda _: self.process_doc(False)
-                ).addCallback(check_it,
-                ).addCallback(self.deferVerifyCounts, 2, 3
-                )
+        self.verifyCounts(2, 3)
