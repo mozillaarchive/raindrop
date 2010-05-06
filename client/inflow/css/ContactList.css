@@ -21,7 +21,7 @@
  * Contributor(s):
  * */
 
-@import url("../dojo/dojo/resources/dnd.css");
+@import url("../../dojo/dojo/resources/dnd.css");
 
 .ContactList,
 .ContactList ul {
