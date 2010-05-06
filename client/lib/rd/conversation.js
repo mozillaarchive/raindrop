@@ -34,7 +34,8 @@ function (rd, dojo, api) {
         messageKey: function (/*String|Array*/ids, /*Function*/callback, /*Function*/errback) {
             var apiInst = api({
                 url: 'inflow/conversations/with_messages',
-                keys: ids
+                keys: ids,
+                schemas: ["*"]
             });
             if (callback) {
                 apiInst.ok(callback);
