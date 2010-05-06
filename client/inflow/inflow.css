@@ -436,6 +436,9 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 
 /* END hacking away at inputs in quickcompose :( */
 
+.raindropVersion {
+    color: #CCCCCC;
+}
 
 /* START hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */
 /* hbox and vbox classes */
