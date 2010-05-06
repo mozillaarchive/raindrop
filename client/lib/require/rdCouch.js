@@ -187,7 +187,7 @@
                 }) - 1)];
 
                 //Convert JSON to arguments
-                args = JSON.parse(json);
+                args =  typeof JSON !== "undefined" ? JSON.parse(json) : eval('(' + json + ')');
 
                 //Set the URL
                 if (!args.url) {
