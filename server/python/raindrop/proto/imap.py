@@ -143,6 +143,21 @@ def mp_open(self, host = '', port = imaplib.IMAP4_PORT):
 
 imaplib.IMAP4.open = mp_open
 
+# monkey-patch imaplib's SSL readline implementation to get around
+# http://bugs.python.org/issue5949
+# This was fixed in Python 2.6.? and 3.x, so in theory we should check if
+# the python version needs the patch or not...
+def ssl_imap_readline(self):
+  """Read line from remote."""
+  line = []
+  while 1:
+      char = self.sslobj.read(1)
+      line.append(char)
+      if char in ("\n", ''): return ''.join(line)
+
+imaplib.IMAP4_SSL.readline = ssl_imap_readline
+  
+
 class ImapProvider(object):
   # The 'id' of this extension
   # XXX - should be managed by our caller once these 'protocols' become
@@ -324,11 +339,16 @@ class ImapProvider(object):
       caches[folder_name] = doc
     logger.debug('opened cache documents for %d folders', len(caches))
 
+    # We used to do a 'quick fetch' when the expectation was that a user
+    # would be sitting there waiting for the first sync.  Now that we don't
+    # expect that, we don't bother doing it as it just takes more time in
+    # total to finalize the full sync...
+    #
     # All folders without cache docs get the special 'fetch quick'
     # treatment...
-    for delim, name in all_names:
-      if name not in caches:
-        self.query_queue.put((False, self._checkQuickRecent, (name, 20)))
+#    for delim, name in all_names:
+#      if name not in caches:
+#        self.query_queue.put((False, self._checkQuickRecent, (name, 20)))
 
     # We only update the cache of the folder once all items from that folder
     # have been written, so extensions only run once all items fetched.
