@@ -33,10 +33,7 @@ import time
 import logging
 logger=logging.getLogger(__name__)
 
-try:
-    import simplejson as json
-except ImportError:
-    import json # Python 2.6
+from raindrop import json
 
 # from the couchdb package; not sure what makes these names special...
 def _encode_options(options):
@@ -109,7 +106,7 @@ class CouchDB():
                     # couch may discard old connections resulting in these
                     # exceptions
                     if isinstance(exc, socket.error) and \
-                       exc.errno not in [errno.ECONNRESET, errno.ECONNABORTED]:
+                       exc.args[0] not in [errno.ECONNRESET, errno.ECONNABORTED]:
                         logger.warn("non retryable error: %s", exc)
                         raise
                     conn.close()

@@ -29,7 +29,8 @@
 # just links an email to its corresponding list.
 
 import re
-import urllib2, json
+import urllib2
+from raindrop import json
 
 # Grab the numeric video code from links
 # TODO make this regexp strongly against malicious link use.

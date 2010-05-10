@@ -32,16 +32,13 @@ import re
 import tempfile
 import zipfile
 import os, os.path, mimetypes, base64, pprint
+import subprocess
 import model
 import hashlib
 
 import shutil, zipfile
 from cStringIO import StringIO
-
-try:
-    import json # standard module in python 2.6+
-except ImportError:
-    import simplejson as json # external module in 2.5 and earlier
+from raindrop import json
 
 from .config import get_config
 from .model import get_db
@@ -465,7 +462,14 @@ def update_apps():
     data = f.read()
     f.close()
 
+    # Get the hg version we are at
+    rev = ''
+    if os.path.exists(os.path.join(root_dir, ".hg")):
+        # the subprocess call could return line endings we do not want.
+        rev = subprocess.Popen(["hg", "id", "-b", "-i", "-t"], stdout=subprocess.PIPE).communicate()[0].replace("\n", "").replace("\r", "")
+
     # update rdconfig.js contents with couch data
+    data = data.replace("/*INSERT REV HERE*/", rev)
     data = data.replace("/*INSERT PATHS HERE*/", module_paths)
     data = data.replace("/*INSERT SUBS HERE*/", subs)
     data = data.replace("/*INSERT EXTS HERE*/", exts)

@@ -22,7 +22,8 @@
 #
 
 import re
-import urllib2, json
+import urllib2
+from raindrop import json
 
 # http://www.youtube.com/watch?v=YOUTUBE_ID
 youtube_query_regex = re.compile("v=([A-Za-z0-9._%-]*)[&\w;=\+_\-]*")

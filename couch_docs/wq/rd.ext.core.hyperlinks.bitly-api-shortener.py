@@ -22,7 +22,8 @@
 #
 
 import re
-import urllib2, json
+import urllib2
+from raindrop import json
 
 SERVICES = {
   "su.pr" : {

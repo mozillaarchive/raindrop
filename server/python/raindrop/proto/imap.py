@@ -113,16 +113,50 @@ class IMAP4AuthException(Exception):
     Exception.__init__(self, *args)
 
 
+def create_connection(address, timeout):
+    # stolen from python 2.6...
+    msg = "getaddrinfo returns an empty list"
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.settimeout(timeout)
+            sock.connect(sa)
+            return sock
+
+        except socket.error, msg:
+            if sock is not None:
+                sock.close()
+
+    raise socket.error, msg
+
 # Yuck yuck yuck - monkeypatch imaplib...
 def mp_open(self, host = '', port = imaplib.IMAP4_PORT):
   # overridden for timeout management...
   self.host = host
   self.port = port
-  self.sock = socket.create_connection((host, port), self.connection_timeout)
+  self.sock = create_connection((host, port), self.connection_timeout)
   self.sock.settimeout(self.response_timeout)
   self.file = self.sock.makefile('rb')
 
 imaplib.IMAP4.open = mp_open
+
+# monkey-patch imaplib's SSL readline implementation to get around
+# http://bugs.python.org/issue5949
+# This was fixed in Python 2.6.? and 3.x, so in theory we should check if
+# the python version needs the patch or not...
+def ssl_imap_readline(self):
+  """Read line from remote."""
+  line = []
+  while 1:
+      char = self.sslobj.read(1)
+      line.append(char)
+      if char in ("\n", ''): return ''.join(line)
+
+imaplib.IMAP4_SSL.readline = ssl_imap_readline
+  
 
 class ImapProvider(object):
   # The 'id' of this extension
@@ -305,11 +339,16 @@ class ImapProvider(object):
       caches[folder_name] = doc
     logger.debug('opened cache documents for %d folders', len(caches))
 
+    # We used to do a 'quick fetch' when the expectation was that a user
+    # would be sitting there waiting for the first sync.  Now that we don't
+    # expect that, we don't bother doing it as it just takes more time in
+    # total to finalize the full sync...
+    #
     # All folders without cache docs get the special 'fetch quick'
     # treatment...
-    for delim, name in all_names:
-      if name not in caches:
-        self.query_queue.put((False, self._checkQuickRecent, (name, 20)))
+#    for delim, name in all_names:
+#      if name not in caches:
+#        self.query_queue.put((False, self._checkQuickRecent, (name, 20)))
 
     # We only update the cache of the folder once all items from that folder
     # have been written, so extensions only run once all items fetched.
@@ -523,7 +562,7 @@ class ImapProvider(object):
     for row in existing['rows']:
       rdkey = tuple(row['value']['rd_key'])
       if rdkey not in current:
-        to_nuke.append({'_id': row['_id'],
+        to_nuke.append({'_id': row['id'],
                         '_rev': row['value']['_rev'],
                         '_deleted': True,
                         'rd_ext_id': ext_id,

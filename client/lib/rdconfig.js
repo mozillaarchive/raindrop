@@ -26,7 +26,7 @@
 /*global document: false */
 "use strict";
 
-var djConfig, require;
+var djConfig, require, raindropVersion = "/*INSERT REV HERE*/";
 (function () {
     //Find raindrop location
     var scripts = document.getElementsByTagName("script"), prefix = "", i,

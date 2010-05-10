@@ -26,10 +26,7 @@ import socket
 import errno
 import select
 from cStringIO import StringIO
-try:
-    import simplejson as json
-except ImportError:
-    import json
+from raindrop import json
 
 import logging
 
@@ -90,10 +87,10 @@ class ChangesIterFactory(object):
         # We abuse httplib to establish the connection and read the headers,
         # then we swtich to non-blocking and handle all reading manually.
         c = httplib.HTTPConnection(db.host, db.port)
-        # sadly no option for 'never timeout'
-        timeout = 100000000
-        path = "/%s/_changes?feed=continuous&timeout=%d&since=%d" % \
-                (db.dbName, timeout, self.current_seq)
+        # By specifying a heartbeat we can get an infinite timeout (but
+        # blank lines we can ignore on every heartbeat period.
+        path = "/%s/_changes?feed=continuous&heartbeat=60000&since=%d" % \
+                (db.dbName, self.current_seq)
         c.request("GET", path)
         self.connection = c
         self.response = c.getresponse()
@@ -138,7 +135,7 @@ class ChangesIterFactory(object):
             try:
                 line = self._read_line()
             except socket.error, exc:
-                if exc.errno == errno.EWOULDBLOCK:
+                if exc.args[0] == errno.EWOULDBLOCK:
                     if not blocking:
                         return None
                     # blocking request - use select to work out when we are ready

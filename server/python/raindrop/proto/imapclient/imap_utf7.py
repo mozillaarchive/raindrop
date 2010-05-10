@@ -23,7 +23,15 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+class FolderNameError(ValueError):
+    pass
+
+
 def encode(s):
+    if isinstance(s, str) and sum(n for n in (ord(c) for c in s) if n > 127):
+        raise FolderNameError("%r contains characters not valid in a str folder name. "
+                              "Convert to unicode first?" % s)
+
     r = []
     _in = []
     for c in s:
@@ -62,7 +70,11 @@ def decode(s):
             r.append(c)
     if decode:
         r.append(modified_unbase64(''.join(decode[1:])))
-    return ''.join(r)
+    out = ''.join(r)
+
+    if not isinstance(out, unicode):
+        out = unicode(out, 'latin-1')
+    return out
 
 
 def modified_base64(s):

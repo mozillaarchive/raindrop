@@ -64,7 +64,7 @@ class SMTPAccount(base.AccountBase):
             try:
                 server.starttls()
             except smtplib.SMTPException:
-                logger.warn("smtp server does not support TLS")
+                logger.info("smtp server does not support TLS")
             server.ehlo_or_helo_if_needed()
 
             if server.has_extn("auth"):
