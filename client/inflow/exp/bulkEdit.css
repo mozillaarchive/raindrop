@@ -1,10 +1,56 @@
-
 .rdwWidgets.bulkEdit {
-
 }
 
-.rdwWidgets .bulkEditExpanded .WidgetBox {
-    margin-top: 20px;
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup,
+.rdwWidgets.bulkEdit .WidgetBox.rdwExtAccountGroup {
+  width: inherit;
+  margin: 10px 0 0 10px !important;
+  padding: 10px !important;
+  border-width: 1px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  border-color: #85b53b;
+  border-style: dashed;
+  -moz-border-image: none;
+  -webkit-border-image: none;
+  background-color: #e8fbdf;
+}
+  
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup.rdwExtTwitterGroup,
+.rdwWidgets.bulkEdit .WidgetBox.rdwExtAccountGroup.rdwExtFacebookGroup  {
+  background-color: #bcf1ff;
+  border-color: #0aa8e7;
+}
+
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup.rdwConversationMailingList  {
+  background-color: #ffddde;
+  border-color: #f98dad;
+}
+
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.WidgetBox,
+.rdwWidgets .bulkEditExpanded .rdwExtAccountGroup.WidgetBox {
+    margin: 20px 0px 0px 10px;
+    width: 290px;
+    -moz-border-image: none;
+    -webkit-border-image: none;
+    padding: 10px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+}
+
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.WidgetBox {
+    border: 1px dashed #88b455;
+    background-color: #e8fbdf;
+}
+
+.rdwWidgets .bulkEditExpanded .rdwExtAccountGroup.WidgetBox {
+    border: 1px dashed #00a3e6;
+    background-color: #b9f1fe;
+}
+
+.rdwWidgets .bulkEditExpanded .rdwConversationMailingList.WidgetBox {
+    border: 1px dashed #ff79a4;
+    background-color: #fddde0;
 }
 
 .rdwWidgets .bulkEditExpanded .rdwSummaryGroup.WidgetBox {
@@ -12,10 +58,63 @@
 }
 
 /* Style folders here */
-.rdwGenericGroup.rdwFolder {
-    
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.rdwFolder.WidgetBox {
+    -moz-border-image: url("../i/rd_folder.png") 21 5 1 90;
+    -webkit-border-image: url("../i/rd_folder.png") 21 5 1 90;
+    border-width: 21px 5px 1px 90px;
+    position: relative;
+    height: 68px;
+    background-color: transparent;
 }
 
+.rdwGenericGroup.rdwFolder.WidgetBox {
+    -moz-border-image: url("../i/rd_folder_compressed.png") 29 9 8 90;
+    -webkit-border-image: url("../i/rd_folder_compressed.png") 29 9 8 90;
+    border-width: 29px 9px 8px 90px;
+    position: relative;
+    background-color: transparent;
+}
+
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.rdwFolder .WidgetHeader {
+    position: absolute;
+    top: 18px;
+    left: 0;
+    margin-left: -75px;
+    background-color: transparent;
+    width: 260px;
+}
+
+.rdwGenericGroup.rdwFolder .WidgetHeader {
+    position: absolute;
+    top: 5px;
+    left: 0;
+    margin-left: -75px;
+    background-color: transparent;
+    width: 270px;
+}
+
+.rdwGenericGroup.rdwFolder .WidgetHeader input.nameInput {
+  width: 260px;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  background-color: #fafafa;
+  padding: 2px;
+  border: 1px solid #ccc;
+}
+
+.rdwGenericGroup.rdwFolder .WidgetHeader .title {
+    padding: 0;
+    background-image: none;
+    height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rdwGenericGroup.rdwFolder .WidgetHeader .actions {
+    display: none;
+}
 
 .bulkEditTooltip {
     display: block;
@@ -42,4 +141,12 @@ body .dojoDndAvatarHeader {
 
 .dragCursor {
     cursor: move;
+}
+
+.dragCursor .dojoDndItem.rdwConversation {
+  border: 1px dashed #666;
+}
+
+.newFolderContainer {
+  margin: 10px;
 }

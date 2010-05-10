@@ -40,10 +40,6 @@
   padding-top: 25px;
 }
 
-.WidgetBox:nth-child(2) {
-  margin-top: -35px;
-}
-
 .WidgetBox > .WidgetHeader > .title {
   font-weight: bold;
 }
@@ -148,7 +144,7 @@
 
 .rdwSummaryGroup {
   padding: 23px 0 0 2px;
-  margin: 0 0 10px 0;
+  margin: 0 0 5px 0;
   -moz-border-image: url("../i/rd_summary_border_thin.png") 2 10 17 8;
   -webkit-border-image: url("../i/rd_summary_border_thin.png") 2 10 17 8;
   border-width: 2px 10px 17px 8px;  

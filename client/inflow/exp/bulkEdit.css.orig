@@ -1,0 +1,28 @@
+.rdwWidgets.bulkEdit {
+}
+
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup,
+.rdwWidgets.bulkEdit .WidgetBox.rdwExtAccountGroup {
+  width: inherit;
+  margin: 10px 0 0 10px !important;
+  padding: 10px !important;
+  border-width: 1px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  border-color: #85b53b;
+  border-style: dashed;
+  -moz-border-image: none;
+  -webkit-border-image: none;
+  background-color: #e8fbdf;
+}
+  
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup.rdwExtTwitterGroup,
+.rdwWidgets.bulkEdit .WidgetBox.rdwExtAccountGroup.rdwExtFacebookGroup  {
+  background-color: #bcf1ff;
+  border-color: #0aa8e7;
+}
+
+.rdwWidgets.bulkEdit .WidgetBox.rdwGenericGroup.rdwConversationMailingList  {
+  background-color: #ffddde;
+  border-color: #f98dad;
+}
