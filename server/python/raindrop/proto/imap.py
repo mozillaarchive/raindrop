@@ -126,11 +126,11 @@ def create_connection(address, timeout):
             sock.connect(sa)
             return sock
 
-        except error, msg:
+        except socket.error, msg:
             if sock is not None:
                 sock.close()
 
-    raise error, msg
+    raise socket.error, msg
 
 # Yuck yuck yuck - monkeypatch imaplib...
 def mp_open(self, host = '', port = imaplib.IMAP4_PORT):
