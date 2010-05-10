@@ -562,7 +562,7 @@ class ImapProvider(object):
     for row in existing['rows']:
       rdkey = tuple(row['value']['rd_key'])
       if rdkey not in current:
-        to_nuke.append({'_id': row['_id'],
+        to_nuke.append({'_id': row['id'],
                         '_rev': row['value']['_rev'],
                         '_deleted': True,
                         'rd_ext_id': ext_id,
