@@ -29,11 +29,7 @@ import itertools
 
 from .config import get_config
 from .wetpaisley import CouchDB, CouchError
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
+from raindrop import json
 
 logger = logging.getLogger('model')
 

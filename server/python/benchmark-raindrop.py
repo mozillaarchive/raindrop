@@ -30,11 +30,8 @@ from __future__ import division
 import os
 import time
 import optparse
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
+from raindrop import json
 from raindrop.config import get_config
 from raindrop.proto.imap import MAX_MESSAGES_PER_FETCH
 

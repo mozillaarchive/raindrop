@@ -38,11 +38,7 @@ import hashlib
 
 import shutil, zipfile
 from cStringIO import StringIO
-
-try:
-    import json # standard module in python 2.6+
-except ImportError:
-    import simplejson as json # external module in 2.5 and earlier
+from raindrop import json
 
 from .config import get_config
 from .model import get_db

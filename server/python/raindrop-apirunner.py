@@ -35,11 +35,7 @@ from time import time
 from urllib import urlencode, quote
 import optparse
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
+from raindrop import json
 from raindrop import config
 
 # -- library code --

@@ -21,5 +21,9 @@
 # Contributor(s):
 #
 
-
-
+# So everyone doesn't need to know how to get json :)
+try:
+    # prefer simple-json as it has C speedups.
+    import simplejson as json
+except ImportError:
+    import json

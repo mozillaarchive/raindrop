@@ -26,10 +26,7 @@ import socket
 import errno
 import select
 from cStringIO import StringIO
-try:
-    import simplejson as json
-except ImportError:
-    import json
+from raindrop import json
 
 import logging
 

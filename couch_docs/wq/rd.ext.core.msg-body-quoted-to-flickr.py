@@ -29,7 +29,8 @@
 # just links an email to its corresponding list.
 
 import re
-import urllib2, json
+import urllib2
+from raindrop import json
 
 # http://www.flickr.com/services/api/misc.urls.html
 BASE58_ALPHABET = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
