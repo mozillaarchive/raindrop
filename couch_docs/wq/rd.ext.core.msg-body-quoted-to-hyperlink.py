@@ -69,26 +69,32 @@ def handler(doc):
             continue
         found[match] = True
 
-        parse = urlparse.urlparse(match)
-        if parse.hostname:
-            try: # get the domain name without sub-host names
-                domain = parse.hostname[parse.hostname.rindex(".", 0, parse.hostname.rindex(".")) + 1:]
-            except:
-                domain = parse.hostname
+        try:
+            parse = urlparse.urlparse(match)
 
-            ret.append({
-                        'url' : match,
-                        'domain' : domain,
-                        'scheme' : parse.scheme,
-                        'username' : parse.username or '',
-                        'password' : parse.password or '',
-                        'hostname' : parse.hostname,
-                        'port' : parse.port or '',
-                        'path' : parse.path,
-                        'params' : parse.params,
-                        'query' : parse.query,
-                        'fragment' : parse.fragment
-                        })
+            if parse.hostname:
+                try: # get the domain name without sub-host names
+                    domain = parse.hostname[parse.hostname.rindex(".", 0, parse.hostname.rindex(".")) + 1:]
+                except:
+                    domain = parse.hostname
+                ret.append({
+                            'url' : match,
+                            'domain' : domain,
+                            'scheme' : parse.scheme,
+                            'username' : parse.username or '',
+                            'password' : parse.password or '',
+                            'hostname' : parse.hostname,
+                            'port' : parse.port or '',
+                            'path' : parse.path,
+                            'params' : parse.params,
+                            'query' : parse.query,
+                            'fragment' : parse.fragment
+                            })
+
+        except ValueError, why:
+            # Malformed URL - just skip it...
+            logger.debug('failed to parse %r: %s', match, why)
+            continue
 
     if len(ret) > 0:
         emit_schema('rd.msg.body.quoted.hyperlinks', {
