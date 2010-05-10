@@ -109,7 +109,7 @@ class CouchDB():
                     # couch may discard old connections resulting in these
                     # exceptions
                     if isinstance(exc, socket.error) and \
-                       exc.errno not in [errno.ECONNRESET, errno.ECONNABORTED]:
+                       exc.args[0] not in [errno.ECONNRESET, errno.ECONNABORTED]:
                         logger.warn("non retryable error: %s", exc)
                         raise
                     conn.close()

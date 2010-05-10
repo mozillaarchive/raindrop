@@ -113,12 +113,31 @@ class IMAP4AuthException(Exception):
     Exception.__init__(self, *args)
 
 
+def create_connection(address, timeout):
+    # stolen from python 2.6...
+    msg = "getaddrinfo returns an empty list"
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.settimeout(timeout)
+            sock.connect(sa)
+            return sock
+
+        except error, msg:
+            if sock is not None:
+                sock.close()
+
+    raise error, msg
+
 # Yuck yuck yuck - monkeypatch imaplib...
 def mp_open(self, host = '', port = imaplib.IMAP4_PORT):
   # overridden for timeout management...
   self.host = host
   self.port = port
-  self.sock = socket.create_connection((host, port), self.connection_timeout)
+  self.sock = create_connection((host, port), self.connection_timeout)
   self.sock.settimeout(self.response_timeout)
   self.file = self.sock.makefile('rb')
 

@@ -138,7 +138,7 @@ class ChangesIterFactory(object):
             try:
                 line = self._read_line()
             except socket.error, exc:
-                if exc.errno == errno.EWOULDBLOCK:
+                if exc.args[0] == errno.EWOULDBLOCK:
                     if not blocking:
                         return None
                     # blocking request - use select to work out when we are ready
