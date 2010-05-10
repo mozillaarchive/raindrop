@@ -8,10 +8,9 @@ Intially inspired by http://effbot.org/zone/simple-iterator-parser.htm
 #TODO more exact error reporting
 
 import imaplib
-import shlex
-from cStringIO import StringIO
 from datetime import datetime
 from fixed_offset import FixedOffset
+from response_lexer import TokenSource
 
 
 __all__ = ['parse_response', 'ParseError']
@@ -26,13 +25,22 @@ def parse_response(text):
 
     Returns nested tuples of appropriately typed objects.
     """
-    src = ResponseTokeniser(text)
+    return tuple(gen_parsed_response(text))
+
+
+def gen_parsed_response(text):
+    if not text:
+        return
+    src = TokenSource(text)
+    
+    token = None
     try:
-        return tuple(atom(src, token) for token in src)
+        for token in src:
+            yield atom(src, token)
     except ParseError:
         raise
     except ValueError, err:
-        raise ParseError("%s: %s" % (str(err), src.lex.token))
+        raise ParseError("%s: %s" % (str(err), token))
 
 
 def parse_fetch_response(text):
@@ -41,7 +49,7 @@ def parse_fetch_response(text):
     Returns a dictionary, keyed by message ID. Each value a dictionary
     keyed by FETCH field type (eg."RFC822").
     """
-    response = iter(parse_response(text))
+    response = gen_parsed_response(text)
 
     parsed_response = {}
     while True:
@@ -110,104 +118,28 @@ def _convert_INTERNALDATE(date_string):
     return dt.astimezone(FixedOffset.for_system()).replace(tzinfo=None)
 
 
-EOF = object()
-
-# imaplib has poor handling of 'literals' - it both fails to remove the
-# {size} marker, and fails to keep responses grouped into the same logical
-# 'line'.  What we end up with is a list of response 'records', where each
-# record is either a simple string, or tuple of (str_with_lit, literal) -
-# where str_with_lit is a string with the {xxx} marker at its end.  Note
-# that each elt of this list does *not* correspond 1:1 with the untagged
-# responses.
-# (http://bugs.python.org/issue5045 also has comments about this)
-# So: we have a special file-like object for each of these records.  When
-# a string literal is finally processed, we peek into this file-like object
-# to grab the literal.
-class LiteralHandlingReader:
-    def __init__(self, lexer, resp_record):
-        self.pushed = None
-        self.lexer = lexer
-        if isinstance(resp_record, tuple):
-            # A 'record' with a string which includes a literal marker, and
-            # the literal itself.
-            src_text, self.literal = resp_record
-            assert src_text.endswith("}"), src_text
-            # add a token-sep after the text.
-            self.src = StringIO(src_text + " ")
-        else:
-            # just a line with no literals.
-            self.src = StringIO(resp_record)
-            self.literal = None
-
-    def read(self, n):
-        # We also hack into the lexer so we get special treatment for '\\'
-        # chars - they are only special inside a quoted string.
-        assert n==1
-        if self.pushed is not None:
-            ret = self.pushed
-            self.pushed = None
-        else:
-            ret = self.src.read(n)
-            if ret=="\\" and self.lexer.state not in '"\\':
-                self.pushed = "\\"
-        return ret
-
-    def close(self):
-        self.src.close()
-        self.src = None
-        self.literal = None
-
-
-class ResponseTokeniser(object):
-
-    CTRL_CHARS = ''.join([chr(ch) for ch in range(32)])
-    SPECIALS = r'()%"' + CTRL_CHARS
-    ALL_CHARS = [chr(ch) for ch in range(256)]
-    NON_SPECIALS = [ch for ch in ALL_CHARS if ch not in SPECIALS]
-
-    def __init__(self, resp_chunks):
-        # initialize the lexer with all the chunks we read.
-        self.lex = shlex.shlex('', posix=True)
-        for chunk in reversed(resp_chunks):
-            self.lex.push_source(LiteralHandlingReader(self.lex, chunk))
-
-        self.lex.quotes = '"'
-        self.lex.commenters = ''
-        self.lex.wordchars = self.NON_SPECIALS
-
-    def __iter__(self):
-        return iter(self.lex)
-
-    def next(self):
-        try:
-            return self.lex.next()
-        except StopIteration:
-            return EOF
-
-
 def atom(src, token):
     if token == "(":
         out = []
-        while True:
-            token = src.next()
+        for token in src:
             if token == ")":
                 return tuple(out)
-            if token == EOF:
-                preceeding = ' '.join(str(val) for val in out)
-                raise ParseError('Tuple incomplete before "(%s"' % preceeding)
             out.append(atom(src, token))
+        # oops - no terminator!
+        preceeding = ' '.join(str(val) for val in out)
+        raise ParseError('Tuple incomplete before "(%s"' % preceeding)
     elif token == 'NIL':
         return None
-    elif token.startswith('{'):
+    elif token[0] == '{':
         literal_len = int(token[1:-1])
-        literal_text = src.lex.instream.literal
+        literal_text = src.current_literal
         if literal_text is None:
            raise ParseError('No literal corresponds to %r' % token)
         if len(literal_text) != literal_len:
             raise ParseError('Expecting literal of size %d, got %d' % (
                                 literal_len, len(literal_text)))
         return literal_text
-    elif token.startswith('"'):
+    elif len(token) >= 2 and (token[0] == token[-1] == '"'):
         return token[1:-1]
     elif token.isdigit():
         return int(token)

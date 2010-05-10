@@ -4,7 +4,7 @@
 
 import re
 import imaplib
-import shlex
+import response_lexer
 #imaplib.Debug = 5
 
 import imap_utf7
@@ -204,10 +204,11 @@ class IMAPClient(object):
         return self._proc_folder_list(dat)
 
     def _proc_folder_list(self, folder_data):
-        # appears to be a special case - no 'untagged' responses (ie, no
-        # folders) returns [None]
-        if folder_data == [None]:
-            return []
+        # Filter out empty strings and None's.
+        # This also deals with the special case of - no 'untagged'
+        # responses (ie, no folders). This comes back as [None].
+        folder_data = [item for item in folder_data if item not in ('', None)]
+
         ret = []
         parsed = parse_response(folder_data)
         while parsed:
@@ -327,6 +328,7 @@ class IMAPClient(object):
         """
         typ, data = self._imap.list('', self._encode_folder_name(folder))
         self._checkok('list', typ, data)
+        data = [x for x in data if x]
         return len(data) == 1 and data[0] != None
 
 
@@ -550,7 +552,7 @@ class IMAPClient(object):
         typ, data = self._imap.getacl(folder)
         self._checkok('getacl', typ, data)
 
-        parts = shlex.split(data[0])
+        parts = list(response_lexer.Lexer([data[0]]))
         parts = parts[1:]       # First item is folder name
 
         out = []
@@ -627,8 +629,17 @@ class IMAPClient(object):
 
     def _encode_folder_name(self, name):
         if self.folder_encode:
-            return imap_utf7.encode(name)
-        return name
+            name = imap_utf7.encode(name)
+        # imaplib assumes that if a command argument (in this case a
+        # folder name) has double quotes around it, then it doesn't
+        # need quoting. This "feature" prevents creation of folders
+        # with names that start and end with double quotes.
+        #
+        # To work around this IMAPClient performs the quoting
+        # itself. This adds start and end double quotes which also
+        # serves to fool IMAP4._checkquote into not attempting further
+        # quoting. A hack but it works.
+        return _quote_arg(name)
 
 
 def messages_to_str(messages):
@@ -669,3 +680,7 @@ def datetime_to_imap(dt):
     return dt.strftime("%d-%b-%Y %H:%M:%S %z")
 
 
+def _quote_arg(arg):
+  arg = arg.replace('\\', '\\\\')
+  arg = arg.replace('"', '\\"')
+  return '"%s"' % arg
