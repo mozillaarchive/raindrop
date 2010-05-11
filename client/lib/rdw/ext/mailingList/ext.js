@@ -25,43 +25,6 @@
 /*global require: false */
 "use strict";
 
-
-require.modify("rd/conversation", "rdw/ext/mailingList/ext-rd/conversation",
-    ["rd", "rd/api", "rd/conversation"],
-    function (rd, api) {
-        //Allow a "mailingList" method on the rd.conversation data API.
-        rd.applyExtension("rdw/ext/mailingList/ext", "rd/conversation", {
-            add: {
-                /**
-                 * Gets the most recent mailing list messages up to limit, then pulls
-                 * the conversations associated with those messages. Conversation with
-                 * the most recent message will be first.
-                 * @param {String} listId
-                 * @param {String} limit
-                 * @param {Function} callback
-                 * @param {Function} [errback]
-                 */
-                mailingList: function (listId, limit, skip, callback, errback) {
-                    api().view('msg_by_mailinglist', {
-                        key: listId,
-                        limit: limit,
-                        skip: skip
-                    })
-                    .ok(this, function (json) {
-                        //Get message keys
-                        var keys = [], i, row;
-                        for (i = 0; (row = json.rows[i]); i++) {
-                            keys.push(row.value.rd_key);
-                        }
-        
-                        this.messageKey(keys, callback, errback);
-                    });
-                }
-            }
-        });
-    }
-);
-
 require.modify("rd/MegaviewStore", "rdw/ext/mailingList/ext-rd/MegaviewStore",
     ["rd", "dojo", "rd/api", "rd/MegaviewStore"],
     function (rd, dojo, api, MegaviewStore) {
@@ -227,25 +190,33 @@ require.modify("rdw/SummaryGroup", "rdw/ext/mailingList/ext-rdw/SummaryGroup",
 );
 
 require.modify("rdw/Conversations", "rdw/ext/mailingList/ext-rdw/Conversations",
-    ["rd", "dojo", "rd/conversation", "rdw/Conversations"],
-    function (rd, dojo, conversation) {
+    ["rd", "dojo", "rd/api", "rdw/Conversations"],
+    function (rd, dojo, api) {
         //Modify rdw.Conversations to allow loading mailing lists.
         rd.applyExtension("rdw/ext/mailingList/ext", "rdw/Conversations", {
             addToPrototype: {
                 topics: {
                     "rd-protocol-mailingList": "mailingList"
                 },
-    
+
                 /**
                  * Responds to rd-protocol-mailingList topic.
                  * @param {String} listId
                  */
                 mailingList: function (callType, listId) {
-                    conversation.mailingList(listId, this.conversationLimit, this.skipCount, dojo.hitch(this, function (conversations) {    
+                    api({
+                        url: 'inflow/conversations/in_groups',
+                        limit: this.conversationLimit,
+                        schemas: this.personalSchemas,
+                        message_limit: this.messageLimit,
+                        keys: [
+                            ["mailing-list", listId]
+                        ],
+                        skip: this.skipCount
+                    })
+                    .ok(dojo.hitch(this, function (conversations) {
                         this.updateConversations(callType, "summary", conversations);
-
                         //Only set up summary widget if this is a fresh call
-                        //to the twitter timeline.
                         if (!callType && this.summaryWidget.mailingList) {
                             this.summaryWidget.mailingList(listId);
                         }
