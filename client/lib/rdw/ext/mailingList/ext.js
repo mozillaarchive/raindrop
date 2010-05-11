@@ -214,13 +214,13 @@ require.modify("rdw/Conversations", "rdw/ext/mailingList/ext-rdw/Conversations",
                         ],
                         skip: this.skipCount
                     })
-                    .ok(dojo.hitch(this, function (conversations) {
+                    .ok(this, function (conversations) {
                         this.updateConversations(callType, "summary", conversations);
                         //Only set up summary widget if this is a fresh call
                         if (!callType && this.summaryWidget.mailingList) {
                             this.summaryWidget.mailingList(listId);
                         }
-                    }));
+                    });
                 }
             }
         });
