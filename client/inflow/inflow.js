@@ -90,6 +90,31 @@ function (require, dojo, dijit, rd, parser, accountIds) {
             //of this function is responsible for cleaning up the node. The node
             //should have a class="notice" for styling concerns.
             dojo.byId("notices").appendChild(node);
+        },
+
+        /**
+         * Changes the inline vs. fixed sizing of the rdw/Widgets widget
+         * based on its contents and the contents of the inflow.
+         */
+        adjustWidgetsSize: function () {
+            if (!inflow.adjustTimeoutId) {
+                inflow.adjustTimeoutId = setTimeout(function () {
+                    inflow.adjustTimeoutId = 0;
+
+                    var widgets = dijit.byId("widgets"),
+                        conversations = dijit.byId("conversations"),
+                        widgetNode = widgets && widgets.containerNode,
+                        convNode = conversations && conversations.innerContentNode;
+
+                        if (widgetNode && convNode) {
+                            if (dojo.marginBox(widgetNode).h < dojo.marginBox(convNode).h) {
+                                dojo.addClass(widgets.domNode, "fixed");
+                            } else {
+                                dojo.removeClass(widgets.domNode, "fixed");
+                            }
+                        }
+                }, 100);
+            }
         }
     });
 
@@ -121,8 +146,17 @@ function (require, dojo, dijit, rd, parser, accountIds) {
                     rd.pub("rd-protocol-home");
                 }
             });
+
+            //Set up listeners on rdw/Widgets and related widgets to know
+            //when it changes size, to adjust the scrolling behavior and
+            //fixed vs inline presentation of rdw/Widgets.
+            dojo.subscribe("rdw/GenericGroup-wipeDone", inflow, "adjustWidgetsSize");
+            dojo.connect(dijit.byId("widgets"), "render", inflow, "adjustWidgetsSize");
+            dojo.connect(dijit.byId("conversations"), "onTransitionEnd", inflow, "adjustWidgetsSize");
+            dojo.connect(dijit.byId("conversations"), "transition", inflow, "adjustWidgetsSize");
+           inflow.adjustWidgetsSize();
         });
     });
-    
+
     return inflow;
 });

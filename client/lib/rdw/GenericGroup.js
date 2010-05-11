@@ -130,6 +130,15 @@ function (require, rd, dojo, string, api, Base, wiper, template) {
         },
 
         /**
+         * When a wipe of the contents is finished, notify folks in case someone
+         * else wants to do sizing calculations. onWipeDone is called by
+         * rdw/fx/wiper.
+         */
+        onWipeDone: function () {
+            rd.pub("rdw/GenericGroup-wipeDone");
+        },
+
+        /**
          * Fetches conversations for this group and displays them.
          * @param {String} [methodName] the name of the method to call on this
          * instance when the conversations are available.

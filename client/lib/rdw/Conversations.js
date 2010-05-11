@@ -124,11 +124,13 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         },
 
         templateString: '<div class="rdwConversations" dojoAttachEvent="onclick: onClick, onkeypress: onKeyPress">' +
-                        '    <div class="updateCount" dojoAttachPoint="updateCountNode" dojoAttachEvent="onclick: onUpdateCountClick"></div>' +        
-                        '    <div dojoType="rdw.Summary" dojoAttachPoint="summaryWidget"></div>' +
-                        '    <div dojoAttachPoint="listNode"></div>' +
-                        '    <div dojoAttachPoint="convoNode"></div>' +
-                        '    <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">${i18n.moreConversations}</button>' +
+                        '    <div dojoAttachPoint="innerContentNode">' +
+                        '        <div class="updateCount" dojoAttachPoint="updateCountNode" dojoAttachEvent="onclick: onUpdateCountClick"></div>' +        
+                        '        <div dojoType="rdw.Summary" dojoAttachPoint="summaryWidget"></div>' +
+                        '        <div dojoAttachPoint="listNode"></div>' +
+                        '        <div dojoAttachPoint="convoNode"></div>' +
+                        '        <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">${i18n.moreConversations}</button>' +
+                        '    </div>' +
                         '</div>',
         widgetsInTemplate: true,
 

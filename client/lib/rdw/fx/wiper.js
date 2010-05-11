@@ -63,6 +63,9 @@ function (dojo, fx) {
                             }),
                             onEnd: dojo.hitch(this, function() {
                                 this.headNode.innerHTML = this.wipeTextHide;
+                                if (this.onWipeDone) {
+                                    this.onWipeDone();
+                                }
                             })
             });
             this._wipeOut = fx.wipeOut({
@@ -71,6 +74,9 @@ function (dojo, fx) {
                             onEnd: dojo.hitch(this, function(){
                                             this.bodyNode.style.display="none";
                                             this.headNode.innerHTML = this.wipeTextShow;
+                                if (this.onWipeDone) {
+                                    this.onWipeDone();
+                                }
                             })
             });
     
