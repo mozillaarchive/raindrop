@@ -489,7 +489,12 @@ class TestDisconnectFailures(IMAP4TestBase):
     def setUp(self):
         IMAP4TestBase.setUp(self)
         def filter_log(record):
-            return record.getMessage().startswith("unexpected IMAP error")
+            msg = record.getMessage()
+            # timing issues while testing means we may see a socket error
+            # which gets logged as 'unexpected exception', or imaplib
+            # handling an error which results in 'unexpected IMAP error'
+            return msg.startswith("unexpected IMAP error") or \
+                   msg.startswith("unexpected exception")
         self.log_handler.ok_filters.append(filter_log)
 
     def test_disconnect_early(self):

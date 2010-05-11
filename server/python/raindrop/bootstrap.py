@@ -557,31 +557,14 @@ def check_accounts(config=None):
 
 
 # Functions working with design documents holding views.
-def install_views(options):
+def install_views(options, include_tests=False):
     db = get_db()
     schema_src = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                               "../../../schema"))
 
-    # first see if we have erlang available...
-    # NOTE: current performance benchmarks (see couch_perf.py) show erlang
-    # as being no faster (and with some upcoming couch changes, *slower*)
-    # than JS - so this is disabled (and should be deleted once we are
-    # sure JS is going to be faster forever :)
-    extra_langs = []
-    ignore_me = """
-    if 'erlang' in config:
-        extra_langs = [('.erl', 'erlang')]
-    else:
-        # js is slower, so note that...
-        # *sob* - but seems to have strange failures in couch 0.10, so
-        # for now don't log this.
-        #logger.info(
-        #    "This couch server is not configured for erlang view servers.\n"
-        #    "consider executing 'check-raindrop.py --configure' to enable them.")
-        pass
-    """
-
-    docs = [d for d in generate_view_docs_from_filesystem(schema_src, extra_langs)]
+    docs = [d for d in generate_view_docs_from_filesystem(schema_src)]
+    if not include_tests:
+        docs = [d for d in docs if not d['_id'].endswith("tests")]
     logger.debug("Found %d documents in '%s'", len(docs), schema_src)
     assert docs, 'surely I have *some* docs!'
     # ack - I need to open existing docs first to get the '_rev' property.
@@ -613,14 +596,11 @@ def install_views(options):
         get_doc_model()._update_important_views()
 
 
-def _build_views_doc_from_directory(ddir, extra_langs = []):
+def _build_views_doc_from_directory(ddir):
     # all we look for is the views.  And the lists.  And the shows :)
     ret = {}
     fprinter = Fingerprinter()
     ret_views = ret['views'] = {}
-    # The '-map.js' file is the 'trigger' for creating a view...
-    langs = extra_langs + [(".js", "javascript")]
-    this_ext = this_lang = None
     mtail = "-map"
     rtail = "-reduce"
     ltail = "-list"
@@ -629,33 +609,29 @@ def _build_views_doc_from_directory(ddir, extra_langs = []):
     optstail = "-options"
     files = os.listdir(ddir)
     for fn in files:
-        fqf = os.path.join(ddir, fn)
-        used = False
-        # If we haven't determined the language for this doc yet...
-        if this_ext is None:
-            for ext, lang in langs:
-                if fn.endswith(mtail + ext):
-                    this_ext = ext
-                    this_lang = lang
-                    logger.debug("View in %r is using language %r", ddir, lang)
-                    break
-        if this_ext is None:
+        if not fn.endswith(".js"):
             continue
+        fqf = os.path.join(ddir, fn)
 
-        tail = mtail + this_ext
+        tail = mtail + ".js"
         if fn.endswith(tail):
             view_name = fn[:-len(tail)]
+            info = ret_views.setdefault(view_name, {})
             try:
                 with open(fqf) as f:
                     data = f.read()
-                    ret_views[view_name] = {'map': data}
+                    info['map'] = data
                     fprinter.get_finger(view_name+tail).update(data)
             except (OSError, IOError):
                 logger.warning("can't open map file %r - skipping this view", fqf)
                 continue
-            fqr = os.path.join(ddir, view_name + rtail + this_ext)
+
+        tail = rtail + ".js"
+        if fn.endswith(tail):
+            view_name = fn[:-len(tail)]
+            info = ret_views.setdefault(view_name, {})
             try:
-                with open(fqr) as f:
+                with open(fqf) as f:
                     # support the 'builtin' reduce functionality - if line 1
                     # starts with an '_', only that line is used.
                     first = f.readline()
@@ -663,32 +639,27 @@ def _build_views_doc_from_directory(ddir, extra_langs = []):
                         data = first.strip()
                     else:
                         data = first + f.read()
-                    ret_views[view_name]['reduce'] = data
-                    fprinter.get_finger(view_name+rtail+this_ext).update(data)
+                    info['reduce'] = data
+                    fprinter.get_finger(view_name+tail).update(data)
             except (OSError, IOError):
                 # no reduce - no problem...
                 logger.debug("no reduce file %r - skipping reduce for view '%s'",
                              fqr, view_name)
-        else:
-            pass
-            # avoid noise...
-            #if not fn.endswith(rtail + this_ext) and not fn.startswith("."):
-            #    logger.info("skipping non-map/reduce/list/show file %r", fqf)
 
-        tail = ltail + this_ext
+        tail = ltail + ".js"
         if fn.endswith(tail):
             list_name = fn[:-len(tail)]
+            info = ret.setdefault('lists', {})
             try:
                 with open(fqf) as f:
                     data = f.read()
-                    ret_lists = ret.setdefault('lists', {})
-                    ret_lists[list_name] = data
+                    info[list_name] = data
                     fprinter.get_finger(list_name+tail).update(data)
             except (OSError, IOError):
                 logger.warning("can't open list file %r - skipping this list", fqf)
                 continue
 
-        tail = rwtail + this_ext
+        tail = rwtail + ".js"
         if fn.endswith(tail):
             rewrite_name = fn[:-len(tail)]
             try:
@@ -707,22 +678,22 @@ def _build_views_doc_from_directory(ddir, extra_langs = []):
             try:
                 with open(fqf) as f:
                     data = f.read()
-                    ret_views[view_name]['options'] = json.loads(data)
+                    info = ret_views.setdefault(view_name, {})
+                    info['options'] = json.loads(data)
                     fprinter.get_finger(view_name+tail).update(data)
             except ValueError, why:
                 logger.warning("can't json-decode %r: %s", fqf, why)
                 continue
         
-
     ret['fingerprints'] = fprinter.get_prints()
-    ret['language'] = this_lang
+    ret['language'] = "javascript"
     logger.debug("Document in directory %r has views %s", ddir, ret_views.keys())
     if not ret_views:
         logger.warning("Document in directory %r appears to have no views", ddir)
     return ret
 
 
-def generate_view_docs_from_filesystem(root, extra_langs=[]):
+def generate_view_docs_from_filesystem(root):
     # We use the same file-system layout as 'CouchRest' does:
     # http://jchrisa.net/drl/_design/sofa/_show/post/release__couchrest_0_9_0
     # note however that we don't create a design documents in exactly the same
@@ -748,7 +719,7 @@ def generate_view_docs_from_filesystem(root, extra_langs=[]):
                 logger.info("skipping document non-directory: %s", fq_doc)
                 continue
             # have doc - build a dict from its dir.
-            doc = _build_views_doc_from_directory(fq_doc, extra_langs)
+            doc = _build_views_doc_from_directory(fq_doc)
             # XXX - note the artificial 'raindrop' prefix - the intent here
             # is that we need some way to determine which design documents we
             # own, and which are owned by extensions...

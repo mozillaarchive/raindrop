@@ -153,9 +153,8 @@ class TestCaseWithDB(TestCase):
         db.deleteDB()
         fab_db()
         opts = self.get_options()
-        bootstrap.install_views(opts)       
+        bootstrap.install_views(opts, True)
         bootstrap.check_accounts(config)
-        bootstrap.install_views(opts)
         # client files are expensive (particularly dojo) and not
         # necessary yet...
         #bootstrap.install_client_files(opts)

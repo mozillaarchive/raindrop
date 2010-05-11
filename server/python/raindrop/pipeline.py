@@ -262,24 +262,6 @@ class Pipeline(object):
             logger.info("reprocess found %d source documents",
                         len(result['rows']))
             self._reprocess_items(gen_em, result)
-        elif not self.options.exts and self.options.keys:
-            # no extensions, but a key - find the 'source' for this key
-            # then walk it though all extensions...
-            def gen_sources(rows):
-                for row in rows:
-                    val = row['value']
-                    yield row['id'], val['_rev'], None, None
-
-            keys = [['key-source', [k, None]]
-                    for k in self.options.keys]
-            result = dm.open_view(keys=keys, reduce=False)
-                
-            ps = self.get_ext_processors()
-            for p in qs:
-                p.options.force = True
-            chugger = ProcessingQueueRunner(self.doc_model, ps)
-            num = chugger.process_queue(gen_sources(result['rows']))
-            logger.info("reprocess made %d new docs", num)
         else:
             # do each specified extension one at a time to avoid the races
             # if extensions depend on each other...
