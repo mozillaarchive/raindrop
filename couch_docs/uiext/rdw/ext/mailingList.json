@@ -3,7 +3,6 @@
     "rd.ext.uiext" : {
       "exts": {
         "inflow": "rdw/ext/mailingList/ext",
-        "rd/conversation": "rdw/ext/mailingList/ext",
         "rd/MegaviewStore": "rdw/ext/mailingList/ext",
         "rdw/DataSelector": "rdw/ext/mailingList/ext",
         "rdw/Organizer": "rdw/ext/mailingList/ext",
