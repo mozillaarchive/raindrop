@@ -46,7 +46,6 @@ function(doc) {
                         'rd_source': schema_item.rd_source
                         };
       emit(['ext_id', rd_ext_id], si_row_val);
-      emit(['ext_id-schema_id', [rd_ext_id, doc.rd_schema_id]], si_row_val);
       // don't emit the revision from the source in the key.
       var src_val;
       if (schema_item.rd_source)
@@ -55,7 +54,6 @@ function(doc) {
         src_val = null;
 
       emit(['source', src_val], si_row_val);
-      emit(['key-source', [doc.rd_key, src_val]], si_row_val);
       emit(['ext_id-source', [rd_ext_id, src_val]], si_row_val);
       // Emit any extra dependencies
       if (schema_item.rd_deps) {
