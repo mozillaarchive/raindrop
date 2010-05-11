@@ -557,12 +557,14 @@ def check_accounts(config=None):
 
 
 # Functions working with design documents holding views.
-def install_views(options):
+def install_views(options, include_tests=False):
     db = get_db()
     schema_src = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                               "../../../schema"))
 
     docs = [d for d in generate_view_docs_from_filesystem(schema_src)]
+    if not include_tests:
+        docs = [d for d in docs if not d['_id'].endswith("tests")]
     logger.debug("Found %d documents in '%s'", len(docs), schema_src)
     assert docs, 'surely I have *some* docs!'
     # ack - I need to open existing docs first to get the '_rev' property.
