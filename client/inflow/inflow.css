@@ -146,11 +146,29 @@ button:active {
 }
 
 button.more {
-  padding: 5px 10px;
+  /* 10px + 16px image + 4px padding */
+  padding: 5px 30px 5px 10px;
   position: relative;
   right: 10px;
   bottom: 10px;
   float: right;
+  white-space: nowrap;
+}
+
+button.more .loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  padding-right: 4px;
+  background: none;
+  vertical-align: middle;
+}
+
+button.more .loading.active {
+  background-image: url("i/ajax-loader.gif");
+  background-color:transparent;
+  background-position: top left;
+  background-repeat: no-repeat;
 }
 
 button::-moz-focus-inner,

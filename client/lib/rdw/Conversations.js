@@ -125,11 +125,13 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
 
         templateString: '<div class="rdwConversations" dojoAttachEvent="onclick: onClick, onkeypress: onKeyPress">' +
                         '    <div dojoAttachPoint="innerContentNode">' +
-                        '        <div class="updateCount" dojoAttachPoint="updateCountNode" dojoAttachEvent="onclick: onUpdateCountClick"></div>' +        
+                        '        <div class="updateCount" dojoAttachPoint="updateCountNode" dojoAttachEvent="onclick: onUpdateCountClick"></div>' +
                         '        <div dojoType="rdw.Summary" dojoAttachPoint="summaryWidget"></div>' +
                         '        <div dojoAttachPoint="listNode"></div>' +
                         '        <div dojoAttachPoint="convoNode"></div>' +
-                        '        <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">${i18n.moreConversations}</button>' +
+                        '        <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">' +
+                        '          <span class="loading" dojoAttachPoint="moreSpinner"></span> ${i18n.moreConversations}' +
+                        '        </button>' +
                         '    </div>' +
                         '</div>',
         widgetsInTemplate: true,
@@ -451,6 +453,9 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         showMore: function () {
             var info = this._updateInfo, args;
             if (info) {
+                //Show the spinner to indicate we're trying to load more
+                dojo.addClass(this.moreSpinner, "active");
+
                 //Do not modify info.args, since we may need a pristine
                 //copy for other API actions, like update vs. more.
                 args = ["more"].concat(info.args);
@@ -499,7 +504,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
     
                     //Do not need the More button in the full conversation view
                     this.moreNode.style.visibility = "hidden";
-    
+
                     //Make new convoWidget.
                     Ctor = this._getConvoWidget(this.oneConversation, this.fullConvoWidgets) ||
                                          require(this.fullConversationCtorName);
@@ -552,6 +557,9 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                     this.hideUpdatedCount();
                 } else if (callType === "more") {
                     this.conversations = this.conversations.concat(conversations);
+                    //Hide the spinner now that we have our conversations
+                    dojo.removeClass(this.moreSpinner, "active");
+
                 } else if (callType === "update") {
                     //Compare what is available.
                     newCount = 0;
