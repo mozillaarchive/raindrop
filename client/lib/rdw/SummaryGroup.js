@@ -26,8 +26,8 @@
 "use strict";
 
 require.def("rdw/SummaryGroup",
-["rd", "dojo", "rdw/_Base", "rd/onHashChange", "rdw/InflowSummaryGroup"],
-function (rd, dojo, Base, onHashChange, InflowSummaryGroup) {
+["rd", "dojo", "rdw/_Base", "rd/onHashChange"],
+function (rd, dojo, Base, onHashChange) {
 
     return dojo.declare("rdw.SummaryGroup", [Base], {
         templateString: '<div class="rdwSummaryGroup WidgetBox"></div>',
@@ -38,7 +38,6 @@ function (rd, dojo, Base, onHashChange, InflowSummaryGroup) {
         //all instances. Reassign the property to a new object to affect
         //only one instance.
         topics: {
-            "rd-protocol-home": "home"
         },
 
         /** Dijit lifecycle method after template insertion in the DOM. */
@@ -61,17 +60,6 @@ function (rd, dojo, Base, onHashChange, InflowSummaryGroup) {
         clear: function () {
             this.destroyAllSupporting();
             this.domNode.innerHTML = "";     
-        },
-
-        //**************************************************
-        //start topic subscription endpoints
-        //**************************************************
-        home: function () {
-            this.addSupporting(new InflowSummaryGroup({
-            }, dojo.create("div", null, this.domNode)));
         }
-        //**************************************************
-        //end topic subscription endpoints
-        //**************************************************
     });
 });
