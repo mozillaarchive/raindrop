@@ -93,7 +93,7 @@ class ConversationAPI(API):
                         bag['_multiples'][schema_id] = []
                         bag['_multiples'][schema_id].append(bag[schema_id])
 
-                    bag['_multiples'][schemaId].append(doc)
+                    bag['_multiples'][schema_id].append(doc)
                 # for now it gets clobbered if it exists...
                 bag[schema_id] = doc
             try:
