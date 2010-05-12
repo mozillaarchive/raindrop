@@ -8,8 +8,8 @@ backend default {
   .host = "127.0.0.1";
   .port = "8000";
   .connect_timeout = 20s;
-  .first_byte_timeout = 30s;
-  .between_bytes_timeout = 5s;
+  .first_byte_timeout = 60s;
+  .between_bytes_timeout = 60s;
   .max_connections = 250;
 #  .probe = {
 #                .url = "/inflow/index.html";
@@ -44,27 +44,31 @@ backend default {
  #      return (lookup);
  #  }
 #}
-#sub vcl_recv {
-#    if (req.request != "GET" &&
-#      req.request != "HEAD" &&
-#      req.request != "PUT" &&
-#      req.request != "POST" &&
-#      req.request != "TRACE" &&
-#      req.request != "OPTIONS" &&
-#      req.request != "DELETE") {
-#        /* Non-RFC2616 or CONNECT which is weird. */
-#        return (pipe);
-#    }
-#    if (req.request != "GET" && req.request != "HEAD") {
-#        /* We only deal with GET and HEAD by default */
-#        return (pass);
-#    }
+
+sub vcl_recv {
+    set req.grace = 5m;
+    if (req.request != "GET" &&
+      req.request != "HEAD" &&
+      req.request != "PUT" &&
+      req.request != "POST" &&
+      req.request != "TRACE" &&
+      req.request != "OPTIONS" &&
+      req.request != "DELETE") {
+        /* Non-RFC2616 or CONNECT which is weird. */
+        return (pipe);
+    }
+    if (req.request != "GET" && req.request != "HEAD") {
+        /* We only deal with GET and HEAD by default */
+        return (pass);
+    }
 #    if (req.http.Authorization || req.http.Cookie) {
 #        /* Not cacheable by default */
 #        return (pass);
 #    }
-#    return (lookup);
-#}
+    # unconditionnal return, ensures the real vcl_recv *never* runs
+    return (lookup);
+}
+
 #
 #sub vcl_pipe {
 #    # Note that only the first request to the backend will have
@@ -92,6 +96,11 @@ sub vcl_hash
         }
 
         # XXX: Got to use the users login cookie too
+        if( req.http.Cookie ~ "Apache2-AuthenOpenID-Raindrop" ) {
+            set req.http.X-Varnish-Hashed-On = 
+            regsub( req.http.Cookie, "^.*Apache2-AuthenOpenID-Raindrop=([^;]*);*.*$", "\1" );
+            set req.hash += req.http.X-Varnish-Hashed-On;
+        }
 }
 
 
@@ -116,6 +125,11 @@ sub vcl_hash
 #    return (fetch);
 #}
 #
+
+sub vcl_fetch {
+    set obj.grace = 5m;
+}
+
 #sub vcl_fetch {
 #    if (!obj.cacheable) {
 #        return (pass);
@@ -160,7 +174,7 @@ sub vcl_deliver {
 #}
 #
 sub vcl_error {
-    if (obj.status == 503 && req.restarts < 5) {
+    if ((obj.status == 503 || obj.status == 500) && req.restarts < 5) {
         set obj.http.X-Restarts = req.restarts;
         restart;
     }
