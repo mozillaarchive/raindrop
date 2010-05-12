@@ -66,14 +66,9 @@
 }
 
 .WidgetBox .wipeToggle {
-  opacity: 0.5;
   cursor: pointer;
   width: 24px;
   font-size: 12px;
-}
-
-.WidgetBox:hover .wipeToggle {
-  opacity: 1; 
 }
 
 .WidgetBox > .WidgetHeader {

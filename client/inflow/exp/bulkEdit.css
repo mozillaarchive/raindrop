@@ -38,17 +38,31 @@
     -webkit-border-radius: 5px;
 }
 
-.rdwWidgets .bulkEditExpanded .rdwGenericGroup.WidgetBox {
+.dojoDndAvatar .rdwGenericGroup.WidgetBox,
+.dojoDndAvatar .rdwExtAccountGroup.WidgetBox {
+    width: 290px;
+    font-size: 12px;
+    -moz-border-image: none;
+    -webkit-border-image: none;
+    padding: 10px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    margin: 0;
+}
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.WidgetBox,
+.dojoDndAvatar .rdwGenericGroup.WidgetBox  {
     border: 1px dashed #88b455;
     background-color: #e8fbdf;
 }
 
-.rdwWidgets .bulkEditExpanded .rdwExtAccountGroup.WidgetBox {
+.rdwWidgets .bulkEditExpanded .rdwExtAccountGroup.WidgetBox,
+.dojoDndAvatar .rdwExtAccountGroup.WidgetBox  {
     border: 1px dashed #00a3e6;
     background-color: #b9f1fe;
 }
 
-.rdwWidgets .bulkEditExpanded .rdwConversationMailingList.WidgetBox {
+.rdwWidgets .bulkEditExpanded .rdwConversationMailingList.WidgetBox,
+.dojoDndAvatar .rdwConversationMailingList.WidgetBox {
     border: 1px dashed #ff79a4;
     background-color: #fddde0;
 }
@@ -58,13 +72,18 @@
 }
 
 /* Style folders here */
-.rdwWidgets .bulkEditExpanded .rdwGenericGroup.rdwFolder.WidgetBox {
+.rdwWidgets .bulkEditExpanded .rdwGenericGroup.rdwFolder.WidgetBox,
+.dojoDndAvatar .rdwGenericGroup.rdwFolder.WidgetBox {
     -moz-border-image: url("../i/rd_folder.png") 21 5 1 90;
     -webkit-border-image: url("../i/rd_folder.png") 21 5 1 90;
     border-width: 21px 5px 1px 90px;
     position: relative;
     height: 68px;
     background-color: transparent;
+}
+
+.dojoDndAvatar {
+  background: transparent;
 }
 
 .rdwGenericGroup.rdwFolder.WidgetBox {
@@ -79,18 +98,25 @@
     position: absolute;
     top: 18px;
     left: 0;
-    margin-left: -75px;
+    margin-left: -80px;
     background-color: transparent;
     width: 260px;
+    background-image: none;
+    background-position: left center;
+    padding: 0;
 }
 
 .rdwGenericGroup.rdwFolder .WidgetHeader {
     position: absolute;
     top: 5px;
     left: 0;
-    margin-left: -75px;
+    margin-left: -80px;
     background-color: transparent;
     width: 270px;
+    background-image: url("../i/rd_folder_icon.png");
+    background-position: left center;
+    padding: 0 0 0 18px;
+    background-repeat: no-repeat;
 }
 
 .rdwGenericGroup.rdwFolder .WidgetHeader input.nameInput {
@@ -105,8 +131,8 @@
 }
 
 .rdwGenericGroup.rdwFolder .WidgetHeader .title {
-    padding: 0;
     background-image: none;
+    padding: 0;
     height: 16px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -125,11 +151,15 @@
 }
 
 .bulkEditConvDrag {
-    background-color: gray;
-    color: red;
+    background-color: #fafafa;
+    color: #ff5959;
     font-weight: bold;
-    border: 1px dotted black;
+    border: 1px dashed #666;
     width: 400px;
+    padding: 10px;
+    font-size: 14px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
 }
 
 /* Hide the header for the drag avatar */
@@ -150,3 +180,16 @@ body .dojoDndAvatarHeader {
 .newFolderContainer {
   margin: 10px;
 }
+
+/* dragged styles */
+
+body .dojoDndAvatarItem {
+  background-color: transparent;
+}
+
+body .dojoDndAvatarItem .rdwGenericGroup.rdwFolder .WidgetHeader {
+  background-image: none;
+  padding: 0;
+}
+
+
