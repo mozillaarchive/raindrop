@@ -53,6 +53,33 @@ def handler(doc):
         smtp_to.append(addr)
 
     m.add_header("Subject", doc['subject'])
+
+    irt = doc.get('in_reply_to')
+    if irt and len(irt)==2 and irt[0]=="email":
+        # we must open the 'email' schema to find the 'references' field
+        irt_mid = "<" + irt[1] + ">"
+        raw = open_schemas([(irt, 'rd.msg.email')])[0]
+        if raw is None:
+            logger.warn("message is a reply to %r, but that message can't be found",
+                        irt)
+        else:
+            try:
+                refs = raw['headers']['references']
+                # this is already a list
+            except KeyError:
+                # no references!
+                refs = []
+            else:
+                # oops - a now-fixed bug in msg-rfc-to-mail means there is
+                # a change 'refs' is a 1 elt list with refs[0] being the list
+                # we want!  This can die soon...
+                if len(refs)==1 and isinstance(refs[0], list):
+                    refs = refs[0]
+                # and make them real message IDs
+                refs = ["<" + r + ">" for r in refs]
+            m.add_header("References", " ".join(refs + [irt_mid]))
+        m.add_header("In-Reply-To", irt_mid)
+
     # for now body is plain-text as-is.
     m.set_payload(doc['body'], 'utf-8')
     attach_info = {'smtp_body': {'data': m.as_string()}}
