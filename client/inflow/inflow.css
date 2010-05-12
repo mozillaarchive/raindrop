@@ -164,7 +164,7 @@ button.more .loading {
   vertical-align: middle;
 }
 
-button.more .loading.active {
+button.more.active .loading {
   background-image: url("i/ajax-loader.gif");
   background-color:transparent;
   background-position: top left;

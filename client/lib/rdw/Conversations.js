@@ -130,7 +130,7 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                         '        <div dojoAttachPoint="listNode"></div>' +
                         '        <div dojoAttachPoint="convoNode"></div>' +
                         '        <button class="more" dojoAttachPoint="moreNode" dojoAttachEvent="onclick: showMore">' +
-                        '          <span class="loading" dojoAttachPoint="moreSpinner"></span> ${i18n.moreConversations}' +
+                        '          <span class="loading"></span> ${i18n.moreConversations}' +
                         '        </button>' +
                         '    </div>' +
                         '</div>',
@@ -454,7 +454,8 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
             var info = this._updateInfo, args;
             if (info) {
                 //Show the spinner to indicate we're trying to load more
-                dojo.addClass(this.moreSpinner, "active");
+                dojo.addClass(this.moreNode, "active");
+                dojo.attr(this.moreNode, "disabled", "disabled");
 
                 //Do not modify info.args, since we may need a pristine
                 //copy for other API actions, like update vs. more.
@@ -558,7 +559,8 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
                 } else if (callType === "more") {
                     this.conversations = this.conversations.concat(conversations);
                     //Hide the spinner now that we have our conversations
-                    dojo.removeClass(this.moreSpinner, "active");
+                    dojo.removeClass(this.moreNode, "active");
+                    dojo.removeAttr(this.moreNode, "disabled");
 
                 } else if (callType === "update") {
                     //Compare what is available.
