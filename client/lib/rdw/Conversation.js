@@ -107,7 +107,7 @@ function (require,   rd,   dojo,   dijit,   string,        api,      identity,
             var href = evt.target.href,
                     isButton = evt.target.nodeName.toLowerCase() === "button",
                     module, message, source, to, to_display, from, from_display,
-                    cc, cc_display, subject, doc, sourceMsg;
+                    cc = [], cc_display = [], subject, doc, sourceMsg;
             if (!href && isButton) {
                 href = "#" + evt.target.name;
             }
@@ -128,7 +128,7 @@ function (require,   rd,   dojo,   dijit,   string,        api,      identity,
                             source.from_display
                         ];
 
-                        if (source.to.length === 1 && !source.cc) {
+                        if (source.to.length === 1 && !source.cc.length) {
                             from = source.to[0];
                             from_display = source.to_display[0];
                         } else {
@@ -152,6 +152,13 @@ function (require,   rd,   dojo,   dijit,   string,        api,      identity,
                                     cc_display.push(source.cc_display[i]);
                                 }
                             });
+                            if (!from && !from_display) {
+                                // none of the 'to' or 'cc' matched our addresses;
+                                // presumably this means the 'from' was our address
+                                // (ie, replying to outself)
+                                from = source.from;
+                                from_display = source.from_display;
+                            }
                         }
 
                         //Set up the subject.
@@ -171,7 +178,7 @@ function (require,   rd,   dojo,   dijit,   string,        api,      identity,
                                 body: message,
                                 in_reply_to: sourceMsg.id
                             });
-                        if (cc) {
+                        if (cc.length) {
                             doc.cc = cc;
                             doc.cc_display = cc_display;
                         }
