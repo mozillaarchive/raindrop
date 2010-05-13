@@ -64,17 +64,14 @@ def handler(doc):
                         irt)
         else:
             try:
-                refs = raw['headers']['references']
-                # this is already a list
-            except KeyError:
+                # All headers are lists of values - references is somewhat
+                # special in that it is a list of 1 elt, of already split
+                # values.
+                refs = raw['headers']['references'][0]
+            except (KeyError, IndexError):
                 # no references!
                 refs = []
             else:
-                # oops - a now-fixed bug in msg-rfc-to-mail means there is
-                # a change 'refs' is a 1 elt list with refs[0] being the list
-                # we want!  This can die soon...
-                if len(refs)==1 and isinstance(refs[0], list):
-                    refs = refs[0]
                 # and make them real message IDs
                 refs = ["<" + r + ">" for r in refs]
             m.add_header("References", " ".join(refs + [irt_mid]))

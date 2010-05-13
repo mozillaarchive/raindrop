@@ -151,7 +151,8 @@ def doc_from_bytes(docid, rdkey, b):
                 # initial and trailing <>'s, so we don't want to use it for the
                 # references header-- but other fields seem ok.  We split the references
                 # into a list here because why not.
-                headers[hn.lower()] = extract_message_ids(vals[0])
+                # Note we return a list here as all other headers are lists
+                headers[hn.lower()] = [extract_message_ids(vals[0])]
             else:
                 # for single line headers /len(vals) == 1/ it's possible to have
                 # a multi-value comma separated string which needs to be broken out
