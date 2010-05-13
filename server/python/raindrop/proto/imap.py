@@ -31,18 +31,7 @@ import errno
 import Queue
 
 import sys
-try:
-  from raindrop.proto import imapclient
-  # hack 'imapclient' as a top-level package so relative imports work
-  sys.modules['imapclient'] = imapclient
-except ImportError:
-  import imapclient
-  # but check we have a good enough version.  Note sure what the 'correct'
-  # version is, but 0.5.2 used the 'old' interface - so assuming next will be
-  # 0.6 or greater...
-  if imapclient.__version__.split('.') < (0, 6, 0):
-    raise ImportError('need imapclient 0.6.0 or greater')
-
+import imapclient
 import imaplib
 
 from ..proc import base

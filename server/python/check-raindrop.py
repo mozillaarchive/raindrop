@@ -78,6 +78,7 @@ deps = [
     ('feedparser', '>=4.1', False),
     ('Skype4Py', '', False),
     ('twitter', '>=1.3.1', False),
+    ('imapclient', '>=0.6', False),
     ('PIL', '', False),
 ]
 
