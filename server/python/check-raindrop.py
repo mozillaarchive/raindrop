@@ -77,7 +77,7 @@ def _check_version_attr(module, required):
 deps = [
     ('feedparser', '>=4.1', False),
     ('Skype4Py', '', False),
-    ('twitter', '', False),
+    ('twitter', '>=1.3.1', False),
     ('PIL', '', False),
 ]
 
@@ -135,8 +135,8 @@ def check_deps():
             found = False
         except VersionConflict, why:
             ui("module '%s' has version conflict: %s", full, why)
-            found = True # we found we haven't got what we want :)
-        if not found:
+            found = False
+        if not found and not ver_spec:
             # On some systems, setuptools fails to locate the package.  This
             # is particularly true for twisted - so we have a check if we
             # can just import it (we stick with checking setuptools first as

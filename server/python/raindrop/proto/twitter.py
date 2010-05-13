@@ -46,6 +46,7 @@ from twitter.twitter_globals import POST_ACTIONS
 
 import twitter
 twitter.twitter_globals.POST_ACTIONS.append('retweet')
+from twitter.oauth import OAuth
 
 import calendar, rfc822
 
@@ -81,86 +82,21 @@ def tweet_to_raw(tweet):
 
     return ret
 
-# apparently contrary to the HTTP RFCs, spaces in arguments must be encoded as
-# %20 rather than '+' when constructing the OAuth signature (and therefore
-# also in the request itself.)
-# So here is a specialized version which does exactly that.
-def urlencode_noplus(query):
-    if hasattr(query,"items"):
-        # mapping objects
-        query = query.items()
-    
-    encoded_bits = []
-    for n, v in query:
-        # and do unicode here while we are at it...
-        if isinstance(n, unicode):
-            n = n.encode('utf-8')
-        else:
-            n = str(n)
-        if isinstance(v, unicode):
-            v = v.encode('utf-8')
-        else:
-            v = str(v)
-        encoded_bits.append("%s=%s" % (urllib.quote(n, ""), urllib.quote(v, "")))
-    return "&".join(encoded_bits)
-
-# and we monkey-patch the twitter lib to use this version :(
-import twitter.api
-twitter.api.urlencode = urlencode_noplus
-
-def sign_args(account_details, base_url, method="GET", **args):
-    args = args.copy()
-
-    args['oauth_token'] = account_details['oauth_token']
-    args['oauth_consumer_key'] = account_details['oauth_consumer_key']
-    args['oauth_signature_method'] = 'HMAC-SHA1'
-    args['oauth_version'] = '1.0'
-    args['oauth_timestamp'] = str(int(time()))
-    args['oauth_nonce'] = str(getrandbits(64))
-
-    key = account_details['oauth_consumer_secret'] + "&"
-    key += urllib.quote(account_details['oauth_token_secret'], '')
-
-    message = '&'.join(
-            urllib.quote(i, '') for i in [method.upper(), base_url,
-                            urlencode_noplus(sorted(args.iteritems()))])
-    
-    logger.info("TWITTER sign_args will sign: %s", message)
-
-    args['oauth_signature'] = hmac.new(key, message, hashlib.sha1
-                                        ).digest().encode('base64')[:-1]
-    return args
-
 def create_api(account_details):
-    # later we will remove all 'password' support...
+    # later we will remove all 'password' support (actually, it appears
+    # twitter itself will beat us to it!)
     if 'oauth_token' not in account_details:
         username = account_details['username']
         pw = account_details['password']
         kw = {'email': username, 'password': pw}
     else:
-        kw = {}
+        auth = OAuth(token=account_details['oauth_token'],
+                     token_secret=account_details['oauth_token_secret'],
+                     consumer_key=account_details['oauth_consumer_key'],
+                     consumer_secret=account_details['oauth_consumer_secret'])
+        kw = {'auth': auth}
     return twitter.api.Twitter(**kw)
 
-def call_twitter(account_details, twit_api, **args):
-    # later we will remove all 'password' support...
-    if 'oauth_token' in account_details:
-        if 'password' in account_details:
-            logger.warn("The twitter account %r has both oauth tokens and a"
-                        "password - the password will be ignored.")
-        # some of this is yuck and cloned from the twitter impl.
-        # find the complete uri twitter uses.
-        uri = "http://%s%s.%s" %(twit_api.domain, twit_api.uri, twit_api.format)
-        # find the method it will use.
-        method = "GET"
-        for action in POST_ACTIONS:
-            if twit_api.uri.endswith(action):
-                method = "POST"
-                break
-
-        new_args = sign_args(account_details, uri, method, **args)
-    else:
-        new_args = args
-    return twit_api(**new_args)
 
 class TwitterProcessor(object):
     # The 'id' of this extension
@@ -190,7 +126,7 @@ class TwitterProcessor(object):
             # hourly_limit :            150
             # reset_time_in_seconds :   1266898973
         # }
-        rate_limit_status = call_twitter(ad, twit.account.rate_limit_status)
+        rate_limit_status = twit.account.rate_limit_status()
 
         logger.info("rate limit status: %s more hits, resets at %s",
                     rate_limit_status.get("remaining_hits"),
@@ -235,7 +171,7 @@ class TwitterProcessor(object):
         # as well as their identity info all in a single request
         # This doesn't get us all of our friends but with 200 tweets we'll at
         # least get your most chatty friends
-        tl= call_twitter(ad, self.twit.statuses.home_timeline, count=200)
+        tl= self.twit.statuses.home_timeline(count=200)
         for status in tl:
             id = int(status.get("id"))
             rd_key = ['tweet', id]
@@ -247,7 +183,7 @@ class TwitterProcessor(object):
                 logger.info("Twitter status id: %s is a retweet", id)
 
         # Grab any direct messages that are waiting for us
-        ml = call_twitter(ad, self.twit.direct_messages)
+        ml = self.twit.direct_messages()
         for dm in ml:
             id = int(dm.get("id"))
             rd_key = ['tweet-direct', id]
@@ -334,14 +270,14 @@ class TwitterAccount(base.AccountBase):
             if ('retweet_id' in self.src_doc):
                 # A retweet
                 retweet_id = str(self.src_doc['retweet_id'])
-                status = call_twitter(self.details, twitter_api.statuses.retweet, id=retweet_id)
+                status = twitter_api.statuses.retweet(id=retweet_id)
             else:
                 # A status update or a reply
                 extra_args = {}
                 if self.src_doc.get('in_reply_to'):
                     extra_args['in_reply_to'] = self.src_doc['in_reply_to']
 
-                status = call_twitter(self.details, twitter_api.statuses.update,
+                status = twitter_api.statuses.update(
                                status=self.src_doc['body'], **extra_args)
 
             # If status has an ID, then it saved. Otherwise,
