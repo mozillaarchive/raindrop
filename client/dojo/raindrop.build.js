@@ -14,6 +14,7 @@
     include: [
         "require/text",
         "require/i18n",
+        "require/jsonp",
         "dojo/string",
         "dojo/dnd/Source",
         "dojo/dnd/Selector",

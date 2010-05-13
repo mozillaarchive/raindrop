@@ -478,7 +478,7 @@ var require;
         //Figure out if all the modules are loaded. If the module is not
         //being loaded or already loaded, add it to the "to load" list,
         //and request it to be loaded.
-        var i, dep, index, depPrefix, split;
+        var i, dep;
 
         if (pluginPrefix) {
                         callPlugin(pluginPrefix, context, {
@@ -749,7 +749,7 @@ var require;
 
                                 pIsWaiting = s.plugins.isWaiting, pOrderDeps = s.plugins.orderDeps,
                 
-                i, module, allDone, loads, loadArgs,
+                i, module, allDone, loads, loadArgs, err,
                 traced = {};
 
         //If already doing a checkLoaded call,
@@ -790,7 +790,9 @@ var require;
         }
         if (expired && noLoads) {
             //If wait time expired, throw error of unloaded modules.
-            throw new Error("require.js load timeout for modules: " + noLoads);
+            err = new Error("require.js load timeout for modules: " + noLoads);
+            err.requireType = "timeout";
+            err.requireModules = noLoads;
         }
         if (stillLoading) {
             //Something is still waiting to load. Wait for it.
@@ -889,7 +891,7 @@ var require;
         }
 
         var name = module.name, cb = module.callback, deps = module.deps, j, dep,
-            defined = context.defined, ret, args = [], prefix, depModule,
+            defined = context.defined, ret, args = [], depModule,
             usingExports = false, depName;
 
         //If already traced or defined, do not bother a second time.
@@ -1031,6 +1033,15 @@ var require;
             var node = document.createElement("script");
             node.type = "text/javascript";
             node.charset = "utf-8";
+            //Use async so Gecko does not block on executing the script if something
+            //like a long-polling comet tag is being run first. Gecko likes
+            //to evaluate scripts in DOM order, even for dynamic scripts.
+            //It will fetch them async, but only evaluate the contents in DOM
+            //order, so a long-polling script tag can delay execution of scripts
+            //after it. But telling Gecko we expect async gets us the behavior
+            //we want -- execute it whenever it is finished downloading. Only
+            //Helps Firefox 3.6+
+            node.setAttribute("async", "async");
             node.setAttribute("data-requirecontext", contextName);
             node.setAttribute("data-requiremodule", moduleName);
     
@@ -1691,6 +1702,129 @@ require.pause();
                         }
                     }
                 }
+            }
+        }
+    });
+}());
+/**
+ * @license RequireJS jsonp Copyright (c) 2004-2010, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT, GPL or new BSD license.
+ * see: http://github.com/jrburke/requirejs for details
+ */
+/*jslint nomen: false, plusplus: false */
+/*global require: false, setTimeout: false */
+
+
+(function () {
+    var countId = 0;
+
+    //A place to hold callback functions
+    require._jsonp = {};
+
+    require.plugin({
+        prefix: "jsonp",
+
+        /**
+         * This callback is prefix-specific, only gets called for this prefix
+         */
+        require: function (name, deps, callback, context) {
+            //No-op, require never gets these jsonp items, they are always
+            //a dependency, see load for the action.
+        },
+
+        /**
+         * Called when a new context is defined. Use this to store
+         * context-specific info on it.
+         */
+        newContext: function (context) {
+            require.mixin(context, {
+                jsonpWaiting: []
+            });
+        },
+
+        /**
+         * Called when a dependency needs to be loaded.
+         */
+        load: function (name, contextName) {
+            //Name has format: some/url?param1=value1&callback=?
+            //where the last question mark indicates where the jsonp callback
+            //function name needs to go.
+            var index = name.indexOf("?"),
+                url = name.substring(0, index),
+                params = name.substring(index + 1, name.length),
+                context = require.s.contexts[contextName],
+                data = {
+                    name: name
+                },
+                funcName = "f" + countId,
+                head = require.s.head,
+                node = head.ownerDocument.createElement("script");
+
+            //Create JSONP callback function
+            require._jsonp[funcName] = function (value) {
+                data.value = value;
+                context.loaded[name] = true;
+                require.checkLoaded(contextName);
+                //Use a setTimeout for cleanup because some older IE versions vomit
+                //if removing a script node while it is being evaluated.
+                setTimeout(function () {
+                    head.removeChild(node);
+                    delete require._jsonp[funcName];
+                }, 15);
+            };
+
+            //Hold on to the data for later dependency resolution in orderDeps.
+            context.jsonpWaiting.push(data);
+
+            //Build up the full JSONP URL
+            url = require.nameToUrl(url, "?", contextName);
+            //nameToUrl call may or may not have placed an ending ? on the URL,
+            //be sure there is one and add the rest of the params.
+            url += (url.indexOf("?") === -1 ? "?" : "") + params.replace("?", "require._jsonp." + funcName);
+
+            context.loaded[name] = false;
+            node.type = "text/javascript";
+            node.charset = "utf-8";
+            node.src = url;
+
+            //Use async so Gecko does not block on executing the script if something
+            //like a long-polling comet tag is being run first. Gecko likes
+            //to evaluate scripts in DOM order, even for dynamic scripts.
+            //It will fetch them async, but only evaluate the contents in DOM
+            //order, so a long-polling script tag can delay execution of scripts
+            //after it. But telling Gecko we expect async gets us the behavior
+            //we want -- execute it whenever it is finished downloading. Only
+            //Helps Firefox 3.6+
+            node.setAttribute("async", "async");
+
+            head.appendChild(node);
+        },
+
+        /**
+         * Called when the dependencies of a module are checked.
+         */
+        checkDeps: function (name, deps, context) {
+            //No-op, checkDeps never gets these jsonp items, they are always
+            //a dependency, see load for the action.
+        },
+
+        /**
+         * Called to determine if a module is waiting to load.
+         */
+        isWaiting: function (context) {
+            return !!context.jsonpWaiting.length;
+        },
+
+        /**
+         * Called when all modules have been loaded.
+         */
+        orderDeps: function (context) {
+            //Clear up state since further processing could
+            //add more things to fetch.
+            var i, dep, waitAry = context.jsonpWaiting;
+            context.jsonpWaiting = [];
+            for (i = 0; (dep = waitAry[i]); i++) {
+                context.defined[dep.name] = dep.value;
             }
         }
     });

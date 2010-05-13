@@ -161,7 +161,7 @@ require.def("rdw/Message",
                         name = bodySchema.to_display[i];
                         if (!myself.some(emailTest)) {
                             username = email.slice(0, email.indexOf("@"));
-                            //XXX hacky first name grabber, will aslo grab titles like "Mr."
+                            //XXX hacky first name grabber, will also grab titles like "Mr."
                             first_name = bodySchema.to_display[i].split(" ")[0];
                             display = first_name || username;
                             dojo.create("li", { "class" : "recipient to", "innerHTML" : display, "title" : name + " <" + email + ">" }, this.toRecipientsNode);
