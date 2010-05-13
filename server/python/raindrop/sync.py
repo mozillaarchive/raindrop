@@ -168,7 +168,6 @@ class SyncConductor(object):
                      account_proto)
 
   def _get_specified_accounts(self, options):
-    assert self.all_accounts # no accounts loaded?
     ret = []
     for acct in self.all_accounts:
       proto = acct.details['proto']
@@ -285,6 +284,10 @@ class SyncConductor(object):
     self.num_new_items = 0
     # start synching all 'incoming' accounts.
     accts = self._get_specified_accounts(options)
+    if not accts:
+      logger.warn("No accounts are configured - nothing to sync")
+      return
+
     for account in accts:
       acct_id = account.details['id']
       try:
