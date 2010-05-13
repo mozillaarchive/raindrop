@@ -64,6 +64,7 @@ var djConfig, require, raindropVersion = "/*INSERT REV HERE*/";
     djConfig = {
         parseOnLoad: false,
         baseUrl: prefix,
+        locale: "en-us",
         modulePaths: {
             "dojo": dojoPrefix + "dojo",
             "dijit": dojoPrefix + "dijit",
@@ -80,6 +81,7 @@ var djConfig, require, raindropVersion = "/*INSERT REV HERE*/";
 
     require = {
         baseUrl: prefix,
+        locale: "en-us",
         paths: {
             "dojo": dojoPrefix + "dojo",
             "dijit": dojoPrefix + "dijit",
