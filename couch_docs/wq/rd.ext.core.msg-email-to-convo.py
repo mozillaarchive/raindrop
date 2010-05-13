@@ -30,8 +30,12 @@ def handler(doc):
     # flatten the header values here...
     headers = dict((k, v[0]) for (k, v) in doc['headers'].iteritems())
     self_header_message_id = headers.get('message-id')
-    # check something hasn't got confused...
-    assert get_rdkey_for_email(self_header_message_id) == tuple(doc['rd_key']), doc
+    if self_header_message_id is None:
+        # probably a draft or something else strange.
+        logger.info('email in document %r has no message-id', doc['_id'])
+    else:
+        # check something hasn't got confused...
+        assert get_rdkey_for_email(self_header_message_id) == tuple(doc['rd_key']), doc
 
     references = set()
     if 'references' in headers:
@@ -42,8 +46,12 @@ def handler(doc):
     if 'in-reply-to' in headers:
         references.add(headers['in-reply-to'])
     # the self-message...
-    references.add(self_header_message_id)
+    if self_header_message_id:
+        references.add(self_header_message_id)
     logger.debug("references: %s", '\n\t'.join(references))
-    
-    keys = (get_rdkey_for_email(mid) for mid in references)
-    find_and_emit_conversation(keys)
+
+    if references:    
+        keys = (get_rdkey_for_email(mid) for mid in references)
+        find_and_emit_conversation(keys)
+    # else we can't put the message in a convo - but not much we can do about
+    # that (we've already logged above about this msg having no message-id...)
