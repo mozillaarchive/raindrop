@@ -75,8 +75,16 @@ function (rd, dojo) {
             //in case one of the subscribers throws an error.
             this.timeoutId = setTimeout(dojo.hitch(this, "fetch"), this.interval);
 
+            //Notify of the first autosync, in case current sync info
+            //wants to be shown.
+            if (!this.didFirstNotify) {
+                rd.pub("rd/autoSync-first", doc);
+                this.didFirstNotify = true;
+            }
+
+            //Notify if there is a change in the info
             if (lastTimestamp && doc.timestamp !== lastTimestamp && doc.new_items) {
-                rd.pub("rd/autoSync-update");
+                rd.pub("rd/autoSync-update", doc);
             }
         },
 

@@ -51,6 +51,10 @@ a img{
   visibility: hidden;
 }
 
+.hidden {
+    display: none;
+}
+
 /* @font-face typography */
 
 @font-face {
@@ -454,8 +458,13 @@ input[type="file"] > input[type="button"]::-moz-focus-inner {
 
 /* END hacking away at inputs in quickcompose :( */
 
-.raindropVersion {
-    color: #CCCCCC;
+.raindropVersion,
+#syncStatus {
+    color: #AAAAAA;
+}
+
+#syncStatus {
+    cursor: pointer;
 }
 
 /* START hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */

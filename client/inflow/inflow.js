@@ -27,7 +27,7 @@
 
 require.def("inflow",
 [
-    "require", "dojo", "dijit", "rd", "dojo/parser", "rd/accountIds",
+    "require", "dojo", "dijit", "rd", "rd/friendly", "dojo/parser", "rd/accountIds",
     "rd/onHashChange",
     "rdw/Loading",
     "rdw/Notify",
@@ -40,7 +40,7 @@ require.def("inflow",
     "rd/autoSync",
     "rd/conversation"
 ],
-function (require, dojo, dijit, rd, parser, accountIds) {
+function (require, dojo, dijit, rd, friendly, parser, accountIds) {
     //Do not do this work if inflow is not the main app.
     //This code can get loaded in other pages once an optimization
     //buld is done.
@@ -115,6 +115,26 @@ function (require, dojo, dijit, rd, parser, accountIds) {
                         }
                 }, 100);
             }
+        },
+
+        /**
+         * Shows the current state of the sync with message services
+         * @param {Object} syncDoc the couchdb document with the sync info.
+         */
+        updateSyncStatus: function (syncDoc) {
+            rd.escapeHtml(friendly.timestamp(syncDoc.timestamp).locale, dojo.byId("syncStatus"), "only");
+            rd.escapeHtml(dojo.toJson(syncDoc, true), dojo.byId("syncStatusDetails"), "only");
+        },
+
+        /**
+         * Toggles showing more in depth status info
+         */
+        toggleStatus: function () {
+            var detailNode = dojo.byId("syncStatusDetails"),
+                statusNode = dojo.byId("syncStatus");
+                var action = dojo.hasClass(detailNode, "hidden") ? "removeClass" : "addClass";
+
+            dojo[action](detailNode, "hidden");
         }
     });
 
@@ -126,6 +146,10 @@ function (require, dojo, dijit, rd, parser, accountIds) {
     require.ready(function () {
         //Start page parsing of widgets.
         parser.parse();
+
+        rd.sub("rd/autoSync-first", inflow, "updateSyncStatus");
+        rd.sub("rd/autoSync-update", inflow, "updateSyncStatus");
+        dojo.query("#syncStatus").onclick(inflow, "toggleStatus");
 
         //In case parsing triggered loading of other widgets, wait for other widgets
         //to be defined before triggering the rest of this work.
