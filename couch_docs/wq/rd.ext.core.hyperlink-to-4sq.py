@@ -31,39 +31,33 @@ foursq_path_regex = re.compile('^/(\w+)')
 # http://foursquare.com/venue/VID
 foursquare_venue_path_regex = re.compile('^/venue/(\d+)')
 
-def handler(doc):
-    if not 'links' in doc:
-        return
-
-    foursqs = []
-    links = doc['links']
-    for link in links:
-        if link['domain'] == "4sq.com" and foursq_path_regex.search(link['path']):
-            try:
-                opener = urllib2.build_opener()
-                redir = opener.open(link['url'])
-                path = urllib2.urlparse.urlparse(redir.url).path
-                match = foursquare_venue_path_regex.search(path)
-                if match and match.group(1):
-                    foursqs.append( (link, match.group(1)) )
-            except urllib2.HTTPError, e:
-                logger.error("link: %s error: %s",link['url'], e)
-        elif link['domain'] == "foursquare.com":
-            match = foursquare_venue_path_regex.search(link['path'])
+def handler(link):
+    foursq = None
+    if link['domain'] == "4sq.com" and foursq_path_regex.search(link['path']):
+        try:
+            opener = urllib2.build_opener()
+            redir = opener.open(link['url'])
+            path = urllib2.urlparse.urlparse(redir.url).path
+            match = foursquare_venue_path_regex.search(path)
             if match and match.group(1):
-                foursqs.append( (link, match.group(1)) )
+                foursq = match.group(1)
+        except urllib2.HTTPError, e:
+            logger.error("link: %s error: %s",link['url'], e)
+    elif link['domain'] == "foursquare.com":
+        match = foursquare_venue_path_regex.search(link['path'])
+        if match and match.group(1):
+            foursq = match.group(1)
 
-    if len(foursqs) == 0:
+    if foursq is None:
         return
 
-    for link, hash in foursqs:
-        options = {
-            'vid'    : hash
-        }
+    options = {
+        'vid'    : foursq
+    }
 
-        info_api = "http://api.foursquare.com/v1/venue.json?%s" % "&".join(['%s=%s' % v for v in options.items()])
-        opener = urllib2.build_opener()
-        obj = json.load(opener.open(info_api))
-        if obj:
-            obj["ref_link"] = link['url']
-            emit_schema('rd.msg.body.attachment.link.foursquare', obj)
+    info_api = "http://api.foursquare.com/v1/venue.json?%s" % "&".join(['%s=%s' % v for v in options.items()])
+    opener = urllib2.build_opener()
+    obj = json.load(opener.open(info_api))
+    if obj:
+        obj["ref_link"] = link['url']
+        emit_schema('rd.attach.link.foursquare', obj)

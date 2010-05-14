@@ -33,12 +33,12 @@ remove_regexp = re.compile('[\.,>]$')
 start_paren_regexp = re.compile('\(')
 end_paren_regexp = re.compile('\)')
 
-# Creates 'rd.msg.body.quoted.hyperlinks' schemas for messages...
+# Creates generic 'rd.attach.link' schemas for messages...
 def handler(doc):
     parts = doc['parts']
     ret = []
     matches = []
-    found = {}
+    found = set()
     ret = []
 
     # Do the raw regexp work to find candidates in all
@@ -67,17 +67,18 @@ def handler(doc):
         # process only the unique urls
         if match in found:
             continue
-        found[match] = True
+        found.add(match)
 
         try:
             parse = urlparse.urlparse(match)
+            schema = None
 
             if parse.hostname:
                 try: # get the domain name without sub-host names
                     domain = parse.hostname[parse.hostname.rindex(".", 0, parse.hostname.rindex(".")) + 1:]
                 except:
                     domain = parse.hostname
-                ret.append({
+                schema = {
                             'url' : match,
                             'domain' : domain,
                             'scheme' : parse.scheme,
@@ -89,16 +90,12 @@ def handler(doc):
                             'params' : parse.params,
                             'query' : parse.query,
                             'fragment' : parse.fragment
-                            })
+                            }
 
         except ValueError, why:
             # Malformed URL - just skip it...
             logger.debug('failed to parse %r: %s', match, why)
             continue
-
-    if len(ret) > 0:
-        emit_schema('rd.msg.body.quoted.hyperlinks', {
-            "links": ret
-        })
-
-
+        if schema is not None:
+            link_rdkey = ['attach', [doc['rd_key'], match]]
+            emit_schema('rd.attach.link', schema, rd_key=link_rdkey)

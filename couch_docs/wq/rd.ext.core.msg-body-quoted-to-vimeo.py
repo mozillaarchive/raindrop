@@ -38,34 +38,26 @@ vimeo_video_regex = re.compile('vimeo.com/(\d+)')
 
 # Creates 'rd.msg.attachment' for bit.ly urls from 'rd.msg.body.quoted.hyperlinks'
 def handler(doc):
+    video_id = None
+    # Check for normal flickr urls and only add to list if not
+    # already in the list.
+    match = vimeo_video_regex.search(doc['url'])
+    if match and match.group(1):
+        video_id = match.group(1)
 
-    if not 'links' in doc:
+    if video_id is None:
         return
 
-    vimeos = {}
-    links = doc['links']
-    for link in links:
-        # Check for normal flickr urls and only add to list if not
-        # already in the list.
-        match = vimeo_video_regex.search(link['url'])
-        if match and match.group(1):
-            if not link['url'] in vimeos:
-                vimeos[link['url']] = match.group(1)
+    # http://vimeo.com/api/docs/simple-api
+    info_api = "http://vimeo.com/api/v2/video/%s.json" % video_id
 
-    if len(vimeos) == 0:
-        return
+    opener = urllib2.build_opener()
+    # They don't like the urllib user-agent!
+    opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+    obj = json.load(opener.open(info_api))
+    opener.close()
 
-    for link, video_id in vimeos.items():
-        # http://vimeo.com/api/docs/simple-api
-        info_api = "http://vimeo.com/api/v2/video/%s.json" % video_id
-
-        opener = urllib2.build_opener()
-        # They don't like the urllib user-agent!
-        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-        obj = json.load(opener.open(info_api))
-        opener.close()
-
-        # Vimeo always returns a list and we only asked for one video
-        schema = obj.pop()
-        schema['ref_link'] = link
-        emit_schema('rd.msg.body.quoted.hyperlinks.vimeo', schema)
+    # Vimeo always returns a list and we only asked for one video
+    schema = obj.pop()
+    schema['ref_link'] = doc['url']
+    emit_schema('rd.attach.link.vimeo', schema)

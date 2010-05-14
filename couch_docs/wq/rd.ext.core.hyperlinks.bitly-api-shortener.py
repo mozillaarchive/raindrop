@@ -126,47 +126,42 @@ SERVICES = {
 }
 
 def handler(doc):
-    if not 'links' in doc:
+    link = doc
+    hash = None
+    service = SERVICES.get(link['domain'], None)
+    if service is not None:
+        prop = service.get('link_prop')
+        match = service.get('regex').search(link[prop])
+        if match and match.group(1):
+            hash = match.group(1)
+
+    if hash is None:
         return
+    service = SERVICES.get(link['domain'])
 
-    shorties = []
-    for link in doc['links']:
-        service = SERVICES.get(link['domain'], None)
-        if service is not None:
-            prop = service.get('link_prop')
-            match = service.get('regex').search(link[prop])
-            if match and match.group(1):
-                shorties.append( (link, match.group(1)) )
+    options = service.get('options')
+    options[service.get('hash_option_name')] = service.get('hash_option_function')(link['url'],hash)
 
-    if len(shorties) == 0:
-        return
+    api = "%s?%s" % (service.get('api'), "&".join(['%s=%s' % v for v in options.items()]))
 
-    for link, hash in shorties:
-        service = SERVICES.get(link['domain'])
-
-        options = service.get('options')
-        options[service.get('hash_option_name')] = service.get('hash_option_function')(link['url'],hash)
-
-        api = "%s?%s" % (service.get('api'), "&".join(['%s=%s' % v for v in options.items()]))
-
-        opener = urllib2.build_opener()
-        obj = json.load(opener.open(api))
-        if obj.get('errorCode') == 0:
-            shorty = obj.get('results').get(hash)
-            ss = service.get("schema")
-            # XXX not all of these items are actually used, we could trim down
-            # the size of these documents if space needed to be saved but for
-            # now it's nice to have the extra data in case we want it later
-            schema = {"short_url"    : ss.get("short_url")(link, shorty),
-                      "long_url"     : ss.get("long_url")(link, shorty),
-                      "title"        : ss.get("title")(link, shorty),
-                      "thumbnail"    : ss.get("thumbnail")(link, shorty),
-                      "user_name"    : ss.get("user_name")(link, shorty),
-                      "display_name" : ss.get("display_name")(link, shorty),
-                      "user_url"     : ss.get("user_url")(link, shorty),
-                      "description"  : ss.get("description")(link, shorty),
-                      "extra"        : shorty,
-                      "domain"       : link.get('domain'),
-                      "ref_link"     : link['url']
-                      }
-            emit_schema('rd.msg.body.attachment.link.expanded', schema)
+    opener = urllib2.build_opener()
+    obj = json.load(opener.open(api))
+    if obj.get('errorCode') == 0:
+        shorty = obj.get('results').get(hash)
+        ss = service.get("schema")
+        # XXX not all of these items are actually used, we could trim down
+        # the size of these documents if space needed to be saved but for
+        # now it's nice to have the extra data in case we want it later
+        schema = {"short_url"    : ss.get("short_url")(link, shorty),
+                  "long_url"     : ss.get("long_url")(link, shorty),
+                  "title"        : ss.get("title")(link, shorty),
+                  "thumbnail"    : ss.get("thumbnail")(link, shorty),
+                  "user_name"    : ss.get("user_name")(link, shorty),
+                  "display_name" : ss.get("display_name")(link, shorty),
+                  "user_url"     : ss.get("user_url")(link, shorty),
+                  "description"  : ss.get("description")(link, shorty),
+                  "extra"        : shorty,
+                  "domain"       : link.get('domain'),
+                  "ref_link"     : link['url']
+                  }
+        emit_schema('rd.attach.link.expanded', schema)

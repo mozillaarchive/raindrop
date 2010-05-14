@@ -58,30 +58,25 @@ SERVICES = {
 # Creates 'rd.msg.body.attachment.link.img' for simple img url services
 # If an img url service doesn't fit easily into this pattern we likely want
 # to create a separate extension for that type
-def handler(doc):
-    if not 'links' in doc:
+def handler(link):
+    hash = None
+    service =  SERVICES.get(link['domain'], None)
+    if service is not None:
+        prop = service.get('prop')
+        match = service.get('regex').search(link[prop])
+        if match and match.group(1):
+            hash = match.group(1)
+
+    if hash is None:
         return
 
-    thumbs = []
-    for link in doc['links']:
-        service =  SERVICES.get(link['domain'], None)
-        if service is not None:
-            prop = service.get('prop')
-            match = service.get('regex').search(link[prop])
-            if match and match.group(1):
-                thumbs.append( (link, match.group(1)) )
-
-    if len(thumbs) == 0:
-        return
-
-    for link, hash in thumbs:
-        schema = {"thumb"       : SERVICES.get(link['domain']).get('thumb') % hash,
-                  "img"         : SERVICES.get(link['domain']).get('img') % hash,
-                  "title"       : link['url'],
-                  "href"        : link['url'],
-                  "userName"    : "",
-                  "realName"    : "",
-                  "description" : "",
-                  "ref_link"    : link['url']
-                  }
-        emit_schema('rd.msg.body.attachment.link.img', schema)
+    schema = {"thumb"       : SERVICES.get(link['domain']).get('thumb') % hash,
+              "img"         : SERVICES.get(link['domain']).get('img') % hash,
+              "title"       : link['url'],
+              "href"        : link['url'],
+              "userName"    : "",
+              "realName"    : "",
+              "description" : "",
+              "ref_link"    : link['url']
+              }
+    emit_schema('rd.attach.link.img', schema)

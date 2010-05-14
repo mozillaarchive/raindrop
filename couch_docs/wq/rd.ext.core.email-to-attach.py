@@ -13,7 +13,7 @@ def handler(doc):
                  'length': attach['length'],
                  'url': "/%s/%s" % (doc['_id'], name),
                  }
-        attach_rdkey = ['attach', [doc['rd_key'], fname]]
-        emit_schema('rd.attach.details', items, attach_rdkey)
+        attach_rdkey = ['attach', [doc['rd_key'], 'file', fname]]
+        emit_schema('rd.attach.file', items, attach_rdkey)
         num += 1
     logger.debug('created %d attachment summaries for %r', num, doc['_id'])

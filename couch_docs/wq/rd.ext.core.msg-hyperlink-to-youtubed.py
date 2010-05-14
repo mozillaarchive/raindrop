@@ -34,37 +34,34 @@ youtube_short_path_regex = re.compile("^/([A-Za-z0-9._%-]*)[&\w;=\+_\-]*")
 
 # Creates 'rd.msg.body.youtubed' schemas for emails...
 def handler(doc):
-    if not 'links' in doc:
+    hash = None
+    if doc['domain'] == "youtube.com":
+        match = youtube_query_regex.search(doc['query']) or youtube_path_regex.search(doc['path'])
+        if match and match.group(1):
+            hash = match.group(1)
+    elif doc['domain'] == "youtu.be":
+        match = youtube_short_path_regex.search(doc['path'])
+        if match and match.group(1):
+            hash = match.group(1)
+            youtubes.append( (link['url'], match.group(1)) )
+
+    if hash is None:
         return
 
-    youtubes = []
-    links = doc['links']
-    for link in links:
-        if link['domain'] == "youtube.com":
-            match = youtube_query_regex.search(link['query']) or youtube_path_regex.search(link['path'])
-            if match and match.group(1):
-                youtubes.append( (link['url'], match.group(1)) )
-        elif link['domain'] == "youtu.be":
-            match = youtube_short_path_regex.search(link['path'])
-            if match and match.group(1):
-                youtubes.append( (link['url'], match.group(1)) )
+    link = doc['url']
+    logger.debug("working on youtube video http://www.youtube.com/watch?v=%s ", hash)
+    gdata_api = "http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json" % hash
+    try:
+        opener = urllib2.build_opener()
+        obj = json.load(opener.open(gdata_api))
+        opener.close()
 
-    if len(youtubes) == 0:
-        return
-
-    for link, hash in youtubes:
-        logger.debug("working on youtube video http://www.youtube.com/watch?v=%s ", hash)
-        gdata_api = "http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json" % hash
-        try:
-            opener = urllib2.build_opener()
-            obj = json.load(opener.open(gdata_api))
-            opener.close()
-
-            obj = obj.get("entry")
-            obj['ref_link'] = link
-            emit_schema('rd.msg.body.youtubed', obj)
-        except urllib2.HTTPError, exc:
-            if exc.code == 404:
-                logger.debug("404 at video: http://www.youtube.com/watch?v=%s",
-                              hash)
-            pass
+        obj = obj.get("entry")
+        obj['ref_link'] = link
+        emit_schema('rd.msg.body.youtubed', obj)
+    except urllib2.HTTPError, exc:
+        if exc.code == 404:
+            logger.debug("404 at video: http://www.youtube.com/watch?v=%s",
+                          hash)
+        else:
+            logger.error("Failed to obtain youtube info: %s", exc)

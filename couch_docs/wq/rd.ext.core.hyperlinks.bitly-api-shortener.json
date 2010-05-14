@@ -1,7 +1,7 @@
 {
   "schemas" : {
     "rd.ext.workqueue" : {
-        "source_schemas" : ["rd.msg.body.quoted.hyperlinks"],
+        "source_schemas" : ["rd.attach.link"],
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
         "info": "Uses a number of simple bit.ly like API services to expand shortened hyperlinks"

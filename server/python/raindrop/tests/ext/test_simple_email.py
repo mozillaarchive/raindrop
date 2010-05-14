@@ -95,17 +95,11 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         self.ensure_pipeline_complete()
 
         # load the hyperlinks document and compare the results.
-        key = ["schema_id", "rd.msg.body.quoted.hyperlinks"]
+        key = ["schema_id", "rd.attach.link"]
         result = self.doc_model.open_view(key=key, reduce=False,
                                           include_docs=True)
         
-        # Make sure we got one result.
-        self.failUnlessEqual(len(result['rows']), 1)
-        
-        # Make sure the right hyperlinks were found
-        doc = result['rows'][0]['doc']
-        self.failUnlessEqual(sorted(doc['links'], cmp=lambda x,y: cmp(x['hostname'], y['hostname'])),
-                             sorted([
+        expected = sorted([
                                {'username': '',
                                 'fragment': '',
                                 'path': u'/2009/01/01/upcoming-events-new-york-london',
@@ -206,7 +200,13 @@ class TestSimpleCorpus(TestCaseWithCorpus):
                                 'domain': u'python.org',
                                 'scheme': u'http'}
                              ], cmp=lambda x,y: cmp(x['hostname'], y['hostname']))
-                            )
+        # Make sure we got the expected results.
+        self.failUnlessEqual(len(result['rows']), len(expected))
+
+        # Make sure the right hyperlinks were found
+        docs = sorted([r['doc'] for r in result['rows']], cmp=lambda x,y: cmp(x['hostname'], y['hostname']))
+        for got, ex in zip(docs, expected):
+            self.failUnlessDocEqual(got, ex)
 
     def test_twitter_notification(self):
         ndocs = self.load_corpus("hand-rolled", "twitter-notification")
