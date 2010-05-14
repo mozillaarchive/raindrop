@@ -131,9 +131,64 @@
         </div>
     </div>
 
+    <!-- imap section -->
+    <div class="section imap hidden">
+        <form id="imapSmtpForm" action="#" method="GET">
+            <div class="row">
+                <div class="c1">
+                    <strong>step 1:</strong> Add IMAP/SMTP account *
+                </div>
+                <div class="c1">
+                    <h4>IMAP</h4>
+                    <input type="text" name="imap-username" placeholder="username" value="">
+                    <input type="text" name="imap-addresses" placeholder="Additional, comma-separated emails" value="">
+                    <input type="password" name="imap-password" placeholder="password" value="">
+                    <input type="text" name="imap-host" placeholder="host" value="">
+                    <input type="text" name="imap-port" placeholder="port" value="">
+                    Use SSL? <select name="imap-ssl">
+                        <option value="True">Yes</option>
+                        <option value="False">No</option>
+                    </select>
+
+                    <h4 class="smtpHeader">SMTP</h4>
+                    <input type="text" name="smtp-username" placeholder="username" value="">
+                    <input type="password" name="smtp-password" placeholder="password" value="">
+                    <input type="text" name="smtp-host" placeholder="host" value="">
+                    <input type="text" name="smtp-port" placeholder="port" value="">
+                    Use SSL? <select name="smtp-ssl">
+                        <option value="True">Yes</option>
+                        <option value="False">No</option>
+                    </select>
+
+                    <div class="imapFormActions">
+                        <a class="skip" href="#twitter">skip this step</a>
+                        <button>submit</button>
+                    </div>
+
+                    <div class="finePrint grey">
+                    *You may delete your account at any time
+                    </div>
+                </div>
+                <div class="c1 imapErrors">
+                    <div id="imap-username-error" class="error invisible">Please enter your user name</div>
+                    <div class="error invisible">Addresses placeholder</div>
+                    <div id="imap-password-error" class="error invisible">Please enter your password</div>
+                    <div id="imap-host-error" class="error invisible">Please enter the IMAP server</div>
+                    <div id="imap-port-error" class="error invisible">Please enter the IMAP server port</div>
+
+                    <div id="smtp-username-error" class="error invisible">Please enter your user name</div>
+                    <div id="smtp-password-error" class="error invisible">Please enter your password</div>
+                    <div id="smtp-host-error" class="error invisible">Please enter the SMTP server</div>
+                    <div id="smtp-port-error" class="error invisible">Please enter the SMTP server port</div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+
     <!-- twitter section -->
     <div class="section twitter hidden">
-        <form class="oauthForm" action="../_api/oauth/consumer/request" method="GET">
+        <form id="oauthForm" action="../_api/oauth/consumer/request" method="GET">
             <div class="row">
                 <div class="c1 twitterHeader">
                     <strong>step 2:</strong> Add twitter account *

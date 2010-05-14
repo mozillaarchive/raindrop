@@ -69,9 +69,69 @@ function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
         }
     });
 
+    /**
+     * Sends the config info to the server to set up a manual imap/smtp setup.
+     * @param {Object} imap the config object with imap properties
+     * @param {Object} smtp the config object with smtp properties
+     */
+    function send(imap, smtp) {
+        //API is very granular, build up options for each call: twitter,
+        //gmail imap and gmail smtp.
+        var dfds = [], dfdList, options;
+
+        //Set up IMAP to Gmail
+        options = {
+            proto: "imap",
+            kind: "imap",
+            host: imap.host,
+            port: imap.port,
+            username: imap.username,
+            password: imap.password,
+            ssl: imap.ssl
+        };
+
+        //Only add addresses if entered.
+        if (imap.addresses) {
+            options.addresses = imap.addresses;
+        }
+
+        dfds.push(api({
+            url: 'inflow/account/set?id=' + encodeURIComponent('"imap-' + imap.host + '-' + imap.username + '"'),
+            method: "POST",
+            bodyData: dojo.toJson(options)
+        }).deferred());
+
+        //Set up SMTP to Gmail
+        dfds.push(api({
+            url: 'inflow/account/set?id=' + encodeURIComponent('"smtp-' + smtp.host + '-' + smtp.username + '"'),
+            method: "POST",
+            bodyData: dojo.toJson({
+                proto: "smtp",
+                host: smtp.host,
+                port: smtp.port,
+                username: smtp.username,
+                password: smtp.password,
+                ssl: smtp.ssl
+            })
+        }).deferred());
+
+        //Wait for all the deferreds to return.
+        dfdList = new DeferredList(dfds);
+        dfdList.addCallbacks(
+            dojo.hitch(this, function() {
+                //Success case.
+                location = '#twitter';
+            }),
+            dojo.hitch(this, function (err) {
+                //Error case.
+                alert(err);
+            })
+        );
+    }
+
     require.ready(function () {
 
-        dojo.query(".oauthForm")
+        dojo.query("#oauthForm")
             .onsubmit(function (evt) {
                 //First clear old errors
                 dojo.query(".error").addClass("invisible");
@@ -105,5 +165,53 @@ function (require,   dojo,   DeferredList,        rd,   api,      placeholder) {
             .forEach(function (node) {
                 placeholder(node);
             });
+
+        dojo.query("#imapSmtpForm")
+            .onsubmit(function (evt) {
+                //First clear old errors
+                dojo.query(".error").addClass("invisible");
+
+                var form = evt.target,
+                    isError = false,
+                    imap = {}, smtp = {};
+
+                //Make sure all form elements are trimmed and username exists.
+                dojo.forEach(form.elements, function (node) {
+                    var trimmed = dojo.trim(node.value),
+                        name = node.name
+                        errorNode = dojo.byId(name + "-error");
+
+                    if (node.getAttribute("placeholder") === trimmed) {
+                        trimmed = "";
+                    }
+
+                    if (!trimmed && errorNode) {
+                        isError = true;
+                        dojo.removeClass(errorNode, "invisible");
+                    } else if (trimmed && node.name === "imap-addresses") {
+                        //Make sure there are no spaces between the commas
+                        node.value = trimmed.split(/\s*,\s*/).join(",");
+                    }
+
+                    if (name.indexOf("imap-") === 0) {
+                        imap[name.substring(5, name.length)] = trimmed;
+                    } else {
+                        smtp[name.substring(5, name.length)] = trimmed;
+                    }
+                });
+
+                if (isError) {
+                    placeholder(form);
+                } else {
+                    //send to server to save.
+                    send(imap, smtp);
+                }
+
+                dojo.stopEvent(evt);
+
+            }).forEach(function (node) {
+                placeholder(node);
+            });
+
     });
 });

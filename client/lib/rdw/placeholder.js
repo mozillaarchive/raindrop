@@ -36,12 +36,17 @@ function (require, rd, dojo) {
      */
     function setPlaceholder(input) {
         //If no native support for placeholder then JS to the rescue!
-        var missingNative = !("placeholder" in input);
+        var missingNative = !("placeholder" in input),
+            placeholder = input.getAttribute("placeholder"),
+            trimmed = dojo.trim(input.value);
 
-        if (!dojo.trim(input.value)) {
+        if (!trimmed || trimmed === placeholder) {
             dojo.addClass(input, "placeholder");
             if (missingNative) {
-                input.value = input.getAttribute("placeholder");
+                input.value = placeholder;
+                if (placeholder === "password" && input.type === "password") {
+                    input.type = "text";
+                }
             }
         } else {
             dojo.removeClass(input, "placeholder");
@@ -54,10 +59,14 @@ function (require, rd, dojo) {
      */
     function onfocus(evt) {
         //Clear out placeholder, change the style.
-        var input = evt.target;
-        if (input.value === input.getAttribute("placeholder")) {
+        var input = evt.target,
+            placeholder = input.getAttribute("placeholder");
+        if (input.value === placeholder) {
             if (!("placeholder" in input)) {
                 input.value = "";
+                if (placeholder === "password" && input.type === "text") {
+                    input.type = "password";
+                }
             }
             dojo.removeClass(input, "placeholder");
         }
@@ -84,7 +93,7 @@ function (require, rd, dojo) {
      */
     return function (domNode, widget) {
         var handles = [];
-        dojo.query('input[type="text"], textarea', domNode).forEach(function (node) {
+        dojo.query('input[type="text"], input[type="password"], textarea', domNode).forEach(function (node) {
             //Skip nodes that have already been bound
             if (node.getAttribute("data-rdwPlaceholder") !== "set") {
                 var obj = widget || dojo;

@@ -306,3 +306,19 @@ button.notification {
   margin: 10px 5px 0 0;
   float: none;
 }
+
+.smtpHeader {
+    margin-top: 30px;
+}
+
+.imapFormActions {
+    margin-top: 20px;
+}
+
+.imapErrors {
+    margin-top: 22px;
+}
+
+#smtp-username-error {
+    margin-top: 68px;
+}
