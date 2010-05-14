@@ -49,24 +49,24 @@ def get_conductor(pipeline):
   return conductor
 
 class OutgoingExtension:
-  def __init__(self, id, src_schemas):
+  def __init__(self, id):
     self.id = id
-    self.source_schemas = src_schemas
     self.uses_dependencies = False
 
 class OutgoingProcessor:
-  def __init__(self, conductor, ext):
+  def __init__(self, conductor, ext, src_schema):
     self.conductor = conductor
     self.ext = ext
     self.num_errors = 0
+    self.src_schema = src_schema
 
-  def __call__(self, src_id, src_rev):
-    # XXX - we need a queue here!
-    logger.debug("saw new document %r (%s) - kicking outgoing process",
-                 src_id, src_rev)
-    self.conductor._process_outgoing_row(src_id, src_rev)
-    logger.debug("outgoing processing of %r (%s) finished",
-                 src_id, src_rev)
+  def __call__(self, src_id, src_rev, schema_id):
+    if schema_id == self.src_schema:
+      logger.debug("saw new document %r (%s) - kicking outgoing process",
+                   src_id, src_rev)
+      self.conductor._process_outgoing_row(src_id, src_rev)
+      logger.debug("outgoing processing of %r (%s) finished",
+                   src_id, src_rev)
     return [], False
 
 
@@ -105,8 +105,8 @@ class SyncConductor(object):
     # (or fail) at its own pace.
     for sch_id in self.outgoing_handlers.iterkeys():
       ext_id = "outgoing-" + sch_id
-      ext = OutgoingExtension(ext_id, [sch_id])
-      proc = OutgoingProcessor(self, ext)
+      ext = OutgoingExtension(ext_id)
+      proc = OutgoingProcessor(self, ext, sch_id)
       self.pipeline.add_processor(proc)
 
   def get_status_ob(self):

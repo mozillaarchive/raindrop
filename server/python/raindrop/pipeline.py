@@ -73,6 +73,14 @@ class Extension(object):
 
         self.handler = globs.get('handler')
         self.later_handler = globs.get('later_handler')
+        if self.source_schemas is None:
+            self.filter = globs.get('filter')
+            if not self.filter:
+                logger.error("extension %r has null source_schemas but doesn't"
+                             " provide a filter function")
+        else:
+            # a default filter which checks the schema id is one we want.
+            self.filter = lambda src_id, src_rev, schema_id: schema_id in self.source_schemas
 
 def load_extensions(doc_model):
     extensions = {}
@@ -159,22 +167,17 @@ class Pipeline(object):
         if spec_exts is None:
             spec_exts = self.options.exts
         ret = []
-        ret_names = set()
         for ext in self.get_extensions():
             qid = ext.id
             if spec_exts is None or qid in spec_exts:
                 proc = ExtensionProcessor(self.doc_model, ext, self.options)
-                schema_ids = ext.source_schemas
-                qr = ProcessingQueueRunner(self.doc_model, proc, schema_ids, qid)
+                qr = ProcessingQueueRunner(self.doc_model, proc, qid)
                 ret.append(qr)
-                ret_names.add(qid)
         # and the non-extension based ones.
         for ext_id, proc in self._additional_processors.iteritems():
             if spec_exts is None or ext_id in spec_exts:
-                schema_ids = proc.ext.source_schemas
-                qr = ProcessingQueueRunner(self.doc_model, proc, schema_ids, ext_id)
+                qr = ProcessingQueueRunner(self.doc_model, proc, ext_id)
                 ret.append(qr)
-                ret_names.add(ext_id)
         return ret
 
     def start_processing(self, cont_stable_callback):
@@ -414,22 +417,18 @@ class StatefulQueueManager(object):
         while qstate.running:
             batchiter = qstate.feed.make_iter(batch_size)
             logger.debug("starting batch for queue %r at sequence %s", q.queue_id, qstate.feed.current_seq)
-            try:
-                num_created = q.process_queue(batchiter)
-                logger.debug("Work queue %r finished batch at sequence %s",
-                             q.queue_id, qstate.feed.current_seq)
-                self._save_queue_state(qstate, qstate.feed.current_seq, 0)
-            except Exception, exc:
-                logger.exception("queue %r failed", q.queue_id)
-                qstate.failure = exc
-                qstate.running = False
+            num_created = q.process_queue(batchiter)
+            logger.debug("Work queue %r finished batch at sequence %s",
+                         q.queue_id, qstate.feed.current_seq)
+            self._save_queue_state(qstate, qstate.feed.current_seq, 0)
 
     def _worker_thread(self, q, qs):
         try:
             self._run_queue(q, qs)
-        except Exception:
-            logger.exception('queue %r failed', q.queue_id)
-        q.running = False
+        except Exception, exc:
+            logger.exception('queue %r failed seriously!', q.queue_id)
+            qs.failure = exc
+        qs.running = False
 
     def _stop_all(self):
         for qs in self.queue_states:
@@ -514,10 +513,9 @@ class ProcessingQueueRunner(object):
     of couch documents and run any of the extension objects which process the
     documents.
     """
-    def __init__(self, doc_model, processor, schema_ids, queue_id):
+    def __init__(self, doc_model, processor, queue_id):
         self.doc_model = doc_model
         self.processor = processor
-        self.schema_ids = schema_ids
         self.queue_id = queue_id
 
     def process_queue(self, src_gen):
@@ -525,7 +523,6 @@ class ProcessingQueueRunner(object):
         """
         doc_model = self.doc_model
         num_created = 0
-        schema_ids = self.schema_ids
         processor = self.processor
         queue_id = self.queue_id
 
@@ -553,13 +550,8 @@ class ProcessingQueueRunner(object):
                     logger.log(1, 'skipping document %r: %s', src_id, why)
                     continue
 
-            if schema_id not in schema_ids:
-                continue
-
-            logger.debug("queue %r checking schema '%s' (doc %r/%s) at seq %s",
-                         queue_id, schema_id, src_id, src_rev, last_seq)
             try:
-                got, must_save = processor(src_id, src_rev)
+                got, must_save = processor(src_id, src_rev, schema_id)
             except extenv.ProcessLaterException, exc:
                 # This extension has been asked to be called later at the
                 # end of the batch - presumably to save doing duplicate work.
@@ -603,7 +595,7 @@ class ProcessingQueueRunner(object):
                 logger.debug("redoing conflict when processing %r,%r", src_id,
                              src_rev)
                 # and ask it to go again...
-                got, _ = processor(src_id, src_rev)
+                got, _ = processor(src_id, src_rev, schema_id)
                 if got:
                     # don't bother batching when handling conflicts...
                     try:
@@ -697,10 +689,13 @@ class ExtensionProcessor(object):
             self._release_ext_env()
         return new_items
 
-    def __call__(self, src_id, src_rev):
+    def __call__(self, src_id, src_rev, schema_id):
         """The "real" entry-point to this processor"""
-        dm = self.doc_model
         ext = self.ext
+        if not ext.filter(src_id, src_rev, schema_id):
+            return [], False
+
+        dm = self.doc_model
         ext_id = ext.id
         force = self.options.force
 
@@ -787,7 +782,7 @@ class ExtensionProcessor(object):
 
         # our caller should have filtered the list to only the schemas
         # our extensions cares about.
-        assert src_doc['rd_schema_id'] in ext.source_schemas
+        assert ext.source_schemas is None or src_doc['rd_schema_id'] in ext.source_schemas
 
         # If the source of this document is yet to see a schema written by
         # a 'schema provider', skip calling extensions which depend on this
