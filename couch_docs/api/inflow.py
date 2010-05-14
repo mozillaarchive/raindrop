@@ -83,18 +83,7 @@ class ConversationAPI(API):
                     if name.startswith('rd_') or name.startswith('_'):
                         del doc[name]
 
-                # We may get many of the same schema, which implies
-                # we need to aggregate them - tags is a good example.
-                # Aggregate them under a _multiples areas.
-                if schema_id in bag:
-                    if not '_multiples' in bag:
-                        bag['_multiples'] = {}
-                    if not schema_id in bag['_multiples']:
-                        bag['_multiples'][schema_id] = []
-                        bag['_multiples'][schema_id].append(bag[schema_id])
-
-                    bag['_multiples'][schema_id].append(doc)
-                # for now it gets clobbered if it exists...
+                assert schema_id not in bag, bag
                 bag[schema_id] = doc
             try:
                 body = bag['rd.msg.body']
