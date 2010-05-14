@@ -1,5 +1,6 @@
 import rfc822
 import time
+from pprint import pformat
 from raindrop.tests import TestCaseWithCorpus, TestCaseWithTestDB
 
 class ConvoTestMixin:
@@ -137,6 +138,32 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         # check messages in the convo.
         msgs = self.get_messages_in_convo(doc_sum['rd_key'])
         self.failUnlessEqual(sorted(msgs), sorted([msgid_reply, msgid]))
+
+    def test_attach(self):
+        self.init_corpus('hand-rolled')
+
+        # Process a single item - should get its own convo
+        self.put_docs('hand-rolled', 'quoted-hyperlinks', 1)
+
+        msgid = ['email', '20090514020118.C33915681F2D@example2.com']
+        # should be one 'rd.convo.summary' doc in the DB.
+        key = ['schema_id', 'rd.conv.summary']
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        doc = rows[0]['doc']
+        self.failUnless('messages' in doc, doc.keys())
+        # expecting only the one test message
+        self.failUnlessEqual(len(doc['messages']), 1)
+        msg = doc['messages'][0]
+        self.failUnless('attachments' in msg, pformat(msg.keys()))
+        # for now just check the 'bitly' link in the test message.
+        expected = {
+            'id': ['attach', [msgid, 'http://bit.ly/HQFyP']],
+            'schemas': ['rd.attach.link', 'rd.attach.link.expanded'],
+        }
+        self.failUnless(expected in msg['attachments'], pformat(doc))
 
 
 # the following tests don't use the corpos, they just introduce a few

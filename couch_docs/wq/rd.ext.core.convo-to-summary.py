@@ -17,13 +17,20 @@ src_msg_schemas = {
     'rd.msg.deleted': None,
     'rd.msg.seen': ['seen'],
     'rd.msg.grouping-tag': None,
-    'rd.msg.email': ['_attachments']
+    'rd.msg.email': None,
+    'rd.msg.attachment-summary': None,
 }
 
 def build_summaries(to_summarize):
     for msg in to_summarize:
-        summary = {'id': msg['rd.msg.body']['rd_key'],
+        msg_key = msg['rd.msg.body']['rd_key']
+        summary = {'id': msg_key,
                    'schemas': {}}
+        # special case - the 'attachment summary' gets its own dict item
+        try:
+            summary['attachments'] = msg.pop('rd.msg.attachment-summary')['attachments']
+        except KeyError:
+            pass
         for scid, names in src_msg_schemas.iteritems():
             if not names:
                 continue
