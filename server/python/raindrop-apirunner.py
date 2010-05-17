@@ -276,21 +276,10 @@ def log(msg, *args):
 
 api_globals['log'] = log
 
-# Function which turns an rd_key into something able to be used in a Python
-# dict or set.  For now, tuple does exactly that (but may not later if we
-# find rd_keys with subitems as lists)
-# javascript would do something like ",".join(key_val);
-def hashable_key(key):
-    # turn a list, possibly itself holding lists, into something immutable.
-    ret = []
-    for item in key:
-        if isinstance(item, list):
-            ret.append(hashable_key(item))
-        else:
-            ret.append(item)
-    return tuple(ret)
-
-api_globals['hashable_key'] = hashable_key
+# helper functions exposed to the API
+from raindrop.model import DocumentModel
+api_globals['hashable_key'] = DocumentModel.hashable_key
+api_globals['get_doc_id_for_schema_item'] = DocumentModel.get_doc_id_for_schema_item
 
 # -- raindrop specific APIs
 class RDCouchDB(CouchDB):
