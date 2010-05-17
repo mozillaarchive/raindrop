@@ -45,14 +45,14 @@ def later_handler(pending):
         attach_dict = {}
         for item in key_items:
             attach_key = hashable_key(item['value']['rd_key'])
-            attach_info = attach_dict.setdefault(attach_key, [])
-            attach_info.append(item['value']['rd_schema_id'])
+            attach_info = attach_dict.setdefault(attach_key, {})
+            attach_info[item['value']['rd_schema_id']] = None
         # and back into the sorted list suitable for json (sorted so we
         # can reliably check if we need to write a new value)
         attachments = []
         for attach_key in sorted(attach_dict.iterkeys()):
             schemas = sorted(attach_dict[attach_key])
-            attachments.append({'id': attach_key, 'schemas': schemas})
+            attachments.append({'id': attach_key, 'schemas': attach_dict[attach_key]})
 
         schema = {'attachments': attachments}
         try:

@@ -23,11 +23,15 @@ class _APIMixin:
 class APITestCaseWithCorpus(TestCaseWithCorpus, _APIMixin):
     def setUp(self):
         TestCaseWithCorpus.setUp(self)
-        ndocs = self.load_corpus('hand-rolled')
+        ndocs = self.setUpCorpus()
         self.failUnless(ndocs, "failed to load any corpus docs")
         self.ensure_pipeline_complete()
         # and reset our API so it reloads anything
         self.call_api("_reset")
+
+    def setUpCorpus(self):
+        return self.load_corpus('hand-rolled')
+        
 
 class APITestCase(TestCaseWithTestDB, _APIMixin):
     def setUp(self):

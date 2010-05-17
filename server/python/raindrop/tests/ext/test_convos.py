@@ -161,7 +161,8 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         # for now just check the 'bitly' link in the test message.
         expected = {
             'id': ['attach', [msgid, 'http://bit.ly/HQFyP']],
-            'schemas': ['rd.attach.link', 'rd.attach.link.expanded'],
+            'schemas': {'rd.attach.link': None,
+                        'rd.attach.link.expanded': None},
         }
         self.failUnless(expected in msg['attachments'], pformat(doc))
 

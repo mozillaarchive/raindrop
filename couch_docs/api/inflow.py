@@ -368,29 +368,41 @@ class MessageAPI(API):
 
     def attachments(self, req):
         opts = {}
-        self.requires_get(req)
-        args = self.get_args(req, 'key', limit=30)
-        # the message key
-        msgkey = args['key']
+        self.requires_get_or_post(req)
+        args = self.get_args(req, 'keys', 'schemas', limit=30)
+        # XXX - limit not used!  What exactly is it trying to limit?
+        # We can do this without a query by calculating the doc IDs.
+        wanted_ids = []
+        wanted_details = []
+        for akey in args['keys']:
+            for sid in args['schemas']:
+                si = {'rd_key': akey,
+                      'rd_schema_id': sid}
+                wanted_ids.append(get_doc_id_for_schema_item(si))
+                wanted_details.append(si)
         db = RDCouchDB(req)
-        startkey = ['key', ['attach', [msgkey]]]
-        endkey = ['key', ['attach', [msgkey, {}]]]
-        result = db.megaview(startkey=startkey, endkey=endkey,
-                             limit=args['limit'], reduce=False,
-                             include_docs=True)
+        result = db.allDocs(wanted_ids, include_docs=True)
+        # turn the result into a dict so we can detect missing ones etc.
+        by_key = {}
+        for row, si in zip(result['rows'], wanted_details):
+            if 'doc' in row:
+                schemas = by_key.setdefault(hashable_key(si['rd_key']), {})
+                schemas[si['rd_schema_id']] = self._filter_user_fields(row['doc'])
 
-        ret = []
-        for ardkey, items in itertools.groupby(result['rows'],
-                                               lambda row: row['doc']['rd_key']):
-            schemas = {}
-            # make a result much like messages...
-            this = {'id': ardkey, 'schemas': schemas}
-            ret.append(this)
-            for item in items:
-                doc = item['doc']
-                self._fixup_attach_url(doc, db)
-                schemas[doc['rd_schema_id']] = self._filter_user_fields(doc)
-        return ret
+        # now back to the 'result' object.
+        result = []
+        for akey in args['keys']:
+            this = {'id': akey,
+                    'schemas': {}}
+            try:
+                found = by_key[hashable_key(akey)]
+            except KeyError:
+                pass
+            else:
+                this['schemas'] = found
+            result.append(this)
+        return result
+
 
 class GroupingAPI(API):
     def summary(self, req):

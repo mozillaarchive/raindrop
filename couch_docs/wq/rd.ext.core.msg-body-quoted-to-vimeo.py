@@ -36,7 +36,7 @@ from raindrop import json
 # TODO make this regexp strongly against malicious link use.
 vimeo_video_regex = re.compile('vimeo.com/(\d+)')
 
-# Creates 'rd.msg.attachment' for bit.ly urls from 'rd.msg.body.quoted.hyperlinks'
+# Creates a schema for bit.ly urls from 'rd.msg.body.quoted.hyperlinks'
 def handler(doc):
     video_id = None
     # Check for normal flickr urls and only add to list if not
