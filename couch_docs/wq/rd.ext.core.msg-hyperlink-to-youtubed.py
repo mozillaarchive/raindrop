@@ -58,7 +58,7 @@ def handler(doc):
 
         obj = obj.get("entry")
         obj['ref_link'] = link
-        emit_schema('rd.msg.body.youtubed', obj)
+        emit_schema('rd.attach.link.youtubed', obj)
     except urllib2.HTTPError, exc:
         if exc.code == 404:
             logger.debug("404 at video: http://www.youtube.com/watch?v=%s",
