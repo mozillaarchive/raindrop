@@ -34,11 +34,13 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkAttachments",
     */
     rd.applyExtension("rdw/ext/MessageLinkAttachments", "rdw/Message", {
         replace: {
-            defaultLinkHandler: function (link) {
+            defaultLinkHandler: function (attachment) {
+                var link = attachment.schemas['rd.attach.link'];
                 //NOTE: the "this" in this function is the instance of rdw/Message.
                 var html = '<div class="link hbox"><a target="_blank" href="'
                            + link.url + '">' + link.url + '</a></div>';
                 this.addAttachment(html, "link");
+                return true;
             }
         }
     });

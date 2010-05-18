@@ -50,14 +50,13 @@ require.def("rdw/Message",
         photoAttachTemplate: photoAttachTemplate,
 
         //Extension point for link attachment handlers. An extension that can
-        //handle link attachments should register a function with this array.
-        //The extension's function should return true if it can handle
-        //the attachment.
+        //handle link attachments should register a schema and handler function
+        // with this object..
         //This array is on the object's prototype, so it applies to all
         //instances of rdw/Message.
         linkHandlers: [],
 
-        defaultLinkHandler: function () {},
+        defaultLinkHandler: function () {return true;},
 
         templateString: template,
 
@@ -113,36 +112,55 @@ require.def("rdw/Message",
 
             var bodySchema = this.msg.schemas['rd.msg.body'],
                 msgKey = this.msg.id,
-                emailSchema = this.msg.schemas["rd.msg.email"], attachments,
-                prop, needFiles = false;
+                attachments = this.msg.attachments;
 
             //Set up attachments, if an attachment widget is configured.
-            if (this.attachmentWidget) {
-                //Determine if there are any file attachments that we need
-                //metadata about.
-
-                attachments = emailSchema && emailSchema._attachments;
-                if (attachments) {
-                    for (prop in attachments) {
-                        if (attachments.hasOwnProperty(prop)) {
-                            if (prop.indexOf("subpart") === -1 && prop.indexOf("rd.ext.core.msg-rfc-to-email/body") === -1) {
-                                needFiles = true;
-                                break;
+            if (this.attachmentWidget && attachments) {
+                // Build a list of our explicit handlers + default handlers.
+                var allHandlers = this.linkHandlers.slice();
+                allHandlers.push({schemas: ['rd.attach.link'],
+                                  handler: this.defaultLinkHandler});
+                allHandlers.push({schemas: ['rd.attach.file', 'rd.attach.thumbnail'],
+                                  handler: this.defaultFileHandler});
+                
+                // Determine the schemas we need for attachments and links. We
+                // want the union of all schemas for all attachments, and the
+                // "handled" schemas
+                var wantedSchemasSet = {};
+                for each (var lh in allHandlers) {
+                    for each (var sid in lh.schemas) {
+                        if (!wantedSchemasSet[sid]) {
+                            for each (var attach in attachments) {
+                                if (attach.schemas.hasOwnProperty(sid)) {
+                                    wantedSchemasSet[sid] = true;
+                                }
                             }
                         }
                     }
                 }
-                if (needFiles) {
+                // turn it back into an array of unique items
+                var wantedSchemas = [];
+                for (var sid in wantedSchemasSet) {
+                    if (wantedSchemasSet.hasOwnProperty(sid)) {
+                        wantedSchemas.push(sid);
+                    }
+                }
+                if (wantedSchemas.length) {
+                    // the ids of all attachments
+                    var all_ids = [];
+                    for each (var attach in attachments) {
+                        all_ids.push(attach.id);
+                    }
                     api({
                         url: 'inflow/message/attachments',
-                        key: dojo.toJson(msgKey)
+                        keys: all_ids,
+                        schemas: wantedSchemas
                     })
                     .ok(this, function (json) {
-                        this.msg.fileAttachments = json;
-                        this.showAttachments(); 
+                        this.showAttachments(allHandlers, json);
                     });
                 } else {
-                    this.showAttachments(); 
+                    this.showAttachments([], []); 
                 }
             }
 
@@ -218,32 +236,23 @@ require.def("rdw/Message",
          * Shows the attachments by creating an attachment widget. Should
          * be called after fetching any file attachment metadata.
          */
-        showAttachments: function () {
-            var linkSchema = this.msg.schemas["rd.msg.body.quoted.hyperlinks"],
-                i, j, link, ext, handled, file,
-                fileAttachments = this.msg.fileAttachments;
-            if (linkSchema && linkSchema.links && linkSchema.links.length) {
-                //Do links first
-                for (i = 0; (link = linkSchema.links[i]); i++) {
-                    handled = false;
-                    for (j = 0; (ext = this.linkHandlers[j]); j++) {
-                        if ((handled = ext.call(this, link))) {
+        showAttachments: function (handlers, attachments) {
+            for each (var attach in attachments) {
+                var handled = false;
+                for each (handler in handlers) {
+                    // We only check the first schema ID for the handler; the
+                    // other schemas are 'supplementary' schemas.
+                    for (var sid in attach.schemas) {
+                        if (sid==handler.schemas[0] && handler.handler.call(this, attach)) {
+                            handled = true;
                             break;
                         }
                     }
-                    if (!handled) {
-                        this.defaultLinkHandler(link);
+                    if (handled) {
+                        break;
                     }
-                }                
-            }
-
-            //Handle files now.
-            if (fileAttachments) {
-                for (i = 0; (file = fileAttachments[i]); i++) {
-                    this.defaultFileHandler(file);
                 }
             }
-
             //Render attachments, if they exist.
             if (this.attachments) {
                 this.attachments.display();
@@ -255,11 +264,11 @@ require.def("rdw/Message",
          * @param {Object} file json object for a file attachment,
          * from the inflow/message/attachments API
          */
-        defaultFileHandler: function (file) {
-            var schemas = file.schemas,
+        defaultFileHandler: function (attachment) {
+            var schemas = attachment.schemas,
                 bodySchema = this.msg.schemas["rd.msg.body"],
                 thumb = schemas["rd.attach.thumbnail"],
-                details = schemas["rd.attach.details"],
+                details = schemas["rd.attach.file"],
                 html;
 
             if (thumb) {
@@ -279,6 +288,7 @@ require.def("rdw/Message",
             }
 
             this.addAttachment(html, "file");
+            return true;
         },
 
         /**

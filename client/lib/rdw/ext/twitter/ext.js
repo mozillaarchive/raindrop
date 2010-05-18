@@ -94,7 +94,6 @@ require.modify("rdw/Conversations", "rdw/ext/twitter/ext-rdw/Conversations",
                     api({
                         url: 'inflow/conversations/in_groups',
                         limit: this.conversationLimit,
-                        schemas: this.personalSchemas,
                         message_limit: this.messageLimit,
                         keys: [
                             ["display-group", "twitter"]

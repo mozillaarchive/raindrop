@@ -25,22 +25,9 @@
 /*global require: false */
 "use strict";
 
-require.modify("rdw/Conversations", "rdw/ext/MessageLinkExpandedAttachments-rdw/Conversations",
-    ["rd", "dojo", "rd/api", "rdw/Conversations"],
-    function (rd, dojo, api) {
-        rd.applyExtension("rdw/ext/MessageLinkExpandedAttachments", "rdw/Conversations", {
-            addToPrototype: {
-                personalSchemas: [
-                    "rd.msg.body.attachment.link.expanded"
-                ]
-            }
-        });
-    }
-);
-
 require.modify("rdw/Message", "rdw/ext/MessageLinkExpandedAttachments",
-["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
-  require,   rd,   dojo,   rdSchema,    Message) {
+["require", "rd", "dojo", "rdw/Message"], function (
+  require,   rd,   dojo,   Message) {
     /*
     Applies a display extension to rdw/Message.
     Allows showing links included in the message as inline attachments
@@ -50,15 +37,12 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkExpandedAttachments",
 
     rd.applyExtension("rdw/ext/MessageLinkExpandedAttachments", "rdw/Message", {
         addToPrototype: {
-            linkHandlers: [
-                function (link) {
+            linkHandlers: [{
+                schemas: ["rd.attach.link.expanded"],
+                handler: function (attachment) {
+                    var schema = attachment.schemas["rd.attach.link.expanded"];
                     //NOTE: the "this" in this function is the instance of rdw/Message.
-                    var schema = rdSchema.getMsgMultipleMatch(this.msg, "rd.msg.body.attachment.link.expanded", "ref_link", link.url),
-                          linkNode, templateObj, template, titleTemplate;
-                    if (!schema) {
-                        return false;
-                    }
-
+                    var linkNode, templateObj, template, titleTemplate;
                     template = '<a target="_blank" class="title long_url" title="${long_url}" href="${short_url}">${long_url}</a>' +
                                '<div class="description">${description}</div>' +
                                '<span class="by">by</span> ' +
@@ -89,7 +73,7 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkExpandedAttachments",
                                        '</div>', 'link');
                     return true;
                 }
-            ]
+            }]
         }
     });
 });

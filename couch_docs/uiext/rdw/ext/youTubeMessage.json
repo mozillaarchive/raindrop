@@ -2,8 +2,7 @@
   "schemas" : {
     "rd.ext.uiext" : {
       "exts": {
-        "rdw/Message": "rdw/ext/youTubeMessage",
-        "rdw/Conversations": "rdw/ext/youTubeMessage"
+        "rdw/Message": "rdw/ext/youTubeMessage"
       }
     }
   }

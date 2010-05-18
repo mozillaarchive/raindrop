@@ -207,7 +207,6 @@ require.modify("rdw/Conversations", "rdw/ext/mailingList/ext-rdw/Conversations",
                     api({
                         url: 'inflow/conversations/in_groups',
                         limit: this.conversationLimit,
-                        schemas: this.personalSchemas,
                         message_limit: this.messageLimit,
                         keys: [
                             ["mailing-list", listId]

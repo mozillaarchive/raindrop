@@ -25,22 +25,9 @@
 /*global require: false */
 "use strict";
 
-require.modify("rdw/Conversations", "rdw/ext/MessageVimeoLinkAttachments-rdw/Conversations",
-    ["rd", "dojo", "rd/api", "rdw/Conversations"],
-    function (rd, dojo, api) {
-        rd.applyExtension("rdw/ext/MessageVimeoLinkAttachments", "rdw/Conversations", {
-            addToPrototype: {
-                personalSchemas: [
-                    "rd.msg.body.quoted.hyperlinks.vimeo"
-                ]
-            }
-        });
-    }
-);
-
 require.modify("rdw/Message", "rdw/ext/MessageVimeoLinkAttachments",
-["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
-  require,   rd,   dojo,   rdSchema,    Message) {
+["require", "rd", "dojo", "rdw/Message"], function (
+  require,   rd,   dojo,   Message) {
 
     /*
     Applies a display extension to rdw/Message.
@@ -50,17 +37,13 @@ require.modify("rdw/Message", "rdw/ext/MessageVimeoLinkAttachments",
     
     rd.applyExtension("rdw/ext/MessageVimeoLinkAttachments", "rdw/Message", {
         addToPrototype: {
-            linkHandlers: [
-                function (link) {
+            linkHandlers: [{
+                schemas: ["rd.attach.link.vimeo"],
+                handler: function (attachment) {
                     //NOTE: the "this" in this function is the instance of rdw/Message.
-        
+                    var schema = attachment.schemas["rd.attach.link.vimeo"];
                     //See if link matches the schema on message.
-                    var schema = rdSchema.getMsgMultipleMatch(this.msg, "rd.msg.body.quoted.hyperlinks.vimeo", "ref_link", link.url),
-                        html;
-                    if (!schema) {
-                        return false;
-                    }
-    
+                    var html
                     html = '<div class="vimeo video link hbox">' +
                            '    <div class="thumbnail boxFlex0"><a target="_blank\" " + href + ">' +
                            '    <img src="' + schema.thumbnail_small + '" class="vimeo"></a>' +
@@ -75,10 +58,9 @@ require.modify("rdw/Message", "rdw/ext/MessageVimeoLinkAttachments",
                            '</div>';
     
                     this.addAttachment(html, 'video');
-    
                     return true;
                 }
-            ]
+            }]
         }
     });
 });

@@ -25,22 +25,9 @@
 /*global require: false */
 "use strict";
 
-require.modify("rdw/Conversations", "rdw/ext/MessageLinkLocationAttachments-rdw/Conversations",
-    ["rd", "dojo", "rd/api", "rdw/Conversations"],
-    function (rd, dojo, api) {
-        rd.applyExtension("rdw/ext/MessageLinkLocationAttachments", "rdw/Conversations", {
-            addToPrototype: {
-                personalSchemas: [
-                    "rd.msg.body.attachment.link.foursquare"
-                ]
-            }
-        });
-    }
-);
-
 require.modify("rdw/Message", "rdw/ext/MessageLinkLocationAttachments",
-["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
-  require,   rd,   dojo,   rdSchema,    Message) {
+["require", "rd", "dojo", "rdw/Message"], function (
+  require,   rd,   dojo,   Message) {
 
     rd.addStyle("rdw/ext/css/MessageLinkLocationAttachments");
 
@@ -49,16 +36,13 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkLocationAttachments",
     */
     rd.applyExtension("rdw/ext/MessageLinkLocationAttachments", "rdw/Message", {
         addToPrototype: {
-            linkHandlers: [
-                function (link) {
+            linkHandlers: [{
+                schemas: ["rd.attach.link.foursquare"],
+                handler: function (attachment) {
                     //NOTE: the "this" in this function is the instance of rdw/Message.
-
+                    var schema = attachment.schemas["rd.attach.link.foursquare"];
                     //See if link matches the schema on message.
-                    var schema = rdSchema.getMsgMultipleMatch(this.msg, "rd.msg.body.attachment.link.foursquare", "ref_link", link.url),
-                        html, template;
-                    if (!schema) {
-                        return false;
-                    }
+                    var html, template;
                     template = '<div class="location link hbox">' +
                                '  <div class="thumbnail boxFlex0">' +
                                '  </div>' +
@@ -86,10 +70,9 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkLocationAttachments",
                     });
 
                     this.addAttachment(html, 'link');
-
                     return true;
                 }
-            ]
+            }]
         }
     });
 });

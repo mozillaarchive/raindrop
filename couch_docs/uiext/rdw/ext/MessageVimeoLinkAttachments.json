@@ -2,8 +2,7 @@
   "schemas" : {
     "rd.ext.uiext" : {
       "exts": {
-        "rdw/Message": "rdw/ext/MessageVimeoLinkAttachments",
-        "rdw/Conversations": "rdw/ext/MessageVimeoLinkAttachments"
+        "rdw/Message": "rdw/ext/MessageVimeoLinkAttachments"
       }
     }
   }

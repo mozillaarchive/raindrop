@@ -25,19 +25,6 @@
 /*global require: false, console:false */
 "use strict";
 
-require.modify("rdw/Conversations", "rdw/ext/youTubeMessage-rdw/Conversations",
-    ["rd", "dojo", "rd/api", "rdw/Conversations"],
-    function (rd, dojo, api) {
-        rd.applyExtension("rdw/ext/youTubeMessage", "rdw/Conversations", {
-            addToPrototype: {
-                personalSchemas: [
-                    "rd.msg.body.youtubed"
-                ]
-            }
-        });
-    }
-);
-
 require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
 ["rd", "dojo", "rd/schema", "rdw/Message", "dojo/fx"], function (
   rd,   dojo,   rdSchema,    Message,       fx) {
@@ -48,8 +35,9 @@ require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
     //inline with a message.
     rd.applyExtension("rdw/ext/youTubeMessage", "rdw/Message", {
         addToPrototype: {
-            linkHandlers: [
-                function (link) {
+            linkHandlers: [{
+                schemas: ["rd.attach.link.youtubed"],
+                handler: function (attachment) {
                     //if msg has youtube data, add a
                     //display item for the data.
                     //TODO: could vary the display based on how the
@@ -57,17 +45,13 @@ require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
                     //to have a "type" field to indicate what type of
                     //display rdw/Message would use for the message,
                     //or a different widget would be used for the display.
+                    var yt = attachment.schemas["rd.attach.link.youtubed"];
 
                     //NOTE: the "this" in this function is the instance of rdw/Message.
 
                     //Check for a YouTube video
-                    var yt = rdSchema.getMsgMultipleMatch(this.msg, "rd.msg.body.youtubed", "ref_link", link.url),
-                        thumbnail = "", thumb, url, youTubeImgTemplateString, img,
+                    var thumbnail = "", thumb, url, youTubeImgTemplateString, img,
                         title, youTubeInfoTemplateString, thumbs, i;
-                    if (!yt) {
-                        return false;
-                    }
-
                     thumbs = yt.media$group.media$thumbnail;
 
                     //ugh, would have been nicer if I stored the thumbnails better
@@ -99,15 +83,16 @@ require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
                     });
 
                     this.addAttachment('<div class="youTube video hbox" data-dclick="onYouTubeClick">' + img + title + '</div>', "video");
-
                     return true;
                 }
-            ],
+            }],
 
             // Handles clicking anywhere on the youtube attachment block
 
             onYouTubeClick: function (evt) {
-                var yt = this.msg.schemas["rd.msg.body.youtubed"],
+                // XXX - fix me - the schema is now on the attachments object,
+                // not the message.
+                var yt = this.msg.schemas["rd.attach.link.youtubed"],
                     targetName = evt.target.nodeName.toUpperCase(),
                     videoId, q, videoUrl, content, objTemplateString, obj, player;
 

@@ -2,8 +2,7 @@
   "schemas" : {
     "rd.ext.uiext" : {
       "exts": {
-        "rdw/Message": "rdw/ext/MessageLinkLocationAttachments",
-        "rdw/Conversations": "rdw/ext/MessageLinkLocationAttachments"
+        "rdw/Message": "rdw/ext/MessageLinkLocationAttachments"
       }
     }
   }

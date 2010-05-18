@@ -26,8 +26,8 @@
 "use strict";
 
 require.modify("rdw/Message", "rdw/ext/MessageLinkImgAttachments",
-["require", "rd", "dojo", "rd/schema", "rdw/Message"], function (
-  require,   rd,   dojo,   rdSchema,    Message) {
+["require", "rd", "dojo", "rdw/Message"], function (
+  require,   rd,   dojo,   Message) {
 
     rd.addStyle("rdw/ext/css/MessageLinkImgAttachments");
 
@@ -44,17 +44,12 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkImgAttachments",
     */
     rd.applyExtension("rdw/ext/MessageLinkImgAttachments", "rdw/Message", {
         addToPrototype: {
-            linkHandlers: [
-                function (link) {
+            linkHandlers: {
+                "rd.msg.body.attachment.link.img": function (schema) {
                     //NOTE: the "this" in this function is the instance of rdw/Message.
 
                     //See if link matches the schema on message.
-                    var schema = rdSchema.getMsgMultipleMatch(this.msg, "rd.msg.body.attachment.link.img", "ref_link", link.url),
-                        html;
-                    if (!schema) {
-                        return false;
-                    }
-
+                    var html;
                     html = rd.template(this.photoAttachTemplate, {
                         extraClass: link.domain,
                         imgUrl: schema.thumb,
@@ -67,10 +62,8 @@ require.modify("rdw/Message", "rdw/ext/MessageLinkImgAttachments",
                     });
 
                     this.addAttachment(html, 'photo');
-
-                    return true;
                 }
-            ]
+            }
         }
     });
 });

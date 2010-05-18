@@ -53,17 +53,6 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
          * the "paging" mechanism. */
         skipCount: 0,
 
-        /**
-         * The list of additional schemas to fetch for the conversations/personal
-         * call. Extensions can add to this array to fetch schemas on messages
-         * that they care about. Most useful for extensions that deal with
-         * attachments.
-         */
-        personalSchemas: [
-            "rd.msg.body.attachment.link.img",
-            "rd.msg.body.quoted.hyperlinks"     
-        ],
-
         //The widget to use to show a full conversation.
         fullConversationCtorName: "rdw/conversation/FullConversation",
     
@@ -990,7 +979,6 @@ function (require, rd, dojo, dijit, dojox, Base, Conversation, FullConversation,
         home: function (callType) {
             api({
                 url: 'inflow/conversations/personal',
-                schemas: dojo.toJson(this.personalSchemas),
                 limit: this.conversationLimit,
                 message_limit: this.messageLimit,
                 skip: this.skipCount
