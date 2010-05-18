@@ -174,7 +174,7 @@ class TwitterProcessor(object):
         tl= self.twit.statuses.home_timeline(count=200)
         for status in tl:
             id = int(status.get("id"))
-            rd_key = ['tweet', id]
+            rd_key = ['tweet', str(id)]
             schema_id = 'rd.msg.tweet.raw'
             keys.append(['key-schema_id', [rd_key, schema_id]])
             this_items[id] = (status, rd_key, schema_id)
@@ -186,7 +186,7 @@ class TwitterProcessor(object):
         ml = self.twit.direct_messages()
         for dm in ml:
             id = int(dm.get("id"))
-            rd_key = ['tweet-direct', id]
+            rd_key = ['tweet-direct', str(id)]
             schema_id = 'rd.msg.tweet-direct.raw'
             keys.append(['key-schema_id', [rd_key, schema_id]])
             this_items[id] = (dm, rd_key, schema_id)
