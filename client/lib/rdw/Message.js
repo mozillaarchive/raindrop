@@ -152,7 +152,7 @@ require.def("rdw/Message",
                         all_ids.push(attach.id);
                     }
                     api({
-                        url: 'inflow/message/attachments',
+                        url: 'inflow/attachments/by_id',
                         keys: all_ids,
                         schemas: wantedSchemas
                     })

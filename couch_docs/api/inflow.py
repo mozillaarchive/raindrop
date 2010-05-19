@@ -115,14 +115,25 @@ class ConversationAPI(API):
                     bag["rd.msg.ui.known"] = {
                         "rd_schema_id" : "rd.msg.ui.known"
                     }
+        # now open the 'attachment summary' docs for each of the requested keys.
+        wanted_ids = []
+        for rd_key in msg_keys:
+            si = {'rd_key': rd_key,
+                  'rd_schema_id': 'rd.msg.attachment-summary'}
+            wanted_ids.append(get_doc_id_for_schema_item(si))
+        attach_query = db.allDocs(wanted_ids, include_docs=True)
+        
         # it is very important we keep the result list parallel with the
         # input keys, so the caller can match things up correctly.
-        for rd_key in msg_keys:
+        for rd_key, attach_row in zip(msg_keys, attach_query['rows']):
             try:
                 bag = message_results[hashable_key(rd_key)]
             except KeyError:
                 bag = {}
-            attachments = []
+            if 'doc' in attach_row:
+                attachments = attach_row['doc']['attachments']
+            else:
+                attachments = None
             yield (bag, attachments)
 
     def _build_conversations(self, db, conv_summaries, message_limit, schemas=None):
@@ -139,6 +150,10 @@ class ConversationAPI(API):
             for cs in conv_summaries:
                 if message_limit > len(cs['messages']) and len(cs['message_ids']) > len(cs['messages']):
                     fetch_schemas = True
+                    # but they haven't said *what* schemas - so return the same
+                    # schemas we provide in the summaries
+                    if cs['messages']:
+                        schemas = cs['messages'][0]['schemas'].keys()
                     break
             else:
                 # we have everything we need without fetching
@@ -343,31 +358,8 @@ class ContactAPI(API):
                 log("contact has non-identity record: %s", row)
         return ret
 
-class MessageAPI(API):
-    def _fixup_attach_url(self, doc, db):
-        # The 'url' field of an attachment document may contain a 'relative'
-        # URL - where 'relative' means:
-        # * If the URL starts with './' it means the URL is specifying an
-        #   attachment in the same document - we add the
-        #   'http://.../raindrop/doc_id' prefix.
-        # * If URL starts with a '/', the URL is a fully-qualified path inside
-        #   our couchDB; we add on the 'http://.../raindrop/' prefix.
-        # * Else, the URL is not touched.
-        try:
-            url = old_url = doc['url']
-        except KeyError:
-            return
-        if url.startswith("./"):
-            # the model stores the extension ID too.  We assume the
-            # 'schema provider' is the extension
-            url = "/" + doc['_id'] + "/" + doc['rd_schema_provider'] + url[1:]
-            # note this now qualifies for the next condition
-        if url.startswith("/"):
-            url = self.absuri(db, url[1:])
-        doc['url'] = url
-
-    def attachments(self, req):
-        opts = {}
+class AttachmentAPI(API):
+    def by_id(self, req):
         self.requires_get_or_post(req)
         args = self.get_args(req, 'keys', 'schemas', limit=30)
         # XXX - limit not used!  What exactly is it trying to limit?
@@ -406,7 +398,6 @@ class MessageAPI(API):
 
 class GroupingAPI(API):
     def summary(self, req):
-        opts = {}
         self.requires_get(req)
         db = RDCouchDB(req)
         # Note there might be lots of .info groups, but only a small number
@@ -472,7 +463,7 @@ class AccountAPI(API):
 # are able to be called.
 dispatch = {
     'conversations': ConversationAPI(),
-    'message': MessageAPI(),
+    'attachments': AttachmentAPI(),
     'grouping' : GroupingAPI(),
     'account' : AccountAPI(),
 }

@@ -6,8 +6,8 @@
         "content_type" : "application/x-python",
         "endpoints" : [
                        ["inflow", "account"],
+                       ["inflow", "attachments"],
                        ["inflow", "conversations"],
-                       ["inflow", "message"],
                        ["inflow", "grouping"]
                       ],
         "info": "Exposes the inflow REST API"
