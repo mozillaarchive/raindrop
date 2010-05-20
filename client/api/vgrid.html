@@ -61,23 +61,18 @@
 
     <script type="text/javascript">
     //<![CDATA[
-      //document.addEventListener("templateLoaded", applyVGrid, true);
 
-      $(document).ready(function() {
-        window.setTimeout(function() { applyVGrid() }, 5000);
+      $(document).bind('rdapi-done', function (evt, node) {
+          if (node.id == "grid-content") {
+            $(node).vgrid({
+            easeing: "easeOutQuint",
+            time: 400,
+            delay: 20,
+            fadeIn: { time: 500,
+                      delay: 50 }
+            });
+          }
       });
-
-      function applyVGrid() {
-        $("#grid-content").vgrid({
-        easeing: "easeOutQuint",
-        time: 400,
-        delay: 20,
-        fadeIn: {
-                  time: 500,
-                  delay: 50
-        }
-        });
-      }
 
     //]]>
     </script>
