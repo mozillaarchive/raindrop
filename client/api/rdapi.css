@@ -1,0 +1,422 @@
+/* reset */
+* {
+  border: 0 none;
+  font-family: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  font-size: 100%;
+  margin: 0;
+  outline: 0;
+  padding: 0;
+  vertical-align: baseline;
+  -moz-box-sizing: border-box;
+  list-style-type: none;
+}
+
+body {
+  width: 960px;
+  margin: 100px auto 0 auto;
+  font-family: "Helvetica Neue", Helvetica, Arial, Sans-serif;
+  font-size: 12px;
+  line-height: 24px;
+  position: relative; 
+}
+
+#header {
+  width: 960px;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  margin-left: -480px;
+  background-color: #fff;
+  z-index: 1;
+  border-bottom: 1px solid #ccc;
+}
+
+#header li {
+  display: inline;
+  margin-right: 10px;
+  color: #888;
+}
+
+/* grid */
+
+.row {
+  width: 100%;
+  margin: 10px 0;
+  float: left;
+  position: relative;
+}
+
+.c1,
+.c2,
+.c3,
+.c4,
+.c5,
+.c6 {
+  display: inline-block;
+  min-height: 1px;
+  float: left;
+  margin: 0 10px; 
+}
+
+.c1 {
+  width: 140px;
+}
+
+.c2 {
+  width: 300px;
+}
+
+.c3 {
+  width: 460px;
+}
+
+.c4 {
+  width: 620px;
+}
+
+.c5 {
+  width: 780px;
+}
+
+.c6 {
+  width: 940px;
+}
+
+/* content */
+
+.summary {
+  margin: 0 0 50px 0;
+  float: left;
+  background-color: #f2f2f2;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+
+.summary a {
+  color: #000;
+  text-decoration: none;
+}
+
+.summary .title {
+  font-size: 18px;
+  color: #888;
+}
+
+.summary .close {
+  text-align: right;
+}
+
+.red,
+.blue {
+  height: 12px;
+  width: 50px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.red {
+  background-color: #ff0000;
+}
+
+.blue {
+  background-color: #3FA9F5;
+}
+
+.hotspotOne,
+.hotspotTwo,
+.hotspotThree,
+.hotspotFour,
+.hotspotFive {
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+  background-color: #ff5959;
+  display: inline-block;
+  margin: 0 10px;
+}
+
+.hotspotOne {
+  width: 140px;
+  height: 140px;
+  line-height: 140px;
+  -moz-border-radius: 70px;
+  -webkit-border-radius: 70px;
+}
+
+.hotspotTwo {
+  width: 120px;
+  height: 120px;
+  line-height: 120px;
+  -moz-border-radius: 60px;
+  -webkit-border-radius: 60px;
+}
+
+.hotspotThree {
+  width: 90px;
+  height: 90px;
+  line-height: 90px;
+  -moz-border-radius: 45px;
+  -webkit-border-radius: 45px;
+}
+
+.inflow {
+  width: 480px;
+  background: #fff;
+  margin-bottom: 100px;
+  float: left;
+}
+
+.inflow .row {
+  border-top: 1px solid #ccc;
+  padding: 0 0 10px 0;
+  margin: 0;
+}
+
+.inflow .row:first-child {
+  border-top: none;
+}
+
+.inflow .row.highlight {
+  background-color: #f2f2f2;
+}
+
+.inflow .row.highlight .subject {
+  background-image: url("i/arrow-right.png");
+  background-repeat: none;
+  background-position: right center;
+  margin-left: -10px;
+  padding-left: 10px;
+}
+
+.inflow .row .actions,
+.inflow .row .more,
+.widgets.fullMessage .row .actions {
+  float: right;
+  font-size: 11px;
+  color: #888;
+}
+
+.inflow .row .more {
+  color: #000;
+}
+
+.inflow .row .more a {
+  color: #000;
+  text-decoration: none;
+}
+
+.inflow .row .more a:hover {
+  text-decoration: underline;
+}
+
+.row .avatar {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  background: #ccc;
+}
+
+.row .name {
+  display: inline-block;
+  vertical-align: top;
+  padding: 0 0 0 5px;
+}
+
+.inflow .row .subject {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.inflow .row .subject a {
+  color: #000;
+  text-decoration: none;
+}
+
+.inflow .row .messageBody {
+  color: #666;
+  line-height: 18px;
+}
+
+.inflow .row .messageReply,
+.inflow .row .messageAttachments {
+  color: #666;
+  margin: 10px 0px 0px 160px;
+  padding: 5px;
+  background-color: rgba(204, 204, 204, 0.35);
+  font-size: 11px;
+  line-height: 18px;
+  position: relative;
+}
+
+.inflow .row .messageReply.noArrow {
+  margin-top: 2px;
+}
+
+.inflow .row .messageAttachments {
+  background-color: transparent;
+  border-top: none;
+  padding: 5px 0px;
+  color: #ff5959;
+  font-weight: bold;
+}
+
+.inflow .row .messageReply .name,
+.inflow .row .messageAttachments .name {
+  margin: 0;
+  padding: 0;
+  color: #000;
+  font-weight: normal;
+}
+
+.inflow .row .messageReply .arrow {
+  position: absolute;
+  top: -16px;
+  left: 10px;
+  width: 0;
+  height: 0;
+  border-color: transparent transparent rgba(204, 204, 204, 0.35) transparent;
+  border-style: solid;
+  border-width: 8px;
+}
+
+.inflow .row .twitterActions li {
+  display: inline;
+  margin: 0 5px 0 0;
+  font-weight: bold;
+  color: #666;
+  font-size: 11px;
+}
+
+.widgets {
+  width: 480px;
+  position: fixed;
+  right: 50%;
+  margin-right: -480px;
+  top: 100px;
+}
+
+.widgets .accounts {
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.widgets .accounts li {
+  padding-left: 20px;
+}
+
+.widgets .folders .title,
+.widgets .broadcastMessages .title,
+.widgets .mailingListMessages .title {
+  color: #999;
+  padding: 0 0 0 20px;
+}
+
+.widgets .folders li,
+.widgets .broadcastMessages li,
+.widgets .mailingListMessages li {
+  font-weight: bold;
+  padding: 0 0 0 20px;
+}
+
+.widgets .selected {
+  background-image: url("i/arrow.png");
+  background-repeat: no-repeat;
+  background-position: left center;
+  font-weight: bold;
+  padding: 0px 10px 0 20px;
+  margin: 0 0 0 -20px;
+  height: 24px;
+  display: table-caption;
+}
+
+.row.read {
+  background-color: #f2f2f2;
+}
+
+.logo,
+.search {
+  background-repeat: no-repeat;
+  background-position: left center;
+  height: 24px;
+  display: block;
+}
+
+.logo {
+  background-image: url("i/logo.png");
+  background-position: right center;
+}
+
+.search {
+  background-image: url("i/search.png");
+}
+
+.inflow.fixed {
+  position: fixed;
+}
+
+.widgets.analytics {
+  position: relative;
+  float: right;
+  margin-right: 0;
+  top: 0;
+  right: 0;
+  width: 480px;
+}
+
+.widgets.fullMessage {
+  position: relative;
+  float: right;
+  margin-right: 0;
+  top: 0;
+  right: 0;
+  width: 481px;
+  border-left: 1px solid #ccc;
+}
+
+.widgets.fullMessage .row {
+  margin: 0;
+  padding: 10px 0;
+}
+
+.widgets.fullMessage .row:first-child {
+  margin: 0 0 20px 0;
+  padding: 0;
+}
+
+.widgets.fullMessage .subject {
+  font-size: 14px;
+  font-weight: bold;
+}
+/*
+.row.fullReply:nth-child(odd){
+  background-color: #f2f2f2;
+}*/
+
+.row.fullReply .messageBody {
+  color: #666;
+}
+
+.widgets.fullMessage .row.fullReply {
+  border-top: 1px dotted #ccc;
+}
+
+.widgets.fullMessage .row.fullReply .actions {
+  font-size: 12px;
+  color: #000;
+}
+
+.date {
+  font-size: 11px;
+  color: #888;
+}
+
+.inflow .date {
+  margin: 0 0 0 160px;
+}
+
+.actions a {
+  color: #888;
+  text-decoration: none;
+}
