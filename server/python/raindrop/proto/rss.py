@@ -76,7 +76,7 @@ def maybe_update_doc(conductor, doc_model, doc, options):
     a = {}
     a['response'] = {'content_type': items['headers']['content-type'],
                      'data': content}
-    si = doc_model.doc_to_schema_items(doc).next()
+    si = doc_model.doc_to_schema_item(doc)
     si['items'] = items
     si['attachments'] = a
     si['_rev'] = doc['_rev']

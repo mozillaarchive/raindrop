@@ -148,7 +148,7 @@ class DocumentModel(object):
                 raise ValueError("no schema items ('items') specifed", item)
 
     @classmethod
-    def doc_to_schema_items(cls, doc):
+    def doc_to_schema_item(cls, doc):
         """Turn a couch document back into a 'schema item' record"""
         meta, items = cls.split_meta_from_items(doc)
         info_common = {'rd_key': meta['rd_key'],
@@ -156,17 +156,11 @@ class DocumentModel(object):
                       }
         schema_items = doc['rd_schema_items']
         ext_ids = schema_items.keys()
-        if len(ext_ids)==1:
-            assert schema_items[ext_ids[0]]['schema'] is None, doc
-            info_common['rd_ext_id'] = ext_ids[0]
-            info_common['items'] = items
-            yield info_common
-        else:
-            for ext_id in ext_ids:
-                ret = info_common.copy()
-                ret['rd_ext_id'] = ext_id
-                ret['items'] = schema_items[ext_id]['schema']
-                yield ret
+        assert len(ext_ids)==1, "more than one schema in this doc"
+        assert schema_items[ext_ids[0]]['schema'] is None, doc
+        info_common['rd_ext_id'] = ext_ids[0]
+        info_common['items'] = items
+        return info_common
 
     def open_view(self, docId='raindrop!content!all', viewId='megaview',
                   *args, **kwargs):
@@ -287,8 +281,6 @@ class DocumentModel(object):
         if len(sitems) == 1:
             assert sitems.values()[0]['schema'] is None
             return # nothing to aggregate.
-        if doc['rd_schema_id'] in megaview_schemas_no_aggr:
-            return # no aggregation requested
         eids = sorted(((n, self._extension_confidences.get(n, 0))
                         for n in sitems.iterkeys()),
                       key=lambda i: i[1])
@@ -436,8 +428,7 @@ class DocumentModel(object):
             item['rd_schema_provider'] = item['rd_ext_id']
         if 'rd_schema_provider' in item:
             if 'rd_schema_provider' in doc and item.get('items') and \
-               doc['rd_schema_provider'] != item['rd_schema_provider'] and \
-               doc['rd_schema_id'] not in megaview_schemas_no_aggr:
+               doc['rd_schema_provider'] != item['rd_schema_provider']:
                 logger.warn('we seem to have multiple providers for %r: %r and %r',
                             item['rd_schema_id'], doc['rd_schema_provider'],
                             item['rd_schema_provider'])

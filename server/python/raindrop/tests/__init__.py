@@ -311,16 +311,15 @@ class TestCaseWithCorpus(TestCaseWithDB):
                         fname = os.path.join(corpus_dir, data['filename'])
                         with open(fname, 'rb') as attach_f:
                             data['data'] = attach_f.read()
-                sis = self.doc_model.doc_to_schema_items(ob)
+                si = self.doc_model.doc_to_schema_item(ob)
             elif os.path.exists(basename + ".rfc822.txt"):
                 # plain rfc822.txt file.
                 with open(basename + ".rfc822.txt", 'rb') as f:
-                    sis = [self.rfc822_to_schema_item(f)]
+                    si = self.rfc822_to_schema_item(f)
             else:
                 print "Don't know how to load '%s.*' into the corpus" % basename
                 continue
-            for si in sis:
-                yield si
+            yield si
             num += 1
         self.failUnless(num, "failed to load any docs from %r matching %r" %
                         (corpus_name, item_spec))
