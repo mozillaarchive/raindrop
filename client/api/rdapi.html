@@ -30,6 +30,11 @@
 
     <script src="../lib/jquery-1.4.js" charset="utf-8"></script>
     <script src="rdapi.jquery.js" charset="utf-8"></script>
+    <script>
+        $(document).bind('rdapi-done', function (evt, node) {
+            console.log('Got rdapi-done: ', node);
+        });
+    </script>
 </head>
 <body class="templateContainer">
 

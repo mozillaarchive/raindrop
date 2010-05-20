@@ -89,7 +89,6 @@ var rdapi;
         return df; // DOMNode
     }
 
-
     function isArray(it) {
         return ostring.call(it) === "[object Array]";
     }
@@ -228,8 +227,12 @@ var rdapi;
         mixin(options, {
             success: function (json) {
                 var template = options.template,
-                    html, node;
+                    html = '', node;
                 if (options.containerNode && template) {
+                    if (options.prop) {
+                        json = getObject(options.prop, json);
+                    }
+
                     if (isArray(json)) {
                         json.forEach(function (item) {
                             html += rdapi.template(template, item);
@@ -239,6 +242,7 @@ var rdapi;
                     }
                     node = toDom(html);
                     options.containerNode.replaceChild(node, options.node);
+                    $(document).trigger('rdapi-done', options.containerNode);
                 }
             }
         });
@@ -315,7 +319,7 @@ var rdapi;
                  .removeAttr('data-api').removeAttr('data-options');
 
             templateRegistry[id] = {
-                prop: prop,
+                prop: dataProp,
                 node: node,
                 api: api,
                 options: options
@@ -346,11 +350,7 @@ var rdapi;
             if (templateRegistry.hasOwnProperty(prop)) {
                 tmpl = templateRegistry[prop];
                 if (tmpl.api) {
-                    rdapi(tmpl.api, {
-                        containerNode: tmpl.containerNode,
-                        node: tmpl.node,
-                        template: tmpl.template
-                    });
+                    rdapi(tmpl.api, tmpl);
                 }
             }
         }
