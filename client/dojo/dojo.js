@@ -19,7 +19,7 @@ var require;
             scripts, script, rePkg, src, m, cfg, setReadyState,
             readyRegExp = /^(complete|loaded)$/,
             isBrowser = !!(typeof window !== "undefined" && navigator && document),
-            ostring = Object.prototype.toString, scrollIntervalId;
+            ostring = Object.prototype.toString, scrollIntervalId, req;
 
     function isFunction(it) {
         return ostring.call(it) === "[object Function]";
@@ -251,6 +251,16 @@ var require;
                 context.config.paths = paths;
             }
 
+            //If priority loading is in effect, trigger the loads now
+            if (config.priority) {
+                //Create a separate config property that can be
+                //easily tested for config priority completion.
+                //Do this instead of wiping out the config.priority
+                //in case it needs to be inspected for debug purposes later.
+                require(config.priority);
+                context.config.priorityWait = config.priority;
+            }
+
             //If a deps array or a config callback is specified, then call
             //require with those args. This is useful when require is defined as a
             //config object before require.js is loaded.
@@ -321,8 +331,8 @@ var require;
         
         //See if all is loaded. If paused, then do not check the dependencies
         //of the module yet.
-        if (s.paused) {
-            s.paused.push([pluginPrefix, name, deps, context]);
+        if (s.paused || context.config.priorityWait) {
+            (s.paused || (s.paused = [])).push([pluginPrefix, name, deps, context]);
         } else {
             require.checkDeps(pluginPrefix, name, deps, context);
             require.checkLoaded(contextName);
@@ -335,9 +345,9 @@ var require;
      * Simple function to mix in properties from source into target,
      * but only if target does not already have a property of the same name.
      */
-    require.mixin = function (target, source, override) {
+    require.mixin = function (target, source, force) {
         for (var prop in source) {
-            if (!(prop in empty) && (!(prop in target) || override)) {
+            if (!(prop in empty) && (!(prop in target) || force)) {
                 target[prop] = source[prop];
             }
         }
@@ -451,6 +461,12 @@ var require;
      */
     require.resume = function () {
         var i, args, paused;
+
+        //Skip the resume if current context is in priority wait.
+        if (s.contexts[s.ctxName].config.priorityWait) {
+            return;
+        }
+
         if (s.paused) {
             paused = s.paused;
             delete s.paused;
@@ -745,7 +761,8 @@ var require;
                 expired = waitInterval && (context.startTime + waitInterval) < new Date().getTime(),
                 loaded = context.loaded, defined = context.defined,
                 modifiers = context.modifiers, waiting = context.waiting, noLoads = "",
-                hasLoadedProp = false, stillLoading = false, prop,
+                hasLoadedProp = false, stillLoading = false, prop, priorityDone,
+                priorityName,
 
                                 pIsWaiting = s.plugins.isWaiting, pOrderDeps = s.plugins.orderDeps,
                 
@@ -756,6 +773,26 @@ var require;
         //then do not bother checking loaded state.
         if (context.isCheckLoaded) {
             return;
+        }
+
+        //Determine if priority loading is done. If so clear the priority. If
+        //not, then do not check
+        if (context.config.priorityWait) {
+            priorityDone = true;
+            for (i = 0; (priorityName = context.config.priorityWait[i]); i++) {
+                if (!context.loaded[priorityName]) {
+                    priorityDone = false;
+                    break;
+                }
+            }
+            if (priorityDone) {
+                //Clean up priority and call resume, since it could have
+                //some waiting dependencies to trace.
+                delete context.config.priorityWait;
+                require.resume();
+            } else {
+                return;
+            }
         }
 
         //Signal that checkLoaded is being require, so other calls that could be triggered
@@ -896,7 +933,7 @@ var require;
 
         //If already traced or defined, do not bother a second time.
         if (name) {
-            if (traced[name] || defined[name]) {
+            if (traced[name] || name in defined) {
                 return defined[name];
             }
     
@@ -1008,7 +1045,9 @@ var require;
             contextName = node.getAttribute("data-requirecontext");
             moduleName = node.getAttribute("data-requiremodule");
 
-            //Mark the module loaded.
+            //Mark the module loaded. Must do it here in addition
+            //to doing it in require.def in case a script does
+            //not call require.def
             s.contexts[contextName].loaded[moduleName] = true;
 
             require.checkLoaded(contextName);
@@ -1183,7 +1222,11 @@ var require;
     
     //Set up default context. If require was a configuration object, use that as base config.
     if (cfg) {
-        require(cfg);
+        //Remap require to avoid a Caja compilation error about require.async
+        //should be used for non-string values. Caja is assuming CommonJS-like
+        //modules, but require.async is not uniformly accepted.
+        req = require;
+        req(cfg);
     }
 }());
 require.pause();
