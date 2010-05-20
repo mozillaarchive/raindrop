@@ -26,8 +26,8 @@
 "use strict";
 
 require.modify("rdw/Message", "rdw/ext/youTubeMessage-rdw/Message",
-["rd", "dojo", "rd/schema", "rdw/Message", "dojo/fx"], function (
-  rd,   dojo,   rdSchema,    Message,       fx) {
+["rd", "dojo", "rdw/Message", "dojo/fx"], function (
+  rd,   dojo,   Message,       fx) {
 
     rd.addStyle("rdw/ext/css/youTubeMessage");
 

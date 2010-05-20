@@ -31,7 +31,6 @@
             name: "dojo",
             include: [
                 "inflow",
-                "rd/schema",
                 "require/rdCouch",
         
                 //START all the extensions. This is assumes user wants all our
