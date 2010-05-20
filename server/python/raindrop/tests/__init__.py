@@ -86,7 +86,7 @@ class FakeOptions:
 class TestCase(unittest.TestCase):
     def resetRaindrop(self):
         import raindrop.extenv
-        raindrop.extenv._my_identities[:] = []
+        raindrop.extenv.reset_for_test_suite()
     
     def setUp(self):
         self.resetRaindrop()

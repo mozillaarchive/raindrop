@@ -29,6 +29,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 _my_identities = []
+_known_grouping_tags = set()
+
+def reset_for_test_suite():
+    _my_identities[:] = []
+    _known_grouping_tags.clear()
+
 
 class ProcessLaterException(Exception):
     def __init__(self, value):
@@ -170,8 +176,15 @@ def get_ext_env(doc_model, context, src_doc, ext):
         # at runtime.
         # If the grouping-tag is already associated with a different rd.grouping
         # schema, no action is taken.
+        # this simple cache makes a big improvement!
+        # XXX - can't use globals here - so we cheat!
+        from raindrop.extenv import _known_grouping_tags
+        if tag in _known_grouping_tags:
+            return
+        
         result = doc_model.open_view(viewId='grouping_info_tags', key=tag)
         if result['rows']:
+            _known_grouping_tags.add(tag)
             return # this grouping already exists.
         # create a new 'info' schema marked as 'dynamic' so it can be deleted
         # when no items exist in it.
@@ -180,6 +193,7 @@ def get_ext_env(doc_model, context, src_doc, ext):
                  'grouping_tags': [tag]}
         emit_schema('rd.grouping.info', items, rd_key=grouping_key,
                     deps=InternalNoDepsSentinal)
+        _known_grouping_tags.add(tag)
 
     def process_later(info):
         raise ProcessLaterException(info)
