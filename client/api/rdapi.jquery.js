@@ -13,9 +13,12 @@ var rdapi;
         empty = {},
         ostring = Object.prototype.toString,
         templateRegistry = {},
+        dataRegistry = {},
+        dataIdCounter = 0,
         config = {
             baseUrl: '/raindrop/',
-            apiPath: '_api/inflow/'
+            apiPath: '_api/inflow/',
+            saveTemplateData: true
         },
 
         //support stuff for toDom
@@ -121,7 +124,7 @@ var rdapi;
         var brackRegExp = /\[([^\]]+)\]/,
             part = name,
             parent = context,
-            match, pre, prop, obj, startIndex, endIndex;
+            match, pre, prop, obj, startIndex, endIndex, indices, result;
         
         while ((match = brackRegExp.exec(part))) {
             prop = match[1].replace(/['"]/g, "");
@@ -151,10 +154,15 @@ var rdapi;
         }
 
         if (!part) {
-            return parent;
+            result = parent;
         } else {
-            return getProp(part.split("."), parent);
+            result = getProp(part.split("."), parent);
         }
+        
+        if (result === null || result === undefined) {
+            result = '';
+        }
+        return result;
     }
 /*
     var from = getObject('schemas["rd.schema.body"].from_display', {
@@ -251,49 +259,59 @@ var rdapi;
     };
 
     rdapi.template = function (tmpl, map) {
-        return tmpl.replace(masterPattern, isFunction(map) ?
-            map : function (x, k) {
-                var index, templateId, prop, obj, html, result, varId;
-
-                if (k.indexOf('+') === 0) {
-                    //A subtemplate. Pull of the query from the property.
-                    index = k.lastIndexOf(' ');
-                    templateId = k.substring(2, index);
-                    prop = k.substring(index + 1, k.length);
-                    obj = getObject(prop, map);
-                    html = templateRegistry[templateId].template;
-                    result = '';
-
-                    if (!obj) {
-                        console.error("cannot find property related to subtemplate: " + k);
+        var dataId,
+            combined = tmpl.replace(masterPattern, isFunction(map) ?
+                map : function (x, k) {
+                    var index, templateId, prop, obj, html, result, varId;
+    
+                    if (k.indexOf('+') === 0) {
+                        //A subtemplate. Pull of the query from the property.
+                        index = k.lastIndexOf(' ');
+                        templateId = k.substring(2, index);
+                        prop = k.substring(index + 1, k.length);
+                        obj = getObject(prop, map);
+                        html = templateRegistry[templateId].template;
+                        result = '';
+    
+                        if (!obj) {
+                            console.error("cannot find property related to subtemplate: " + k);
+                            return '';
+                        } else if (isArray(obj)) {
+                            obj.forEach(function (item) {
+                                result += rdapi.template(html, item);
+                            });
+                            return result;
+                        } else {
+                            return rdapi.template(html, obj);
+                        }
+                    } else if (k.indexOf('!') === 0) {
+                        //It is an assignment.
+                        index = k.lastIndexOf(' ');
+                        varId = k.substring(2, index);
+                        prop = k.substring(index + 1, k.length);
+                        obj = getObject(prop, map);
+                        map[varId] = obj;
                         return '';
-                    } else if (isArray(obj)) {
-                        obj.forEach(function (item) {
-                            result += rdapi.template(html, item);
-                        });
-                        return result;
-                    } else {
-                        return rdapi.template(html, obj);
                     }
-                } else if (k.indexOf('!') === 0) {
-                    //It is an assignment.
-                    index = k.lastIndexOf(' ');
-                    varId = k.substring(2, index);
-                    prop = k.substring(index + 1, k.length);
-                    obj = getObject(prop, map);
-                    map[varId] = obj;
-                    return '';
-                }
 
-                return getObject(k, map);
-            });
+                    return getObject(k, map);
+                });
+
+        if (config.saveTemplateData && !isFunction(map)) {
+            dataId = 'id' + (dataIdCounter++);
+            combined = combined.replace(/<\s*\w+/, '$& data-rdapiid="' + dataId + '" ');
+            dataRegistry[dataId] = map;
+        }
+        return combined;
     };
 
     rdapi.config = function (cfg) {
         mixin(config, cfg, true);
     };
 
-    $.fn.rdapi = rdapi;
+    rdapi.data = function (id) {
+        return dataRegistry[id];
+    };
 
     $(function () {
         var prop, tmpl;
@@ -307,7 +325,7 @@ var rdapi;
                 options = sNode.attr('data-options'),
                 parentNode = node.parentNode,
                 textContent = '{+ ' + id + ' ' + dataProp + '}',
-                textNode, prop;
+                textNode;
 
             if (options) {
                 //TODO: parse the options
