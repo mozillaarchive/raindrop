@@ -28,38 +28,17 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <link type="text/css" rel="stylesheet" href="rdapi.css">
 
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js" charset="utf-8"></script>
+    <script src="../lib/jquery-1.4.js" charset="utf-8"></script>
     <script src="rdapi.jquery.js" charset="utf-8"></script>
-    <script>
-        $(function () {
-            $('#input').bind('submit', function (evt) {
-                var url = $('#apiUrl').val(),
-                    template = $('#template').val();
-
-                $('#output').rdapi(url, {
-                    template: template,
-                    debug: function (json) {
-                        console.log(json)
-                    }
-                });
-
-                evt.preventDefault();
-            });
-        });
-    </script>
 </head>
-<body class="settings">
-    <form id="input" method="get">
-        <select id="apiUrl">
-            <option value="conversations/personal">conversations/personal</option>
-        </select>
-        <textarea id="template">
-            {subject}&lt;br&gt;
-        </textarea>
-        <input type="submit" name="Submit" value="Submit">
-    </form>
-    
-    <div id="output"></div>
+<body class="templateContainer">
+
+    <div class="convo template" data-api="conversations/personal">
+        <span>{subject}</span>
+        <div class="message template" data-prop="messages">
+            <span>{schemas['rd.msg.body'].from_display}</span>
+        </div>
+    </div>
 
 </body>
 </html>

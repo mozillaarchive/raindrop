@@ -1,5 +1,5 @@
 /*jslint regexp: false, plusplus: false */
-/*global jQuery: false, console: false */
+/*global jQuery: false, console: false, document: false */
 "use strict";
 
 //Some functions to add to jquery to make it easy to work with Raindrop API.
@@ -8,13 +8,91 @@ var rdapi;
 
 (function ($) {
     var global = this,
+        idCounter = 0,
         masterPattern = /\{([^\}]+)\}/g,
         empty = {},
         ostring = Object.prototype.toString,
+        templateRegistry = {},
         config = {
             baseUrl: '/raindrop/',
             apiPath: '_api/inflow/'
-        };
+        },
+
+        //support stuff for toDom
+        tagWrap = {
+            option: ["select"],
+            tbody: ["table"],
+            thead: ["table"],
+            tfoot: ["table"],
+            tr: ["table", "tbody"],
+            td: ["table", "tbody", "tr"],
+            th: ["table", "thead", "tr"],
+            legend: ["fieldset"],
+            caption: ["table"],
+            colgroup: ["table"],
+            col: ["table", "colgroup"],
+            li: ["ul"]
+        },
+        reTag = /<\s*([\w\:]+)/,
+        masterNode = {}, masterNum = 0,
+        masterName = "__ToDomId",
+        param, tw;
+
+    // generate start/end tag strings to use
+    // for the injection for each special tag wrap case.
+    for (param in tagWrap) {
+        if (tagWrap.hasOwnProperty(param)) {
+            tw = tagWrap[param];
+            tw.pre  = param === "option" ? '<select multiple="multiple">' : "<" + tw.join("><") + ">";
+            tw.post = "</" + tw.reverse().join("></") + ">";
+            // the last line is destructive: it reverses the array,
+            // but we don't care at this point
+        }
+    }
+
+    function toDom(frag, doc) {
+        doc = doc || document;
+        var masterId = doc[masterName], match, tag, master, wrap, i, fc, df;
+        if (!masterId) {
+            doc[masterName] = masterId = ++masterNum + "";
+            masterNode[masterId] = doc.createElement("div");
+        }
+
+        // make sure the frag is a string.
+        frag += "";
+
+        // find the starting tag, and get node wrapper
+        match = frag.match(reTag);
+        tag = match ? match[1].toLowerCase() : "";
+        master = masterNode[masterId];
+
+        if (match && tagWrap[tag]) {
+            wrap = tagWrap[tag];
+            master.innerHTML = wrap.pre + frag + wrap.post;
+            for (i = wrap.length; i; --i) {
+                master = master.firstChild;
+            }
+        } else {
+            master.innerHTML = frag;
+        }
+
+        // one node shortcut => return the node itself
+        if (master.childNodes.length === 1) {
+            return master.removeChild(master.firstChild); // DOMNode
+        }
+
+        // return multiple nodes as a document fragment
+        df = doc.createDocumentFragment();
+        while ((fc = master.firstChild)) {
+            df.appendChild(fc);
+        }
+        return df; // DOMNode
+    }
+
+
+    function isArray(it) {
+        return ostring.call(it) === "[object Array]";
+    }
 
     function isFunction(it) {
         return ostring.call(it) === "[object Function]";
@@ -28,22 +106,86 @@ var rdapi;
         }
     }
 
-    function getProp(parts, create, context) {
+    function getProp(parts, context) {
         var obj = context || global, i, p;
         for (i = 0; obj && (p = parts[i]); i++) {
-            obj = (p in obj ? obj[p] : (create ? obj[p] = {} : undefined));
+            obj = (p in obj ? obj[p] : undefined);
         }
         return obj; // mixed
     }
 
-    function getObject(name, create, context) {
-        return getProp(name.split("."), create, context);
+    function getObject(name, context) {
+        var brackRegExp = /\[([^\]]+)\]/,
+            part = name,
+            startIndex = 0,
+            parent = context,
+            match, pre, prop, obj;
+        
+        while ((match = brackRegExp.exec(part))) {
+            prop = match[1].replace(/['"]/g, "");
+            pre = name.substring(startIndex, match.index);
+            
+            startIndex += match.index + match[0].length;
+            part = part.substring(startIndex, part.length);
+            if (part.indexOf('.') === 0) {
+                part = part.substring(1, part.length);
+            }
+
+            obj = getProp(pre.split("."), parent);
+            obj = obj[prop];
+            parent = obj;
+        }
+
+        if (startIndex === name.length - 1) {
+            return parent;
+        } else {
+            return getProp(part.split("."), parent);
+        }
+    }
+/*
+    var from = getObject('schemas["rd.schema.body"].from_display', {
+        schemas: {
+            'rd.schema.body': {
+                from_display: 'dude'
+            }
+        }
+    });
+*/
+
+    function getHtml(node) {
+        var temp = document.createElement('div'),
+            parent = node.parentNode,
+            sibling = node.nextSibling, html;
+
+        //Put node in temp node to get the innerHTML so node's element
+        //html is in the output.
+        temp.appendChild(node);
+        html = temp.innerHTML;
+
+        //move the node back.
+        if (parent) {
+            if (sibling) {
+                parent.insertBefore(node, sibling);
+            } else {
+                parent.appendChild(node);
+            }
+        }
+
+        return html;
     }
 
     function normalize(options) {
         if (typeof options === 'string') {
             options = {
                 template: options
+            };
+        } else if (options.jquery) {
+            options = {
+                template: getHtml(options[0])
+            };
+        } else if (options.nodeType === 1) {
+            options = {
+                template: getHtml(options)
             };
         }
 
@@ -67,21 +209,21 @@ var rdapi;
 
     rdapi = function (url, options) {
         options = normalize(options);
-        var injectTemplate = (this && this !== global), self = this;
 
         mixin(options, {
             success: function (json) {
                 var template = options.template,
-                    html;
-                if (injectTemplate && template) {
-                    json.forEach(function (item) {
-                        html += rdapi.template(template, item);
-                    });
-                    $(html).appendTo(self);
-                }
-
-                if (options.debug) {
-                    options.debug(json);
+                    html, node;
+                if (options.containerNode && template) {
+                    if (isArray(json)) {
+                        json.forEach(function (item) {
+                            html += rdapi.template(template, item);
+                        });
+                    } else {
+                        html += rdapi.template(template, json);
+                    }
+                    node = toDom(html);
+                    options.containerNode.replaceChild(node, options.node);
                 }
             }
         });
@@ -89,10 +231,32 @@ var rdapi;
         ajax(url, options);
     };
 
-    rdapi.template = function (tmpl, map, pattern) {
-        return tmpl.replace(pattern || masterPattern, isFunction(map) ?
+    rdapi.template = function (tmpl, map) {
+        return tmpl.replace(masterPattern, isFunction(map) ?
             map : function (x, k) {
-                return getObject(k, false, map);
+                if (k.indexOf('+') === 0) {
+                    //A subtemplate. Pull of the query from the property.
+                    var index = k.lastIndexOf(' '),
+                        templateId = k.substring(2, index),
+                        prop = k.substring(index + 1, k.length),
+                        obj = getObject(prop, map),
+                        html = templateRegistry[templateId].template,
+                        result = '';
+
+                    if (!obj) {
+                        console.error("cannot find property related to subtemplate: " + k);
+                        return '';
+                    } else if (isArray(obj)) {
+                        obj.forEach(function (item) {
+                            result += rdapi.template(html, item);
+                        });
+                        return result;
+                    } else {
+                        return rdapi.template(html, obj);
+                    }
+                }
+
+                return getObject(k, map);
             });
     };
 
@@ -101,5 +265,71 @@ var rdapi;
     };
 
     $.fn.rdapi = rdapi;
+
+    $(function () {
+        var prop, tmpl;
+
+        //Build up lists of templates to use.
+        $('.template').each(function (index, node) {
+            var sNode = $(node),
+                dataProp = sNode.attr('data-prop'),
+                id = sNode.attr('data-id') || ('id' + (idCounter++)),
+                api = sNode.attr('data-api'),
+                options = sNode.attr('data-options'),
+                parentNode = node.parentNode,
+                textContent = '{+ ' + id + ' ' + dataProp + '}',
+                textNode, prop;
+
+            if (options) {
+                //TODO: parse the options
+            }
+
+            //Remove templating stuff from the node
+            sNode.removeClass('template')
+                 .removeAttr('data-id').removeAttr('data-prop')
+                 .removeAttr('data-api').removeAttr('data-options');
+
+            templateRegistry[id] = {
+                prop: prop,
+                node: node,
+                api: api,
+                options: options
+            };
+
+            //Replace the node with text indicating what template to use.
+            if ($(parentNode).hasClass('templateContainer')) {
+                templateRegistry[id].containerNode = parentNode;
+            } else {
+                textNode = document.createTextNode(textContent);
+                parentNode.replaceChild(textNode, node);
+            }
+        });
+        
+        //After all template nodes have been replaced with text nodes for
+        //subtemplates, now convert those nodes to be just text.
+        for (prop in templateRegistry) {
+            if (templateRegistry.hasOwnProperty(prop)) {
+                tmpl = templateRegistry[prop];
+                tmpl.template = getHtml(tmpl.node);
+            }
+        }
+
+        //Finally, do all the API calls. This is a separate loop because
+        //all templates need to be strings before the api calls execute in
+        //case subtemplates are needed.
+        for (prop in templateRegistry) {
+            if (templateRegistry.hasOwnProperty(prop)) {
+                tmpl = templateRegistry[prop];
+                if (tmpl.api) {
+                    rdapi(tmpl.api, {
+                        containerNode: tmpl.containerNode,
+                        node: tmpl.node,
+                        template: tmpl.template
+                    });
+                }
+            }
+        }
+
+    });
 
 }(jQuery));
