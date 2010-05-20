@@ -31,12 +31,22 @@
     <script src="../lib/jquery-1.4.js" charset="utf-8"></script>
     <script src="rdapi.jquery.js" charset="utf-8"></script>
     <script>
+        var fetchedConvo = false;
         $(document).bind('rdapi-done', function (evt, node) {
             console.log('Got rdapi-done: ', node);
+            
+            if (!fetchedConvo) {
+                var conversationId = ["conv", ["email", "D1B832D9-BE11-43A3-8DAA-2447C5AB27F9@aol.com"]];
+                rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(conversationId)) + '&schemas=%5B%22*%22%5D', {
+                    templateId: 'fullConversation',
+                    containerNode: document.getElementById('convoDisplay')
+                });
+                fetchedConvo = true;
+            }
         });
     </script>
 </head>
-<body class="templateContainer">
+<body class="templateRemove">
 
   <div id="header">
 
@@ -100,7 +110,6 @@
       <div class="c3 accounts">
         <li><span class="selected">Inflow</span></li>
         <li>Twitter</li>
-
         <li>Facebook</li>
       </div>
     </div>
@@ -139,6 +148,11 @@
   </div>
 
 
+
+<div class="fullConversation template" data-id="fullConversation">
+        {subject}
+</div>
+<div id="convoDisplay"></div>
 </body>
 </html>
 

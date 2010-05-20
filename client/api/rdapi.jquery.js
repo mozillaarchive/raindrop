@@ -158,21 +158,12 @@ var rdapi;
         } else {
             result = getProp(part.split("."), parent);
         }
-        
+
         if (result === null || result === undefined) {
             result = '';
         }
         return result;
     }
-/*
-    var from = getObject('schemas["rd.schema.body"].from_display', {
-        schemas: {
-            'rd.schema.body': {
-                from_display: 'dude'
-            }
-        }
-    });
-*/
 
     function getHtml(node) {
         var temp = document.createElement('div'),
@@ -209,6 +200,8 @@ var rdapi;
             options = {
                 template: getHtml(options)
             };
+        } else if (options.templateId) {
+            options.template = templateRegistry[options.templateId].template
         }
 
         return options;
@@ -249,7 +242,12 @@ var rdapi;
                         html += rdapi.template(template, json);
                     }
                     node = toDom(html);
-                    options.containerNode.replaceChild(node, options.node);
+                    if (options.node) {
+                        options.containerNode.replaceChild(node, options.node);
+                    } else {
+                        options.containerNode.innerHTML = '';
+                        options.containerNode.appendChild(node);
+                    }
                     $(document).trigger('rdapi-done', options.containerNode);
                 }
             }
@@ -344,14 +342,17 @@ var rdapi;
             };
 
             //Replace the node with text indicating what template to use.
-            if ($(parentNode).hasClass('templateContainer')) {
+            var jParentNode = $(parentNode);
+            if (jParentNode.hasClass('templateContainer')) {
                 templateRegistry[id].containerNode = parentNode;
+            } else if (jParentNode.hasClass('templateRemove')) {
+                parentNode.removeChild(node);
             } else {
                 textNode = document.createTextNode(textContent);
                 parentNode.replaceChild(textNode, node);
             }
         });
-        
+
         //After all template nodes have been replaced with text nodes for
         //subtemplates, now convert those nodes to be just text.
         for (prop in templateRegistry) {
