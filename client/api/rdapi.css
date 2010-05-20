@@ -237,6 +237,7 @@ body {
 .inflow .row .messageBody {
   color: #666;
   line-height: 18px;
+  overflow: hidden;
 }
 
 .inflow .row .messageReply,
@@ -270,10 +271,8 @@ body {
   font-weight: normal;
 }
 
-.inflow .row .messageReply .arrow {
-  position: absolute;
-  top: -16px;
-  left: 10px;
+.inflow .row .arrow {
+  position: relative;
   width: 0;
   height: 0;
   border-color: transparent transparent rgba(204, 204, 204, 0.35) transparent;

@@ -49,13 +49,13 @@
     <div class="row template" data-api="conversations/personal">
       {! first messages[0].schemas['rd.msg.body']}
       <div class="c3">
-        <span class="date">{first.timestamp} &mdash; via email</span>
+        <span class="date">{first.timestamp}</span>
 
         <span class="actions">hide delete</span>
       </div>
       <div class="c1">
         <div class="avatar"></div>
-        <div class="name">{from_display}</div>
+        <div class="name">{from_display[1]}</div>
         <div class="twitterActions">
         <li>reply</li> 
         <li>forward</li>
@@ -70,7 +70,7 @@
       <div class="c3 template" data-prop="messages[1:]">
         {! body schemas['rd.msg.body']}
         <div class="messageReply noArrow">
-          <span class="name">{body.from_display}</span>{body.body_preview}</div>
+          <span class="name">{body.from_display}</span> {body.body_preview}</div>
 
       </div>
       <div class="c3">
