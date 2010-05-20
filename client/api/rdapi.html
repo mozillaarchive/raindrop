@@ -33,12 +33,47 @@
 </head>
 <body class="templateContainer">
 
-    <div class="convo template" data-api="conversations/personal">
+    <!-- div class="convo template" data-api="conversations/personal">
         <span>{subject}</span>
         <div class="message template" data-prop="messages">
             <span>{schemas['rd.msg.body'].from_display}</span>
         </div>
+    </div -->
+
+  <div class="inflow templateContainer">
+    <div class="row template" data-api="conversations/personal">
+      {! first messages[0].schemas['rd.msg.body']}
+      <div class="c3">
+        <span class="date">{first.timestamp} &mdash; via email</span>
+
+        <span class="actions">hide delete</span>
+      </div>
+      <div class="c1">
+        <div class="avatar"></div>
+        <div class="name">{from_display}</div>
+        <div class="twitterActions">
+        <li>reply</li> 
+        <li>forward</li>
+
+        </div>
+      </div>
+      <div class="c2">
+        <div class="subject"><a href="full-message.html">{subject}</a></div>
+        <div class="messageBody">{first.body_preview}
+        </div>
+      </div>
+      <div class="c3 template" data-prop="messages[1:]">
+        {! body schemas['rd.msg.body']}
+        <div class="messageReply noArrow">
+          <span class="name">{body.from_display}</span>{body.body_preview}</div>
+
+      </div>
+      <div class="c3">
+        <div class="more"><a href="full-message.html">view all activity (8)</a></div>
+      </div>
     </div>
+  </div>
+
 
 </body>
 </html>

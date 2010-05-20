@@ -114,29 +114,44 @@ var rdapi;
         return obj; // mixed
     }
 
+    function strToInt(value) {
+        return value ? parseInt(value, 10) : 0;
+    }
+
     function getObject(name, context) {
         var brackRegExp = /\[([^\]]+)\]/,
             part = name,
-            startIndex = 0,
             parent = context,
-            match, pre, prop, obj;
+            match, pre, prop, obj, startIndex, endIndex;
         
         while ((match = brackRegExp.exec(part))) {
             prop = match[1].replace(/['"]/g, "");
-            pre = name.substring(startIndex, match.index);
-            
-            startIndex += match.index + match[0].length;
-            part = part.substring(startIndex, part.length);
+            pre = part.substring(0, match.index);
+
+            part = part.substring(match.index + match[0].length, part.length);
             if (part.indexOf('.') === 0) {
                 part = part.substring(1, part.length);
             }
 
-            obj = getProp(pre.split("."), parent);
-            obj = obj[prop];
+            obj = getProp(pre.split('.'), parent);
+            if (prop.indexOf(":") !== -1) {
+                //An array slice action
+                indices = prop.split(':');
+                startIndex = strToInt(indices[0]);
+                endIndex = strToInt(indices[1]);
+
+                if (!endIndex) {
+                    obj = obj.slice(startIndex);
+                } else {
+                    obj = obj.slice(startIndex, endIndex);
+                }
+            } else {
+                obj = obj[prop];
+            }
             parent = obj;
         }
 
-        if (startIndex === name.length - 1) {
+        if (!part) {
             return parent;
         } else {
             return getProp(part.split("."), parent);
@@ -234,14 +249,16 @@ var rdapi;
     rdapi.template = function (tmpl, map) {
         return tmpl.replace(masterPattern, isFunction(map) ?
             map : function (x, k) {
+                var index, templateId, prop, obj, html, result, varId;
+
                 if (k.indexOf('+') === 0) {
                     //A subtemplate. Pull of the query from the property.
-                    var index = k.lastIndexOf(' '),
-                        templateId = k.substring(2, index),
-                        prop = k.substring(index + 1, k.length),
-                        obj = getObject(prop, map),
-                        html = templateRegistry[templateId].template,
-                        result = '';
+                    index = k.lastIndexOf(' ');
+                    templateId = k.substring(2, index);
+                    prop = k.substring(index + 1, k.length);
+                    obj = getObject(prop, map);
+                    html = templateRegistry[templateId].template;
+                    result = '';
 
                     if (!obj) {
                         console.error("cannot find property related to subtemplate: " + k);
@@ -254,6 +271,14 @@ var rdapi;
                     } else {
                         return rdapi.template(html, obj);
                     }
+                } else if (k.indexOf('!') === 0) {
+                    //It is an assignment.
+                    index = k.lastIndexOf(' ');
+                    varId = k.substring(2, index);
+                    prop = k.substring(index + 1, k.length);
+                    obj = getObject(prop, map);
+                    map[varId] = obj;
+                    return '';
                 }
 
                 return getObject(k, map);
