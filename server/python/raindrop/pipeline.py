@@ -278,7 +278,7 @@ class Pipeline(object):
                             keys.append(['key-schema_id', [k, sch_id]])
                 else:
                     # all rd_keys...
-                    keys=[['schema_id', sch_id] for sch_id in qr.schema_ids]
+                    keys=[['schema_id', sch_id] for sch_id in qr.processor.ext.source_schemas]
                 result = dm.open_view(keys=keys,
                                             reduce=False)
                 logger.info("reprocessing %s - %d docs", qr.queue_id,
