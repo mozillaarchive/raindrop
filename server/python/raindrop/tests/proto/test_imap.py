@@ -150,7 +150,6 @@ class IMAPSocketServer(SocketServer.ThreadingTCPServer):
 
 class IMAPHandler(SocketServer.StreamRequestHandler):
     current_mbox = None
-    login_lock = threading.Lock() # shared amongst all instances
     def __init__(self, request, client_address, server, imap):
         self.imap = imap
         self._queued_async = []
@@ -242,29 +241,33 @@ class IMAPHandler(SocketServer.StreamRequestHandler):
         self.send_positive_response(tag, 'CAPABILITY completed')
 
     def handle_login(self, tag, rest, uid):
-        # use a lock to avoid races between the threads
-        with self.login_lock:
-            if self.server.testcase.num_current_logins >= self.server.testcase.max_logins:
-                self.server.testcase.num_failed_logins += 1
-                self.send_negative_response(tag, "too many concurrent connections")
-                return
-            if self.server.testcase.num_transient_auth_errors:
-                self.server.testcase.num_transient_auth_errors -= 1
-                self.server.testcase.num_failed_logins += 1
-                self.send_negative_response(tag, "transient auth failure...")
-                return
-    
-            username, password = parse_response([rest])
-            if self.imap.login(username, password):
-                self.server.testcase.num_current_logins += 1
-                self.send_positive_response(tag, 'LOGIN completed')
-            else:
-                self.send_negative_response(tag, 'LOGIN failed')
+        if self.server.testcase.max_logins is not None and \
+           self.server.testcase.num_current_logins >= self.server.testcase.max_logins:
+            self.server.testcase.num_failed_logins += 1
+            self.send_negative_response(tag, "too many concurrent connections")
+            return
+        if self.server.testcase.num_transient_auth_errors:
+            self.server.testcase.num_transient_auth_errors -= 1
+            self.server.testcase.num_failed_logins += 1
+            self.send_negative_response(tag, "transient auth failure...")
+            return
+
+        username, password = parse_response([rest])
+        if self.imap.login(username, password):
+            self.server.testcase.num_current_logins += 1
+            self.send_positive_response(tag, 'LOGIN completed')
+        else:
+            self.send_negative_response(tag, 'LOGIN failed')
 
         if getattr(self.server.testcase, 'is_disconnect_after_login_test', False):
             return True
 
     def handle_logout(self, tag, rest, uid=False):
+        # this kinda sucks - we need to try and arrange for things to take
+        # a little longer than normal so we hit the max_logins limit while
+        # testing
+        if self.server.testcase.max_logins is not None:
+            time.sleep(0.2)
         self.send_untagged_response("BYE talk to you later")
         self.send_positive_response(tag, 'LOGOUT completed')
         self.server.testcase.num_current_logins -= 1
@@ -406,7 +409,7 @@ class IMAP4TestBase(TestCaseWithTestDB):
     num_fetch_requests = 0
     num_failed_logins = 0
     num_current_logins = 0
-    max_logins = 99
+    max_logins = None
 
     def setUp(self):
         self.old_backoff = raindrop.proto.imap.IMAPAccount.def_retry_backoff
