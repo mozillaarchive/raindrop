@@ -62,9 +62,18 @@ body {
   font-weight: bold;
 }
 
+a.subject {
+  text-decoration: none;
+  color: #000;
+}
+
 row.subject {
   display: block;
   text-decoration: none;
+}
+
+.subject:empty:after {
+  content: 'tweet...';
 }
 
 #zoom_table {
@@ -114,4 +123,8 @@ row.subject {
 .name {
   color: #666;
   font-weight: bold;
+}
+
+.name:empty:after {
+  content: 'unknown sender';
 }

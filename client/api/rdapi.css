@@ -419,3 +419,12 @@ body {
   color: #888;
   text-decoration: none;
 }
+
+.name {
+  color: #666;
+  font-weight: bold;
+}
+
+.name:empty:after {
+  content: 'unknown sender';
+}
