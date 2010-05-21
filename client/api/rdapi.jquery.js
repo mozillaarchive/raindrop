@@ -1,19 +1,19 @@
-/*jslint regexp: false, plusplus: false */
-/*global jQuery: false, console: false, document: false */
+/*jslint regexp: false, plusplus: false, nomen: false */
+/*global jQuery: false, console: false, document: false, window: false */
 "use strict";
 
 //Some functions to add to jquery to make it easy to work with Raindrop API.
 
 var rdapi;
 
-(function ($) {
-    var global = this,
-        idCounter = 0,
+(function (global, $) {
+    var idCounter = 0,
         masterPattern = /\{([^\}]+)\}/g,
         empty = {},
         ostring = Object.prototype.toString,
         templateRegistry = {},
-        dataRegistry = {},
+        dataRegistry = {},    
+        idRegistry = {},
         dataIdCounter = 0,
         config = {
             baseUrl: '/raindrop/',
@@ -124,8 +124,17 @@ var rdapi;
         var brackRegExp = /\[([^\]]+)\]/,
             part = name,
             parent = context,
-            match, pre, prop, obj, startIndex, endIndex, indices, result;
-        
+            match, pre, prop, obj, startIndex, endIndex, indices, result,
+            parenStart, parenEnd, func;
+
+        //First check for function call. Function must be globally visible.
+        if ((parenStart = name.indexOf('(')) !== -1) {
+            parenEnd = name.lastIndexOf(')');
+            func = getObject(name.substring(0, parenStart), global);
+            return func(getObject(name.substring(parenStart + 1, parenEnd), context));
+        }
+
+        //Now handle regular object references, which could have [] notation.
         while ((match = brackRegExp.exec(part))) {
             prop = match[1].replace(/['"]/g, "");
             pre = part.substring(0, match.index);
@@ -201,14 +210,14 @@ var rdapi;
                 template: getHtml(options)
             };
         } else if (options.templateId) {
-            options.template = templateRegistry[options.templateId].template
+            options.template = templateRegistry[options.templateId].template;
         }
 
         return options;
     }
 
     function ajax(url, options) {
-        options.url = config.baseUrl + config.apiPath + url;
+        options.url = config.baseUrl + (url.indexOf('_design') === 0 ? '' : config.apiPath) + url;
 
         mixin(options, {
             limit: 30,
@@ -229,31 +238,124 @@ var rdapi;
             success: function (json) {
                 var template = options.template,
                     html = '', node;
-                if (options.containerNode && template) {
-                    if (options.prop) {
-                        json = getObject(options.prop, json);
+                    
+                //Get the identity info for any identities in the JSON
+                rdapi._getIdentities(json, function () {
+                    if (options.containerNode && template) {
+                        if (options.prop) {
+                            json = getObject(options.prop, json);
+                        }
+    
+                        if (isArray(json)) {
+                            json.forEach(function (item) {
+                                html += rdapi.template(template, item);
+                            });
+                        } else {
+                            html += rdapi.template(template, json);
+                        }
+                        node = toDom(html);
+                        if (options.node) {
+                            options.containerNode.replaceChild(node, options.node);
+                        } else {
+                            options.containerNode.innerHTML = '';
+                            options.containerNode.appendChild(node);
+                        }
+                        $(document).trigger('rdapi-done', options.containerNode);
                     }
-
-                    if (isArray(json)) {
-                        json.forEach(function (item) {
-                            html += rdapi.template(template, item);
-                        });
-                    } else {
-                        html += rdapi.template(template, json);
-                    }
-                    node = toDom(html);
-                    if (options.node) {
-                        options.containerNode.replaceChild(node, options.node);
-                    } else {
-                        options.containerNode.innerHTML = '';
-                        options.containerNode.appendChild(node);
-                    }
-                    $(document).trigger('rdapi-done', options.containerNode);
-                }
+                });
             }
         });
 
         ajax(url, options);
+    };
+
+    function findIdentities(obj, found, needed) {
+        var prop, schema, i, id, ids, target, idString;
+
+        if (isArray(obj)) {
+            for (i = 0; i < obj.length; i++) {
+                findIdentities(obj[i], found, needed);
+            }
+            return;
+        }
+
+        if (!obj || !$.isPlainObject(obj)) {
+            return;
+        }
+
+        for (prop in obj) {
+            if (obj.hasOwnProperty(prop)) {
+                target = obj[prop];
+                if (prop === 'rd.msg.body') {
+                    schema = obj[prop];
+                    ids = [schema.from].concat(schema.to, schema.cc, schema.bcc);
+                    for (i = 0; i < ids.length; i++) {
+                        id = ids[i];
+                        if (id) {
+                            idString = id.toString();
+                            if (!idRegistry[idString] && !found[idString]) {
+                                needed.push(id);
+                                found[idString] = true;
+                            }
+                        }
+                    }
+                } else if (isArray(target)) {
+                    for (i = 0; i < target.length; i++) {
+                        findIdentities(target[i], found, needed);
+                    }
+                } else if ($.isPlainObject(target)) {
+                    findIdentities(target, found, needed);
+                }
+            }
+        }
+    }
+
+    /**
+     * Traces the json looking for nested 'rd.msg.body' schemas and if found, will
+     * make sure the rd.identity schema is loaded for the identities found,
+     * then call the callback.
+     * @param {Object} json the json object to inspect for rd.msg.body schemas
+     * @param {Function} callback the callback to execute once all the identities
+     * are available.
+     */
+    rdapi._getIdentities = function (json, callback) {
+        //Traverse the object looking for identities.
+        var found = {}, needed = [], i, id, doc, row;
+        findIdentities(json, found, needed);
+
+        if (!needed.length) {
+            callback();
+        } else {
+            //Build out the full key
+            for (i = 0; (id = needed[i]); i++) {
+                needed[i] = ["key-schema_id", [["identity", id], 'rd.identity']];
+            }
+
+            ajax('_design/raindrop!content!all/_view/megaview?reduce=false&include_docs=true', {
+                type: 'POST',
+                data: JSON.stringify({
+                    keys: needed
+                }),
+                processData: false,
+                success: function (json) {
+                    if (json.rows.length) {
+                        for (i = 0; (row = json.rows[i]); i++) {
+                            doc = row.doc;
+                            id = doc.rd_key[1];
+                            idRegistry[id.toString()] = doc;
+                        }
+                    }
+
+                    //If the asked for ids did not come back, mark them as
+                    //empty schemas so that we do not ask for them again.
+                    for (i = 0; (id = needed[i]); i++) {
+                        id = id[1][0][1].toString();
+                        id = idRegistry[id] || (idRegistry[id] = {});
+                    }
+                    callback();
+                }
+            });
+        }
     };
 
     rdapi.template = function (tmpl, map) {
@@ -261,7 +363,7 @@ var rdapi;
             combined = tmpl.replace(masterPattern, isFunction(map) ?
                 map : function (x, k) {
                     var index, templateId, prop, obj, html, result, varId;
-    
+
                     if (k.indexOf('+') === 0) {
                         //A subtemplate. Pull of the query from the property.
                         index = k.lastIndexOf(' ');
@@ -311,6 +413,10 @@ var rdapi;
         return dataRegistry[id];
     };
 
+    rdapi.identity = function (id) {
+        return idRegistry[id.toString()] || {};
+    };
+
     $(function () {
         var prop, tmpl;
 
@@ -323,7 +429,7 @@ var rdapi;
                 options = sNode.attr('data-options'),
                 parentNode = node.parentNode,
                 textContent = '{+ ' + id + ' ' + dataProp + '}',
-                textNode;
+                textNode, jParentNode;
 
             if (options) {
                 //TODO: parse the options
@@ -342,7 +448,7 @@ var rdapi;
             };
 
             //Replace the node with text indicating what template to use.
-            var jParentNode = $(parentNode);
+            jParentNode = $(parentNode);
             if (jParentNode.hasClass('templateContainer')) {
                 templateRegistry[id].containerNode = parentNode;
             } else if (jParentNode.hasClass('templateRemove')) {
@@ -376,4 +482,4 @@ var rdapi;
 
     });
 
-}(jQuery));
+}(window, jQuery));
