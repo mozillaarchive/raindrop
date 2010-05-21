@@ -50,11 +50,15 @@ def format_num_bytes(nbytes):
 class CorpusHelper(TestCaseWithCorpus):
     def __init__(self, opts):
         self.opt_dict = opts
+        TestCaseWithCorpus.__init__(self)
     def get_options(self):
         opts = FakeOptions()
         for name, val in self.opt_dict.iteritems():
             setattr(opts, name, val)
         return opts
+    # this method just needs to exist so unittest2 doesn't get upset...
+    def runTest(self):
+        pass
 
 
 def make_corpus_helper(opts, **pipeline_opts):
@@ -247,7 +251,7 @@ the size on disk of the DB and views will be reported.""")
     if not opts.skip_sync:
         run_timings_sync(opts)
     if not opts.skip_api:
-        run_api_sync(opts)
+        run_api_timings(opts)
 
 
 if __name__ == "__main__":
