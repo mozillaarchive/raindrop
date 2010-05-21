@@ -62,9 +62,53 @@ body {
   font-weight: bold;
 }
 
-.subject a {
-  color: #000;
+row.subject {
+  display: block;
   text-decoration: none;
+}
+
+#zoom_table {
+  -moz-box-shadow: 3px 3px 10px #AAAAAA;
+  background-color: #fff;
+}
+
+#zoom_close {
+  right: 7px;
+  top: 7px;
+}
+
+.conversation {
+  max-width: 800px;
+}
+
+.conversation .subject {
+  margin-bottom: 1em;
+  padding-bottom: 1em;
+  border-bottom: 1px dotted #aaa;
+}
+
+.conversation .message {
+  margin-bottom: 2em;
+  padding-bottom: 2em;
+  border-bottom: 1px solid #666;
+}
+
+.conversation .message:last-child {
+  border-bottom: none;
+}
+
+.conversation .message .from {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+.conversation .message .from .date {
+  font-weight: normal;
+  font-style: italic;
+}
+
+.conversation .message .body {
+  white-space: pre;
 }
 
 .name {

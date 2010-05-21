@@ -37,6 +37,9 @@
     <script src="jquery.vgrid.0.1.5.js"
             type="text/javascript" charset="utf-8"></script>
 
+    <script src="fancyzoom.js"
+            type="text/javascript" charset="utf-8"></script>
+
     <script type="text/javascript">
     //<![CDATA[
 
@@ -49,13 +52,21 @@
             fadeIn: { time: 500,
                       delay: 50 }
             });
+
+            $(".subject").fancyZoom({ width:600, height:300 });
+            $(".subject").click(function() {
+                rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify($(this).attr("data-convo-id"))) + '&schemas=%5B%22*%22%5D', {
+                    templateId: 'fullConversation',
+                    containerNode: document.getElementById('convoDisplay')
+                });
+            })
           }
       });
 
     //]]>
     </script>
 </head>
-<body class="templateContainer">
+<body class="templateRemove">
   
   <!--<div class="header">hello</div>-->
 
@@ -69,7 +80,7 @@
   <div id="grid-content" class="inflow templateContainer">
 
     <div class="row template" data-api="conversations/personal">
-      <div class="subject"><a href="full-message.html">{subject}</a></div>
+      <a class="subject" data-convo-id='["{id[0]}", ["{id[1][0]}", "{id[1][1]}"]]' href="#convoDisplay">{subject}</a>
       <div class="date">sent on {messages[0].schemas['rd.msg.body'].timestamp}</div>
       <div class="name">{from_display[0]}</div>
       <div class="messageBody">{messages[0].schemas['rd.msg.body'].body_preview}</div>
@@ -77,6 +88,16 @@
     </div>
 
   </div>
+
+  <div class="conversation template" data-id="fullConversation">
+    <div class="subject">{subject}</div>
+    <div class="message template" data-prop="messages">
+      <div class="from">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
+      <div class="body">{schemas['rd.msg.body'].body}</div>
+    </div>
+  </div>
+
+  <div id="convoDisplay">Loading...</div>
 
 </body>
 </html>
