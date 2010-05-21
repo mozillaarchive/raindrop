@@ -330,23 +330,15 @@ def items_from_convo_relations(doc_model, msg_keys, ext_id):
     assert msg_keys, "don't give me an empty list - just don't emit!!"
 
     # Find conversations associated with any and all of the messages;
-    results = []
-    keys = [['key-schema_id', [rdkey, 'rd.msg.conversation']]
-            for rdkey in msg_keys]
-    results = doc_model.open_view(keys=keys, include_docs=True, reduce=False)
-    # run over the results - in the perfect world there would be exactly
-    # one (or zero) convo IDs returned.  More than 1 means something is
-    # out of synch.
     all_conv_keys = set()
     existing = {}
-    for row in results['rows']:
-        # ack - I've seen None here - it means couchdb saw an error opening
-        # the doc - which should never happen - if the doc was deleted, it
-        # wouldn't be in the view!
-        assert row['doc'] is not None, row
-        cid = doc_model.hashable_key(row['doc']['conversation_id'])
-        existing[doc_model.hashable_key(row['value']['rd_key'])] = cid
-        all_conv_keys.add(cid)
+    got = doc_model.open_schemas([rdkey, 'rd.msg.conversation']
+                                 for rdkey in msg_keys)
+    for rdkey, e in zip(msg_keys, got):
+        if e is not None:
+            cid = doc_model.hashable_key(e['conversation_id'])
+            existing[doc_model.hashable_key(rdkey)] = cid
+            all_conv_keys.add(cid)
 
     # see if an existing convo exists for these messages.
     if len(all_conv_keys) == 0:

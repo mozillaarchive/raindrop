@@ -49,11 +49,11 @@ def handler(doc):
 
     # work out which of these rdkeys actually exist in our db.
     existing_rdkeys = set()
-    keys = [['key-schema_id', [rdkey, 'rd.msg.rfc822']]
-            for rdkey in rdkeys]
-    result = open_view(keys=keys, reduce=False)
-    for row in result['rows']:
-        existing_rdkeys.add(hashable_key(row['value']['rd_key']))
+    existing = open_schemas(((rdkey, 'rd.msg.rfc822') for rdkey in rdkeys),
+                            include_docs=False)
+    for e, rdkey in zip(existing, rdkeys):
+        if e is not None:
+            existing_rdkeys.add(rdkey)
 
     # find what is different...
     nnew = 0

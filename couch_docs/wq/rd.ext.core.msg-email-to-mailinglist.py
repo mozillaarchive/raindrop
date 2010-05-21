@@ -185,15 +185,10 @@ def _get_subscribed_identity(headers):
 def _get_list(list_id):
     logger.debug("GET LIST %s", list_id)
 
-    keys = [['key-schema_id',
-             [['mailing-list', list_id], 'rd.mailing-list']]]
-    result = open_view(keys=keys, reduce=False, include_docs=True)
-    # Build a map of the keys we actually got back.
-    rows = [r for r in result['rows'] if 'error' not in r]
-
-    if rows:
+    existing = open_schemas([(['mailing-list', list_id], 'rd.mailing-list')])[0]
+    if existing is not None:
         logger.debug("FOUND LIST %s", list_id)
-        list = rows[0]['doc']
+        list = existing
     else:
         logger.debug("CREATING LIST %s", list_id)
         list = {

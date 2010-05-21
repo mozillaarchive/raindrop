@@ -168,7 +168,12 @@ class DocumentModel(object):
     def open_documents_by_id(self, doc_ids, **kw):
         """Open documents by the already constructed docid"""
         logger.debug("attempting to open documents %r", doc_ids)
-        results = self.db.listDoc(keys=doc_ids, include_docs=True, **kw)
+        kwuse = kw.copy()
+        if 'include_docs' not in kwuse:
+            kwuse['include_docs'] = True
+        include_docs = kwuse['include_docs']
+            
+        results = self.db.listDoc(keys=doc_ids, **kwuse)
         rows = results['rows']
         assert len(rows)==len(doc_ids)
         ret = []
@@ -186,10 +191,13 @@ class DocumentModel(object):
                              row['key'])
                 ret.append(None)
             else:
-                assert 'doc' in row, row
-                logger.debug("opened document %(_id)r at revision %(_rev)s",
-                             row['doc'])
-                ret.append(row['doc'])
+                if include_docs:
+                    assert 'doc' in row, row
+                    logger.debug("opened document %(_id)r at revision %(_rev)s",
+                                 row['doc'])
+                    ret.append(row['doc'])
+                else:
+                    ret.append({'_id': row['id']})
         return ret
 
     @classmethod
@@ -488,12 +496,12 @@ class DocumentModel(object):
         logger.debug("create_schema_items made %r", updated_docs)
         return updated_docs
 
-    def open_schemas(self, wanted):
+    def open_schemas(self, wanted, **kw):
         dids = []
         for (rd_key, schema_id) in wanted:
             temp_si = {'rd_key' : rd_key, 'rd_schema_id': schema_id}
             dids.append(self.get_doc_id_for_schema_item(temp_si))
-        return self.open_documents_by_id(dids)
+        return self.open_documents_by_id(dids, **kw)
 
     def _prepare_attachments(self, docs):
         # called internally when creating a batch of documents. Returns a list

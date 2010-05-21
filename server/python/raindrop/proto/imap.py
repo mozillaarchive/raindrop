@@ -629,11 +629,11 @@ class ImapProvider(object):
         # and it will get clobbered below :(
       msg_infos[get_rdkey_for_email(msg_id)] = msg_info
 
-    # Get all messages that already have this schema
-    keys = [['key-schema_id', [k, 'rd.msg.rfc822']]
-            for k in msg_infos.keys()]
-    result = self.doc_model.open_view(keys=keys, reduce=False)
-    seen = set([tuple(r['value']['rd_key']) for r in result['rows']])
+    # Find all messages that already have this schema
+    rdkeys = msg_infos.keys()
+    existing = self.doc_model.open_schemas(([k, 'rd.msg.rfc822'] for k in rdkeys),
+                                           include_docs=False)
+    seen = set(rdkey for (rdkey, e) in zip(rdkeys, existing) if e is not None)
     # convert each key elt to a list like we get from the views.
     remaining = set(msg_infos)-set(seen)
 
