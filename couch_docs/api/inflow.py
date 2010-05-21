@@ -52,18 +52,23 @@ class ConversationAPI(API):
             for _ in msg_keys:
                 yield {}, {}
             return
+        # open_schemas is much faster than a key-schema_id view, so use
+        # that if we can.
         elif schemas == ['*']:
             keys = [['key', k] for k in msg_keys]
+            result = db.megaview(keys=keys, include_docs=True, reduce=False)
+            item_gen = itertools.groupby(
+                                (r['doc'] for r in result['rows']),
+                                key=lambda d: d['rd_key'])
         else:
-            keys = [['key-schema_id', [k, sid]]
-                    for k in msg_keys for sid in schemas]
-        result = db.megaview(keys=keys, include_docs=True, reduce=False)
+            wanted = ((k, sid) for k in msg_keys for sid in schemas)
+            result = db.doc_model.open_schemas(wanted)
+            item_gen = itertools.groupby((r for r in result if r is not None),
+                                         key=lambda d: d['rd_key'])
         message_results = {}
         from_map = {}
         # itertools.groupby rocks :)
-        for (rd_key, dociter) in itertools.groupby(
-                                (r['doc'] for r in result['rows']),
-                                key=lambda d: d['rd_key']):
+        for (rd_key, dociter) in item_gen:
             # Make a dict based on rd_schema_id.
             bag = {}
             for doc in dociter:
@@ -217,11 +222,9 @@ class ConversationAPI(API):
         conv_id = args["key"]
         log("conv_id: %s", conv_id)
         # get the document holding the convo summary.
-        key = ['key-schema_id', [conv_id, 'rd.conv.summary']]
-        result = db.megaview(key=key, reduce=False, include_docs=True)
-        if not result['rows']:
+        sum_doc = db.doc_model.open_schemas([(conv_id, 'rd.conv.summary')])[0]
+        if sum_doc is None:
             return None
-        sum_doc = result['rows'][0]['doc']
         return self._build_conversations(db, [sum_doc], args['message_limit'],
                                          args['schemas'])[0]
 
@@ -239,19 +242,18 @@ class ConversationAPI(API):
         # XXX - note we could maybe avoid include_docs by using the
         # 'message_ids' field on the conv_summary doc - although that will not
         # list messages flaged as 'deleted' etc.
-        keys = [['key-schema_id', [mid, 'rd.msg.conversation']]
-                for mid in msg_keys]
-        result = db.megaview(keys=keys, reduce=False, include_docs=True)
+        wanted = ((mid, 'rd.msg.conversation') for mid in msg_keys)
+        result = db.doc_model.open_schemas(wanted)
         conv_ids = set()
-        for row in result['rows']:
-            conv_ids.add(hashable_key(row['doc']['conversation_id']))
+        for doc in result:
+            if result is not None:
+                conv_ids.add(hashable_key(doc['conversation_id']))
 
         # open the conv summary docs.
-        keys = [['key-schema_id', [conv_id, 'rd.conv.summary']]
-                for conv_id in conv_ids]
-        result = db.megaview(keys=keys, reduce=False, include_docs=True)
+        wanted = ((conv_id, 'rd.conv.summary') for conv_id in conv_ids)
+        result = db.doc_model.open_schemas(wanted)
         # now make the conversation objects.
-        docs = [row['doc'] for row in result['rows']]
+        docs = [r for r in result if r is not None]
         return self._build_conversations(db, docs, message_limit, schemas)
 
     # Fetch all conversations which include a message from the specified contact
@@ -405,15 +407,15 @@ class GroupingAPI(API):
         key = ['schema_id', 'rd.grouping.summary']
         result = db.megaview(key=key, include_docs=True, reduce=False)
         by_key = {}
-        keys = []
+        wanted = []
         for row in result['rows']:
             rd_key = row['value']['rd_key']
             by_key[hashable_key(rd_key)] = row['doc']
-            keys.append(['key-schema_id', [rd_key, 'rd.grouping.info']])
-        result = db.megaview(keys=keys, include_docs=True, reduce=False)
-        for row in result['rows']:
-            rd_key = row['value']['rd_key']
-            by_key[hashable_key(rd_key)].update(row['doc'])
+            wanted.append((rd_key, 'rd.grouping.info'))
+        result = db.doc_model.open_schemas(wanted)
+        for doc in result:
+            if doc is not None:
+                by_key[hashable_key(doc['rd_key'])].update(doc)
         return by_key.values()
 
 class AccountAPI(API):
