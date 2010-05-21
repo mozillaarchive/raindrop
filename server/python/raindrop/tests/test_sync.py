@@ -30,7 +30,7 @@ class TestSyncing(TestCaseWithTestDB):
         return self._conductor
 
     def test_sync_state_doc(self, expected_num_syncs=1):
-        self.deferMakeAnotherTestMessage(None)
+        self.makeAnotherTestMessage(None)
         self.ensure_pipeline_complete()
         # open the document with the sync state.
         wanted = ["raindrop", "sync-status"], 'rd.core.sync-status'

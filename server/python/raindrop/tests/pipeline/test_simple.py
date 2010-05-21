@@ -24,7 +24,7 @@ class TestPipelineBase(TestCaseWithTestDB):
 
     def process_doc(self, expected_errors=0):
         # populate our test DB with the raw message(s).
-        self.deferMakeAnotherTestMessage(None)
+        self.makeAnotherTestMessage()
         self.ensure_pipeline_complete(expected_errors)
 
     def get_last_by_seq(self, n=1):

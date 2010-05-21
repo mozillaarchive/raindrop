@@ -29,6 +29,12 @@ class APITestCaseWithCorpus(TestCaseWithCorpus, _APIMixin):
         # and reset our API so it reloads anything
         self.call_api("_reset")
 
+    def tearDown(self):
+        # calling _exit is primarily to ensure the process has closed all
+        # connections, so the DB can be deleted on windows!
+        self.call_api('_exit')
+        TestCaseWithCorpus.tearDown(self)
+
     def setUpCorpus(self):
         return self.load_corpus('hand-rolled')
         
@@ -38,3 +44,9 @@ class APITestCase(TestCaseWithTestDB, _APIMixin):
         TestCaseWithTestDB.setUp(self)
         # and reset our API so it reloads anything
         self.call_api("_reset")
+
+    def tearDown(self):
+        # calling _exit is primarily to ensure the process has closed all
+        # connections, so the DB can be deleted on windows!
+        self.call_api('_exit')
+        TestCaseWithTestDB.tearDown(self)

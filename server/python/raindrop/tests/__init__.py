@@ -13,11 +13,7 @@ try:
 except ImportError:
     import unittest
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
+from raindrop import json
 import raindrop.config
 from raindrop.model import get_db, fab_db, get_doc_model
 import raindrop.pipeline
@@ -111,23 +107,27 @@ class TestCase(unittest.TestCase):
             self.fail("unexpected log errors\n" + '\n'.join(frecords))
         return unittest.TestCase.tearDown(self)
 
-class TestCaseWithDB(TestCase):
+
+class TestCaseWithTestDB(TestCase):
+    """A test case that is setup to work with a temp database pre-populated
+    with 'test protocol' raw messages.
+    """
+    def setUp(self):
+        TestCase.setUp(self)
+        self._conductor = None
+        raindrop.config.CONFIG = None
+        self.config = self.make_config()
+        opts = self.get_options()
+        self.doc_model = get_doc_model()
+        self.pipeline = raindrop.pipeline.Pipeline(self.doc_model, opts)
+        self.prepare_test_db(self.config)
+        self.pipeline.initialize()
+
     def tearDown(self):
         if self.pipeline is not None:
             self.pipeline.finalize()
         TestCase.tearDown(self)
 
-    def get_options(self):
-        opts = FakeOptions()
-        return opts
-
-    def ensure_pipeline_complete(self, n_expected_errors=0):
-        # later we will support *both* backlog and incoming at the
-        # same time, but currently the test suite done one or the other...
-        nerr = self.pipeline.start_processing(None)
-        self.failUnlessEqual(n_expected_errors, nerr)
-
-    """A test case that is setup to work with a temp database"""
     def prepare_test_db(self, config):
         # change the name of the DB used.
         dbinfo = config.couches['local']
@@ -155,10 +155,6 @@ class TestCaseWithDB(TestCase):
         opts = self.get_options()
         bootstrap.install_views(opts, True)
         bootstrap.check_accounts(config)
-        # client files are expensive (particularly dojo) and not
-        # necessary yet...
-        #bootstrap.install_client_files(opts)
-        #bootstrap.update_apps()
         bootstrap.insert_default_docs(opts)
         del_non_test_accounts()
         if not getattr(self, 'no_sync_status_doc', False):
@@ -194,21 +190,12 @@ class TestCaseWithDB(TestCase):
         for property in expected_doc:
             self.failUnlessEqual(doc[property], expected_doc[property],
                                  repr(doc['rd_key']) + '::' + property)
-        
-class TestCaseWithTestDB(TestCaseWithDB):
-    """A test case that is setup to work with a temp database pre-populated
-    with 'test protocol' raw messages.
-    """
-    def setUp(self):
-        TestCaseWithDB.setUp(self)
-        self._conductor = None
-        raindrop.config.CONFIG = None
-        self.config = self.make_config()
-        opts = self.get_options()
-        self.doc_model = get_doc_model()
-        self.pipeline = raindrop.pipeline.Pipeline(self.doc_model, opts)
-        self.prepare_test_db(self.config)
-        self.pipeline.initialize()
+
+    def ensure_pipeline_complete(self, n_expected_errors=0):
+        # later we will support *both* backlog and incoming at the
+        # same time, but currently the test suite done one or the other...
+        nerr = self.pipeline.start_processing(None)
+        self.failUnlessEqual(n_expected_errors, nerr)
 
     def make_config(self):
         # change the name of the DB used.
@@ -227,18 +214,22 @@ class TestCaseWithTestDB(TestCaseWithDB):
         acct['id'] = 'test'
         return config
 
+    def get_options(self):
+        opts = FakeOptions()
+        return opts
+
     def get_conductor(self):
         if self._conductor is None:
             self._conductor = sync.get_conductor(self.pipeline)
         return self._conductor
 
-    def deferMakeAnotherTestMessage(self, _):
+    def makeAnotherTestMessage(self):
         # We need to reach into the impl to trick the test protocol
         test_proto.test_num_test_docs += 1
         c = self.get_conductor()
         c.sync(self.pipeline.options, wait=True)
 
-class TestCaseWithCorpus(TestCaseWithDB):
+class TestCaseWithCorpus(TestCaseWithTestDB):
     def prepare_corpus_environment(self, corpus_name):
         raindrop.config.CONFIG = None
         cd = self.get_corpus_dir(corpus_name)
@@ -248,7 +239,6 @@ class TestCaseWithCorpus(TestCaseWithDB):
         dbinfo['name'] = 'raindrop_test_suite'
         dbinfo['port'] = 5984
         opts = self.get_options()
-        self.doc_model = get_doc_model()
         self.pipeline = raindrop.pipeline.Pipeline(self.doc_model, opts)
         self.prepare_test_db(self.config)
         self.pipeline.initialize()

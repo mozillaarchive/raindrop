@@ -18,7 +18,7 @@ class TestIDPipelineBase(TestCaseWithTestDB):
     def process_doc(self, emit_common_ids=True):
         test_proto.set_test_options(emit_identities=True,
                                     emit_common_identities=emit_common_ids)
-        self.deferMakeAnotherTestMessage(None)
+        self.makeAnotherTestMessage()
         self.ensure_pipeline_complete()
 
 
