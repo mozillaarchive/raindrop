@@ -137,7 +137,7 @@ row.subject {
 }
 
 .conversation .message .body {
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .name {
