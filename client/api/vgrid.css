@@ -23,9 +23,11 @@ body {
 .header {
   width: 100%;
   top: 0;
-  background-color: #000;
+  background-color: #fff;
+  padding: 0 25px;
+  height: 50px;
+  line-height: 50px;
   z-index: 1;
-  border-bottom: 1px solid #ccc;
 }
 
 .header li {
@@ -76,18 +78,36 @@ row.subject {
   content: 'tweet...';
 }
 
+.viewAll {
+  color: #000;
+}
+
 #zoom_table {
-  -moz-box-shadow: 3px 3px 10px #AAAAAA;
-  background-color: #fff;
+  background-color: #fafafa;
+  border: 1px solid #ddd;
+}
+
+.mm {
+  background-color: #fafafa !important;
 }
 
 #zoom_close {
   right: 7px;
   top: 7px;
+  color: #ccc;
+  text-decoration: none;
+}
+
+#zoom_content {
+  color: #ccc;
 }
 
 .conversation {
   max-width: 800px;
+}
+
+.conversation > .subject:empty:after {
+  content: 'not loaded';
 }
 
 .conversation .subject {
@@ -128,3 +148,4 @@ row.subject {
 .name:empty:after {
   content: 'unknown sender';
 }
+

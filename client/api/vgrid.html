@@ -68,7 +68,11 @@
 </head>
 <body class="templateRemove">
   
-  <!--<div class="header">hello</div>-->
+  <div class="header">
+    <img style="float:left; margin-top:15px;" src="i/search.png">
+    <div style="margin-left:20px; display:inline;"><li>Compose</li><li>Edit</li></div>
+    <img style="float:right; margin-top:15px;" src="i/logo.png">
+  </div> 
 
     <!-- div class="convo template" data-api="conversations/personal">
         <span>{subject}</span>
@@ -84,7 +88,7 @@
       <div class="date">sent on {messages[0].schemas['rd.msg.body'].timestamp}</div>
       <div class="name">{from_display[0]}</div>
       <div class="messageBody">{messages[0].schemas['rd.msg.body'].body_preview}</div>
-      <div>View all messages ({messages[1:].length})</div>
+      <div class="viewAll">View all messages ({messages[1:].length})</div>
     </div>
 
   </div>

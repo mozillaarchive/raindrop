@@ -90,18 +90,20 @@
         </div>
       </div>
       <div class="c2">
-        <div class="subject"><a href="full-message.html">{subject}</a></div>
+        <div class="subject"><a class="subject" href="#">{subject}</a></div>
         <div class="messageBody">{first.body_preview}
         </div>
       </div>
-      <div class="c3 template" data-prop="messages[1:]">
-        {! body schemas['rd.msg.body']}
-        <div class="messageReply noArrow">
-          <span class="name">{body.from_display}</span> {body.body_preview}</div>
-
-      </div>
+      <div class="replies">
+        <div class="c3 reply template" data-prop="messages[1:]">
+        <div class="arrow"></div>
+          {! body schemas['rd.msg.body']}
+          <div class="messageReply noArrow">
+            <span class="name">{body.from_display}</span> {body.body_preview}</div>
+        </div>
+      </div> 
       <div class="c3">
-        <div class="more"><a href="full-message.html">view all activity ({messages[1:].length})</a></div>
+        <div class="more"><a href="full-message.html">view all replies ({messages[1:].length})</a></div>
       </div>
     </div>
   </div>
