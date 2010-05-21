@@ -37,6 +37,7 @@ import optparse
 
 from raindrop import json
 from raindrop import config
+from raindrop import model
 
 # -- library code --
 # The short-term intention is to move to javascript based API implementations
@@ -194,26 +195,21 @@ class CouchDB:
     default_host = None
     default_port = None
     def __init__(self, name, host=None, port=None):
-        self.name = name;
+        self.name = name
         self.uri = "/" + quote(name) + "/"
-        # share and reuse one connection.
-        self.connection = httplib.HTTPConnection(host or self.default_host,
-                                                 port or self.default_port)
+        db = model.get_db("local", name)
+        # this is a little hacky - we construct a doc_model with no DB
+        self.doc_model = model.DocumentModel(db)
 
-    def maybeThrowError(self, resp):
-        if resp.status >= 400:
-            text = resp.read()
-            try:
-                result = json.loads(text)
-            except ValueError:
-                raise APIErrorResponse(400, text)
-            raise APIErrorResponse(resp.status, result)
-        # strange - couch.js doesn't check any other conditions?
+    def _xlate_error(self, exc):
+        try:
+            val = json.loads(exc.body)
+        except ValueError:
+            val = exc.body
+        raise APIErrorResponse(exc.status, val)
 
     def request(self, method, uri, headers={}, body=None):
-        c = self.connection
-        c.request(method, uri, body, headers)
-        return c.getresponse()
+        return self.doc_model.db._request(method, uri, headers=headers, body=body)
 
     def view(self, viewname, **kw):
         # The javascript impl has a painful separation of the 'keys' param
@@ -234,27 +230,31 @@ class CouchDB:
         viewParts = viewname.split('/')
         viewPath = self.uri + "_design/" + viewParts[0] + "/_view/" \
             + viewParts[1] + self.encodeOptions(kw)
-        if keys is None:
-            resp = self.request("GET", viewPath);
-        else:
-            resp = self.request("POST", viewPath,
-                                headers={"Content-Type": "application/json"},
-                                body=json.dumps({'keys':keys}))
+        try:
+            if keys is None:
+                resp = self.request("GET", viewPath);
+            else:
+                resp = self.request("POST", viewPath,
+                                    headers={"Content-Type": "application/json"},
+                                    body=json.dumps({'keys':keys}))
+        except self.doc_model.db.NotFoundError, exc:
+            return None # this seems strange!
+        except self.doc_model.db.Error, exc:
+            self._xlate_error(exc)
 
-        if resp.status == 404:
-          return None
-        self.maybeThrowError(resp)
-        return json.load(resp);
+        return resp
 
     # Args here are different than js - pythonic makes more sense...
     def allDocs(self, keys, **options):
         assert keys, "don't call me if you don't want any docs!"
         uri = self.uri + "_all_docs" + self.encodeOptions(options)
-        resp = self.request("POST", uri,
-                            headers={"Content-Type": "application/json"},
-                            body=json.dumps({'keys':keys}))
-        self.maybeThrowError(resp)
-        return json.load(resp);
+        try:
+            resp = self.request("POST", uri,
+                                headers={"Content-Type": "application/json"},
+                                body=json.dumps({'keys':keys}))
+        except self.doc_model.db.Error, exc:
+            self._xlate_error(exc)
+        return resp
 
     # Convert a options object to an url query string.
     # ex: {key:'value',key2:'value2'} becomes '?key="value"&key2="value2"'
