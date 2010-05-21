@@ -212,11 +212,18 @@ body {
   text-decoration: underline;
 }
 
-.row .avatar {
+.inflow .row .avatar {
   width: 24px;
   height: 24px;
   display: inline-block;
-  background: #ccc;
+  background-color: #FF8C8C;
+  background-image: url("i/face.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.inflow .row:nth-child(2n) .avatar {
+  background-color: #ff5959;
 }
 
 .row .name {
