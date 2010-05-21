@@ -32,11 +32,19 @@
 # and this causes us to miss detecting that those newsletters are still part
 # of the same scheme
 
-def handler(msg):
-    folder = msg['location'] # this is a *list*
-    if len(folder)!=1 or folder[0].upper() != "INBOX":
-        sep = msg['location_sep']
-        tag = 'folder-%s' % sep.join(folder)
-        init_grouping_tag(tag, ['folder', folder], sep.join(folder))
-        items = {'tag': tag}
+def handler(doc):
+    locations = doc['locations']
+    if not locations:
+        # not in any folders - this means it must be 'archived'
+        items = {'tag': 'archived'}
         emit_schema('rd.msg.grouping-tag', items)
+        return
+
+    for loc in locations:
+        folder = loc['folder_name']
+        if folder.upper() != "INBOX":
+            tag = 'folder-' + folder
+            init_grouping_tag(tag, ['folder', folder], folder)
+            items = {'tag': tag}
+            emit_schema('rd.msg.grouping-tag', items)
+            break

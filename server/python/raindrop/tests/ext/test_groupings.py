@@ -300,16 +300,33 @@ Hello everyone
 
     def test_folder(self):
         si = {'rd_key': ['email', '1234@something'],
-              'rd_schema_id': 'rd.msg.location',
+              'rd_schema_id': 'rd.msg.imap-locations',
               'rd_source' : None,
               'rd_ext_id': 'rd.testsuite',
               'items': {
-                'location': ['parent', 'child'],
-                'location_sep': '/'
+                'locations': [
+                    {'folder_name': 'parent/child',
+                     'folder_delim': '/',
+                     'account': 'testsuite-account',
+                    }
+                ]
               },
             }
         self.doc_model.create_schema_items([si])
         self.check_grouping_raw(self.bulk_addy, [], "folder-parent/child", True)
+
+    def test_folder_none(self):
+        # this time the item is not in any imap folders.
+        si = {'rd_key': ['email', '1234@something'],
+              'rd_schema_id': 'rd.msg.imap-locations',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {
+                'locations': [],
+              },
+            }
+        self.doc_model.create_schema_items([si])
+        self.check_grouping_raw(self.bulk_addy, [], "archived", False)
 
 class TestGroupingSummaries(TestCaseWithTestDB):
     msg_template = """\

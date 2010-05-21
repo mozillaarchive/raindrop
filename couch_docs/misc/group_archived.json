@@ -1,0 +1,10 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "Archived Items",
+        "grouping_tags": ["archived"],
+        "visible": false
+    }
+  },
+  "rd_key": ["display-group", "archived"]
+}

@@ -10,6 +10,7 @@ import imaplib
 import email
 import rfc822
 import time
+from pprint import pformat
 
 from raindrop.model import get_doc_model
 import raindrop.proto.imap
@@ -106,6 +107,14 @@ class IMAPMailbox:
     def get_uid_validity(self):
         return 1
 
+    def add_flags(self, msg, flags):
+        for flag in flags:
+            if flag=='\\Deleted':
+                self.messages.remove(msg)
+                return
+            else:
+                if flag not in msg.flags:
+                    msg.flags.append(flag)
 
 class IMAPServer:
     _username = None
@@ -305,27 +314,31 @@ class IMAPHandler(SocketServer.StreamRequestHandler):
         else:
             self.send_negative_response(tag, 'no such mailbox %r' % name)
 
-    def handle_fetch(self, tag, rest, uid):
-        spec, flags = parse_response([rest])
+    def _get_matching_messages(self, spec, uid):
         if isinstance(spec, int):
             # just an int was specified
             items = [spec]
         else:
             # a comma-sep'd list of messages - each may be a simple int, or
             # an int:int range.
-            items = [spec.split(",")]
+            items = spec.split(",")
         for (seq, msg) in enumerate(self.current_mbox.messages):
             for item in items:
-                if ':' in item:
-                    first, second = [int(x) for x in items.split(":")]
+                if not isinstance(item, int) and ':' in item:
+                    first, second = item.split(":")
+                    first = 1 if first=="*" else int(first)
+                    second = 1000000 if second=="*" else int(second)
                 else:
                     first = second = item
-            
                 check = msg.uid if uid else seq
                 if check >= first and check <= second:
                     # yay - matches.
-                    self._spew_message(seq, msg, flags, uid)
-                    break
+                    yield seq, msg
+
+    def handle_fetch(self, tag, rest, uid):
+        spec, flags = parse_response([rest])
+        for seq, msg in self._get_matching_messages(spec, uid):
+            self._spew_message(seq, msg, flags, uid)
         self.send_positive_response(tag, "FETCH worked")
 
     def _spew_message(self, id, msg, flags, uid):
@@ -352,6 +365,8 @@ class IMAPHandler(SocketServer.StreamRequestHandler):
                 bits.append('RFC822.SIZE %d' % len(msg.body))
             elif flag == 'ENVELOPE':
                 bits.append('ENVELOPE ' + collapseNestedLists([getEnvelope(msg.headers)]))
+            elif flag == 'BODY.PEEK[]':
+                bits.append('BODY[] ' + _literal(msg.body))
             else:
                 raise ValueError("Unsupported flag '%s'" % flag)
         self.send_untagged_response("%d FETCH (%s)" % (id, " ".join(bits)))
@@ -360,6 +375,19 @@ class IMAPHandler(SocketServer.StreamRequestHandler):
         # todo: return something :)
         self.send_untagged_response("SEARCH 2")
         self.send_positive_response(tag, "SEARCH completed")
+
+    def handle_store(self, tag, rest, uid):
+        # XXX - no idea if these responses are correct - but our imap client
+        # doesn't actually use the return codes so it doesn't really matter...
+        spec, sub, params = parse_response([rest])
+        if sub=="+FLAGS":
+            for seq, msg in self._get_matching_messages(spec, uid):
+                self.current_mbox.add_flags(msg, params)
+                self.send_untagged_response("%d FETCH (FLAGS (%s))" % (msg.uid, " ".join(params)))
+            self.send_positive_response(tag, "STORE added flags")
+        else:
+            raise ValueError("Unsupported store type '%s'" % (sub,))
+
 
 test_message_src = """\
 From: someone@somewhere
@@ -396,10 +424,6 @@ class IMAP4TestBase(TestCaseWithTestDB):
         self._listenServer(listening_event)
         listening_event.wait()
 
-        #SimpleMailbox.messages = []
-        #theAccount = Account('testuser')
-        #theAccount.mboxType = SimpleMailbox
-        #SimpleServer.theAccount = theAccount
         for mb in self.mailboxes:
             messages = [IMAPMessage(2, ['\Seen'], test_message_src)]
             self.imap_server.add_mailbox(IMAPMailbox(mb, "/", [], messages))
@@ -578,3 +602,63 @@ class TestSimpleMailboxes(IMAP4TestBase):
         self.failUnlessEqual(status['what'], Rat.EVERYTHING)
         # check the server did actually reject at least one request.
         self.failUnless(self.num_failed_logins > 0)
+
+    def test_locations_fetched(self):
+        cond = self.get_conductor()
+        cond.sync(self.pipeline.options, wait=True)
+        # the base class puts the same message in both our folders, so there
+        # should be one location record.
+        key = ["schema_id", "rd.msg.imap-locations"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        locations = rows[0]['doc']['locations']
+        self.failUnlessEqual(len(locations), 2, pformat(locations))
+        folders = sorted(l['folder_name'] for l in locations)
+        self.failUnlessEqual(folders, sorted(self.mailboxes),
+                             pformat(locations))
+
+    def test_locations_deleted_messages(self):
+        cond = self.get_conductor()
+        cond.sync(self.pipeline.options, wait=True)
+        # now write a 'deleted' schema item; the pipeline should call our
+        # IMAP server with the delete request.
+        msgid = "1234@somewhere"
+        si = {'rd_key': ['email', msgid],
+              'rd_schema_id': 'rd.msg.deleted',
+              'rd_source' : None,
+              'rd_ext_id': 'rd.testsuite',
+              'items': {'deleted': True,
+                        'outgoing_state': 'outgoing',
+                        },
+              }
+        self.doc_model.create_schema_items([si])
+        self.ensure_pipeline_complete()
+        # ask it to re-sync, so it sees the message is no longer there...
+        cond.sync(self.pipeline.options, wait=True)
+        # the 'locations' record for this message should then be empty as it
+        # was removed from both folders.
+        key = ["schema_id", "rd.msg.imap-locations"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        locations = rows[0]['doc']['locations']
+        self.failIf(locations, pformat(rows[0]['doc']))
+
+    def test_locations_deleted_folder(self):
+        cond = self.get_conductor()
+        cond.sync(self.pipeline.options, wait=True)
+        # now 'delete' one of the IMAP folders and make sure this gets picked
+        # up
+        del self.imap_server.mailboxes[0]
+        cond.sync(self.pipeline.options, wait=True)
+        # the 'locations' record for this message should have 1 location
+        key = ["schema_id", "rd.msg.imap-locations"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        locations = rows[0]['doc']['locations']
+        self.failUnlessEqual(len(locations), 1, pformat(rows[0]['doc']))

@@ -59,6 +59,12 @@ class TestSimpleCorpus(TestCaseWithCorpus, ConvoTestMixin):
         self.failUnlessEqual(msgs, [msgid])
 
     def test_convo_deleted(self):
+        def filter_log(record):
+            # we don't write a location record, so the extension which notices
+            # we should update IMAP logs a warning.
+            return record.msg.startswith("Can't find imap location for message")
+        self.log_handler.ok_filters.append(filter_log)
+
         self.test_convo_single()
         # now make our one message 'deleted'.
         msgid = ['email', 'd3d08a8a534c464881a95b75300e9011@something']

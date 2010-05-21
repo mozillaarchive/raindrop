@@ -179,6 +179,7 @@ class ImapProvider(object):
           # schema, which arise due to duplicate message IDs (eg, an item
           # in 'sent items' and also the received copy).  Do a 'poor-mans'
           # check that this is indeed the only schema with a problem...
+          # Note however our callers may themselves handle their own conflicts
           if not info.get('id', '').endswith('!rd.msg.rfc822'):
             raise
           conflicts.append(info)
@@ -344,16 +345,23 @@ class ImapProvider(object):
     assert not self.updated_folder_infos
     self.updated_folder_infos = []
 
+    seen = set()
     for delim, name in all_names:
-      self.query_queue.put((False, self._updateFolderFromCache, (caches, delim, name)))
+      seen.add(name)
+      cache_doc = caches.get(name, {})
+      self.query_queue.put((False, self._updateFolderFromCache, (cache_doc, delim, name)))
+    # Now the folders which we saw once before but can't see now - it must
+    # have been deleted, so we remove the location records for those folders.
+    missing = set(caches) - seen
+    for folder_name in missing:
+      self.writeLocationInfos(folder_name, None, [])
 
-  def _updateFolderFromCache(self, conn, cache_docs, folder_delim, folder_name):
+  def _updateFolderFromCache(self, conn, cache_doc, folder_delim, folder_name):
     # Now queue the updates of the folders
     acct_id = self.account.details.get('id')
     info = conn.select_folder(folder_name, True)
     logger.debug("info for %r is %r", folder_name, info)
 
-    cache_doc = cache_docs.get(folder_name, {})
     dirty = self._syncFolderCache(conn, folder_name, info, cache_doc)
 
     if dirty:
@@ -374,15 +382,7 @@ class ImapProvider(object):
     else:
       sync_items = cache_doc.get('infos')
 
-    # fetch folder info, and delete information about 'stale' locations
-    # before fetching the actual messages.
-    loc_to_nuke, loc_needed = self._makeLocationInfos(folder_name,
-                                                      folder_delim,
-                                                      sync_items)
-
-    # queue the write of location records we want to nuke first.
-    if loc_to_nuke:
-      self.write_items(loc_to_nuke)
+    self.writeLocationInfos(folder_name, folder_delim, sync_items)
 
     todo = sync_items[:]
     while todo:
@@ -395,17 +395,6 @@ class ImapProvider(object):
               batch.insert(0, mi)
       logger.log(1, 'queueing check of %d items in %r', len(batch), folder_name)
       self.maybe_queue_fetch_items(folder_name, batch)
-      # see if these items also need location records...
-      new_locs = []
-      for mi in batch:
-        try:
-          new_locs.append(loc_needed[mi['UID']])
-        except KeyError:
-          pass
-      if new_locs:
-        logger.debug('queueing %d new location records', len(new_locs))
-        self.write_items(new_locs)
-    # XXX - todo - should nuke old folders which no longer exist.
 
   def _syncFolderCache(self, conn, folder_path, server_info, cache_doc):
     # Queries the server for the current state of a folder.  Returns True if
@@ -479,8 +468,12 @@ class ImapProvider(object):
         # invalid or missing ENVELOPE etc.
         logger.debug("message %r never seen before - probably invalid", this_uid)
         continue
-    # Records we had in the past now have accurate flags; next up is to append
-    # new message info we just received...
+    # Records we had in the past now have accurate flags; anything in past
+    # our current index must have been deleted.
+    while infos_ndx < len(infos):
+      infos.pop()
+      dirty = True
+    # next up is to append new message infos we just received...
     for this_uid in sorted(int(k) for k in new_infos):
       info = new_infos[this_uid]
       # Sadly, asking for '900:*' in gmail may return a single item
@@ -508,23 +501,39 @@ class ImapProvider(object):
       dirty = True
     return dirty
 
+  def writeLocationInfos(self, folder_name, folder_delim, sync_items):
+    # fetch folder info location info and write it out.  As each rd_key gets
+    # one record with all locations, there is the possibility a conflict will
+    # happen as another folder tries to update itself too - so we loop
+    # handling conflicts and retrying the read/update of the location record.
+    for i in range(5):
+      loc_updates = self._makeLocationInfos(folder_name, folder_delim,
+                                            sync_items)
+      if loc_updates:
+        try:
+          self.write_items(loc_updates)
+        except DocumentSaveError, exc:
+          # Could optimize this by only retrying the ones which failed, but
+          # the retry will not re-provide the ones that did worked (although
+          # it will need to query when it otherwise wouldn't)
+          for info in exc.infos:
+            if info['error']!='conflict':
+              raise
+          # and retry
+          logger.info('found conflict updating location document - will retry')
+          continue
+      break
+    else:
+      # every retry failed
+      logger.error("failed to recover from conflicts writing msg locations")
+
   def _makeLocationInfos(self, folder_name, delim, results):
-    # We used to write all location records - even those we were never going
-    # to fetch - in one hit - after fetchng the messages.  For large IMAP
-    # accounts, this was unacceptable as too many records hit the couch at
-    # once.
-    # Note a key requirement here is to fetch new messages quickly, and to
-    # perform OK with a new DB.  So, the general process is:
-    # * Query all couch items which say they are in this location.
-    # * Find the set of messages no longer in this location and delete them
-    #   all in one go.
-    # * Find the set of messages which we don't have location records for.
-    #   As we process and filter each individual message, check this map to
-    #   see if a new record needs to be written and write it with the message
-    #   itself.
+    # The general process is:
+    # * Query location records for all items which say they are in this location.
+    # * Find the set of messages no longer in this location and remove them from
+    #   this location.  Ditto for ones which we now see are in this location.
     # This function returns the 2 maps - the caller does the delete/update...
-    folder_path = folder_name.split(delim)
-    logger.debug("checking what we know about items in folder %r", folder_path)
+    logger.debug("checking what we know about items in folder %r", folder_name)
     acct_id = self.account.details.get('id')
     # Build a map keyed by the rd_key of all items we know are currently in
     # the folder
@@ -534,49 +543,79 @@ class ImapProvider(object):
       rdkey = get_rdkey_for_email(msg_id)
       current[tuple(rdkey)] = result['UID']
 
-    # We hack the 'extension_id' in a special way to allow multiple of the
-    # same schema; multiple IMAP accounts, for example, may mean the same
-    # rdkey ends up with multiple of these location records.
-    # XXX - this is a limitation in the doc model we should fix!
-    ext_id = "%s~%s~%s" % (self.rd_extension_id, acct_id, ".".join(folder_path))
-
     # fetch all things in couch which (a) are currently tagged with this
     # location and (b) was tagged by this mapi account.  We do (a) via the
     # key param, and filter (b) here...
-    key = [['imap', acct_id], folder_path]
+    this_location = [acct_id, folder_name]
     existing = self.doc_model.open_view(viewId='msg_location_by_source',
-                                        key=key)
-    scouch = set()
+                                        key=this_location)
     to_nuke = []
+    scouch = set()
     for row in existing['rows']:
       rdkey = tuple(row['value']['rd_key'])
       if rdkey not in current:
-        to_nuke.append({'_id': row['id'],
-                        '_rev': row['value']['_rev'],
-                        '_deleted': True,
-                        'rd_ext_id': ext_id,
-                        })
+        to_nuke.append(row['id'])
       scouch.add(rdkey)
 
     # Finally find the new ones we need to add
-    to_add = {}
+    to_add = []
+    to_add_extra = []
     for rdkey in set(current) - scouch:
       # Item in the folder but couch doesn't know it is there.
       uid = current[rdkey]
-      new_item = {'rd_key': list(rdkey),
-                  'rd_ext_id': ext_id,
-                  'rd_schema_id': 'rd.msg.location',
-                  'items': {'location': folder_path,
-                            'location_sep': delim,
-                            'uid': uid,
-                            'source': ['imap', acct_id]},
-                  }
-      to_add[uid] = new_item
-    logger.debug("folder %r info needs to update %d and delete %d location records",
-                 folder_name, len(to_add), len(to_nuke))
-    return to_nuke, to_add
+      si = {'rd_key': rdkey,
+            'rd_schema_id': 'rd.msg.imap-locations'}
+      did = self.doc_model.get_doc_id_for_schema_item(si)
+      to_add.append(did)
+      to_add_extra.append((rdkey, uid))
 
-  def _findMissingItems(self, folder_path, results):
+    # Open the documents we care about and update them in memory ready to
+    # be written back
+    to_up = []
+    docs = iter(self.doc_model.open_documents_by_id(to_nuke+to_add))
+    for did in to_nuke:
+      doc = next(docs)
+      if doc is None:
+        logger.error("looking to remove location from %s but doc doesn't exist",
+                     did)
+      else:
+        # look for this location.
+        new_locs = []
+        for loc in doc['locations']:
+          if loc['account']!=acct_id or loc['folder_name']!=folder_name:
+            new_locs.append(loc)
+        if len(doc['locations'])==len(new_locs):
+          logger.error("looking to remove %s from doc %r but not in list",
+                       this_location, did)
+        else:
+          doc['locations'] = new_locs
+          to_up.append(self.doc_model.doc_to_schema_item(doc))
+    # and the ones to add.
+    for did, (rdkey, uid) in zip(to_add, to_add_extra):
+      doc = next(docs)
+      loc = {'folder_name': folder_name,
+             'folder_delim': delim,
+             'uid': uid,
+             'account': acct_id,
+             }
+      if doc is None:
+        # need to create one.
+        si = {
+          'rd_key': rdkey,
+          'rd_schema_id': 'rd.msg.imap-locations',
+          'rd_ext_id': self.rd_extension_id,
+          'items': {
+            'locations' : [loc]
+          }
+        }
+        to_up.append(si)
+      else:
+        # doc exists - just need to add ours.
+        doc['locations'].append(loc)
+        to_up.append(self.doc_model.doc_to_schema_item(doc))
+    return to_up
+
+  def _findMissingItems(self, folder_name, results):
     # Transform a list of IMAP infos into a map with the results keyed by the
     # 'rd_key' (ie, message-id)
     assert results, "don't call me with nothing to do!!"
@@ -598,7 +637,7 @@ class ImapProvider(object):
     # convert each key elt to a list like we get from the views.
     remaining = set(msg_infos)-set(seen)
 
-    logger.debug("batch for folder %s has %d messages, %d new", folder_path,
+    logger.debug("batch for folder %s has %d messages, %d new", folder_name,
                 len(msg_infos), len(remaining))
     rem_uids = [int(msg_infos[k]['UID']) for k in remaining]
     # *sob* - re-invert keyed by the UID.
@@ -688,41 +727,41 @@ class ImapUpdater:
     self.doc_model = account.doc_model
 
   # Outgoing items related to IMAP - eg, \\Seen flags, deleted, etc...
-  def handle_outgoing(self, conductor, src_doc, dest_doc):
+  def handle_outgoing(self, conductor, src_doc, to_update):
     account = self.account
     # Establish a connection to the server
-    logger.debug("setting flags for %(rd_key)r: folder %(folder)r, uuid %(uid)s",
-                 dest_doc)
     client = get_connection(account, conductor)
-    client.select_folder(dest_doc['folder'])
-    # Write the fact we are about to try and (un-)set the flag.
+    # Write the fact we are about to try and (un-)set the flag(s)
     account._update_sent_state(src_doc, 'sending')
-    try:
+    for loc in to_update:
+      logger.debug("setting flags for folder %(folder)r, uuid %(uid)s",
+                   loc)
+      client.select_folder(loc['folder'])
       try:
-        # *sigh* - twisted doesn't encode the flags.
-        flags_add = [f.encode('imap4-utf-7') for f in dest_doc['flags_add']]
-      except KeyError:
-        pass
+        try:
+          flags_add = loc['flags_add']
+        except KeyError:
+          pass
+        else:
+          client.add_flags(loc['uid'], flags_add)
+        try:
+          flags_rem = loc['flags_remove']
+        except KeyError:
+          pass
+        else:
+          client.remove_flags(loc['uid'], flags_rem)
+      except client.Error, exc:
+        logger.error("Failed to update flags: %s", exc)
+        # XXX - we need to differentiate between a 'fatal' error, such as
+        # when the message has been deleted, or a transient error which can be
+        # retried.  For now, assume retryable...
+        account._update_sent_state(src_doc, 'error', 'imap error', str(exc),
+                                             outgoing_state='outgoing')
       else:
-        client.addFlags(dest_doc['uid'], flags_add, uid=1)
-      try:
-        flags_rem = [f.encode('imap4-utf-7') for f in dest_doc['flags_remove']]
-      except KeyError:
-        pass
-      else:
-        client.removeFlags(dest_doc['uid'], flags_rem, uid=1)
-    except Exception, exc:
-      logger.error("Failed to update flags: %s", fun, exc)
-      # XXX - we need to differentiate between a 'fatal' error, such as
-      # when the message has been deleted, or a transient error which can be
-      # retried.  For now, assume retryable...
-      account._update_sent_state(src_doc, 'error', exc,
-                                           outgoing_state='outgoing')
-    else:
-      account._update_sent_state(src_doc, 'sent')
-      logger.debug("successfully adjusted flags for %(rd_key)r", src_doc)
+        account._update_sent_state(src_doc, 'sent')
+        logger.debug("successfully adjusted flags for %(rd_key)r", src_doc)
     client.logout()
-    defer.returnValue(True)
+    return True
 
 def failure_to_status(exc):
   what = brat.SERVER
@@ -835,18 +874,27 @@ def drop_connection(conn):
 class IMAPAccount(base.AccountBase):
   rd_outgoing_schemas = ['rd.proto.outgoing.imap-flags']
   def startSend(self, conductor, src_doc, dest_doc):
-    # Check it really is for our IMAP account.
-    if dest_doc['account'] != self.details.get('id'):
-      logger.info('outgoing item not for imap acct %r (target is %r)',
-                  self.details.get('id'), dest_doc['account'])
-      return
     # caller should check items are ready to send.
     assert src_doc['outgoing_state'] == 'outgoing', src_doc
     # We know IMAP currently only has exactly 1 outgoing schema type.
     assert dest_doc['rd_schema_id'] == 'rd.proto.outgoing.imap-flags', src_doc
-
+    # This one document contains *all* the accounts which need updating.
+    # Sadly, multiple accounts don't really work yet :(  So for now
+    # do all in *this* account and warn about the others.
+    mine = []
+    other = []
+    for loc in dest_doc['locations']:
+      if loc['account']==self.details.get('id'):
+        mine.append(loc)
+      else:
+        other.append(loc)
+    if not mine:
+      return False
+    if other:
+      logger.warn("ignoring outgoing flags for accounts %s",
+                  [l['account'] for l in other])
     updater = ImapUpdater(self, conductor)
-    return updater.handle_outgoing(conductor, src_doc, dest_doc)
+    return updater.handle_outgoing(conductor, src_doc, mine)
 
   def startSync(self, conductor, options):
     done = threading.Event()

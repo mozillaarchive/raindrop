@@ -1,7 +1,7 @@
 {
   "schemas" : {
     "rd.ext.workqueue" : {
-        "source_schemas" : ["rd.msg.location"],
+        "source_schemas" : ["rd.msg.imap-locations"],
         "code" : "RDFILE: *.py",
         "content_type" : "application/x-python",
         "category": "extender",

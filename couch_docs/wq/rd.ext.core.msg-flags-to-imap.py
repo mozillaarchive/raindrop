@@ -30,41 +30,42 @@ def handler(doc):
     if doc['outgoing_state'] != 'outgoing':
         return
 
-    # query a view to find out what the folder and UID of the item is.
+    # open the document with the imap-locations schema
     rdkey = doc['rd_key']
-    key = ["key-schema_id", [rdkey, 'rd.msg.location']]
-    result = open_view(key=key, reduce=False, include_docs=True)
-    # A single message may appear in multiple places...
-    for row in result['rows']:
-        # Check it really is for an IMAP account.  The 'source' for imap
-        # accounts is ['imap', acct_name]
-        loc_doc = row['doc']
-        if loc_doc['source'][0] != 'imap':
-            logger.info('outgoing item not for imap acct (source is %r)',
-                        loc_doc['source'])
-            continue
-        # It is for IMAP - write a schema with the flags adjustments...
-        folder = loc_doc.get('location_sep', '/').join(loc_doc['location'])
-        uid = loc_doc['uid']
+    result = open_schemas([(rdkey, 'rd.msg.imap-locations')])
+    loc_doc = result[0]
+    if loc_doc is None:
+        logger.warning("Can't find imap location for message %r", doc['_id'])
+        return
+
+    # work out what adjustments are needed.
+    if doc['rd_schema_id'] == 'rd.msg.seen':
+        new_flag = '\\Seen'
+        attr = 'seen'
+    elif doc['rd_schema_id'] == 'rd.msg.deleted':
+        new_flag = '\\Deleted'
+        attr = 'deleted'
+    elif doc['rd_schema_id'] == 'rd.msg.archived':
+        logger.info("todo: ignoring 'archived' IMAP flag")
+        return
+    else:
+        raise RuntimeError(doc)
+    
+    infos = []
+    for loc_info in loc_doc['locations']:
+        folder = loc_info['folder_name']
+        uid = loc_info['uid']
         logger.debug("setting flags for %r: folder %r, uuid %s", rdkey, folder, uid)
 
-        if doc['rd_schema_id'] == 'rd.msg.seen':
-            new_flag = '\\Seen'
-            attr = 'seen'
-        elif doc['rd_schema_id'] == 'rd.msg.deleted':
-            new_flag = '\\Deleted'
-            attr = 'deleted'
-        elif doc['rd_schema_id'] == 'rd.msg.archived':
-            logger.info("todo: ignoring 'archived' IMAP flag")
-            continue
-        else:
-            raise RuntimeError(doc)
-        items = {'account': loc_doc['source'][1],
-                 'folder': folder,
-                 'uid': uid,}
+        info = {'account': loc_info['account'],
+                'folder': folder,
+                'uid': uid,
+               }
         if doc[attr]:
-            items['flags_add']=[new_flag]
+            info['flags_add']=[new_flag]
         else:
-            items['flags_remove']=[new_flag]
-
-        emit_schema('rd.proto.outgoing.imap-flags', items)
+            info['flags_remove']=[new_flag]
+        infos.append(info)
+    if infos:
+        si = {'locations': infos}
+        emit_schema('rd.proto.outgoing.imap-flags', si)

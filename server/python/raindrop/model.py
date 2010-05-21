@@ -43,12 +43,6 @@ class DocumentSaveError(Exception):
 class DocumentOpenError(Exception):
     pass
 
-# Schema definitions which don't want an aggregate written; the individual
-# extensions schemas are emitted individually.
-megaview_schemas_no_aggr = [
-    'rd.msg.location',
-]
-
 def encode_provider_id(proto_id):
     # a 'protocol' gives us a 'blob' used to identify the document; we create
     # a real docid from that protocol_id; we base64-encode what was given to
@@ -154,6 +148,9 @@ class DocumentModel(object):
         info_common = {'rd_key': meta['rd_key'],
                        'rd_schema_id': meta['rd_schema_id']
                       }
+        for check in ['_id', '_rev']:
+            if check in meta:
+                info_common[check] = meta[check]
         schema_items = doc['rd_schema_items']
         ext_ids = schema_items.keys()
         assert len(ext_ids)==1, "more than one schema in this doc"
@@ -409,7 +406,11 @@ class DocumentModel(object):
                            ('_id', True),
                            ('_rev', True)):
             if mname in doc:
+                # check things are what we expect - although allow _rev to
+                # differ, resulting in a later ConflictError (which may in
+                # turn be caught and handled.)
                 if mname in item and \
+                   mname != '_rev' and \
                    self.hashable_key(doc[mname]) != self.hashable_key(item[mname]):
                     raise RuntimeError("doc confused about %s - %s vs %s\ndoc=%s\nitem=%s" %
                                        (mname, doc[mname], item[mname], doc, item))
