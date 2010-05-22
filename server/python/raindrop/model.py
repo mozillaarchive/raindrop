@@ -254,7 +254,6 @@ class DocumentModel(object):
 
         attachments = self._prepare_attachments(docs)
         results = self.db.updateDocuments(docs)
-        # yuck - this is largely duplicated below :(
         errors = []
         update_items = []
         real_ret = []
@@ -449,6 +448,14 @@ class DocumentModel(object):
     def create_schema_items(self, item_defs):
         """Main entry-point to create new (or updated) 'schema items' in
         the database."""
+        # XXX - this is still somewhat error prone; this function may be
+        # called to update documents (ie, they emit a schema which was also
+        # previously created by a different extension, and therefore the
+        # doc already exists) but without passing the _rev of that existing
+        # doc; therefore things can 'race' and cause one to win without any
+        # clue to the loser that their data didn't make it.
+        # To see this in action, add a check below for any documents that
+        # existed, but the item_def doesn't have a _rev.
         assert item_defs, "don't call me when you have no docs!"
         # first build a map of all doc IDs we care about
         ids = set(self.get_doc_id_for_schema_item(si) for si in item_defs)
@@ -466,11 +473,15 @@ class DocumentModel(object):
                 assert doc['_id']==did, doc
             else:
                 doc['_id'] = did
+        conflicts = []
         # now apply updates
         for si in item_defs:
             did = self.get_doc_id_for_schema_item(si)
             doc = doc_map[did]
-            self._add_item_to_doc(doc, si)
+            if '_rev' in si and doc['_rev'] != si['_rev']:
+                conflicts.append(did)
+            else:
+                self._add_item_to_doc(doc, si)
         # rebuild our doc list so it has the real docs.
         docs = list(doc_map.itervalues())
         # a bit more meta-data - the following fields relate directly to
@@ -494,6 +505,15 @@ class DocumentModel(object):
         else:
             updated_docs = []
         logger.debug("create_schema_items made %r", updated_docs)
+        if conflicts:
+            logger.debug("create_schema_items has %d conflicts")
+            # convert to a 'real' conflict error
+            exc_info = [{'error': 'conflict',
+                         'id': did,
+                         'readon': 'create_schema_items detected _rev mismatch',
+                         }
+                        for did in conflicts]
+            raise DocumentSaveError(exc_info)
         return updated_docs
 
     def open_schemas(self, wanted, **kw):
@@ -561,53 +581,6 @@ class DocumentModel(object):
                     all_attachments.append(None)
         assert len(all_attachments)==len(docs)
         return all_attachments
-
-    def _cb_saved_docs(self, result, item_defs, attachments):
-        # Detects document errors and updates any attachments which were too
-        # large to send in the 'body'.  Updating attachments is complicated
-        # by needing to track the *final* _rev of the document after all
-        # attachments have been updated.
-
-        # result: [{'rev': 'xxx', 'id': '...'}, ...]
-        ds = []
-        assert len(result)==len(attachments) and len(result)==len(item_defs)
-        new_items = []
-        real_result = []
-        errors = []
-        for dinfo, dattach, item_def in zip(result, attachments, item_defs):
-            if 'error' in dinfo:
-                # If no items were specified then this is OK - the
-                # extension is just noting the ID exists and it already does.
-                if dinfo.get('error')=='conflict' and item_def['items'] is None:
-                    logger.debug('ignoring conflict error when asserting %r exists',
-                                 dinfo['id'])
-                else:
-                    # presumably an unexpected error :(
-                    errors.append(dinfo)
-            else:
-                while dattach:
-                    name, info = dattach.popitem()
-                    docid = dinfo['id']
-                    revision = dinfo['rev']
-                    logger.debug('saving attachment %r to doc %r', name, docid)
-                    dinfo = self.db.saveAttachment(self.quote_id(docid),
-                                   self.quote_id(name), info['data'],
-                                   content_type=info['content_type'],
-                                   revision=revision)
-
-                # Give the ID and revision info back incase they need to
-                # know...
-                item_def['_id'] = dinfo['id']
-                item_def['_rev'] = dinfo['rev']
-                new_items.append(item_def)
-                real_result.append(dinfo)
-
-        logger.debug("saved %d documents with %d errors", len(new_items),
-                     len(errors))
-        if errors:
-            raise DocumentSaveError(errors)
-
-        return real_result
 
     @classmethod
     def get_schema_attachment_info(cls, doc, attach_base_name):
