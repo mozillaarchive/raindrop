@@ -426,7 +426,7 @@ class StatefulQueueManager(object):
         try:
             self._run_queue(q, qs)
         except Exception, exc:
-            logger.exception('queue %r failed seriously!', q.queue_id)
+            logger.exception('queue %r failed', q.queue_id)
             qs.failure = exc
         qs.running = False
 
