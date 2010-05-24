@@ -354,7 +354,8 @@ class ImapProvider(object):
     # have been deleted, so we remove the location records for those folders.
     missing = set(caches) - seen
     for folder_name in missing:
-      self.writeLocationInfos(folder_name, None, [])
+      logger.debug('updating folder locations for deleted folder %r', folder_name)
+      self.writeLocationInfos(folder_name, None, [], [])
 
   def _updateFolderFromCache(self, conn, cache_doc, folder_delim, folder_name):
     # Now queue the updates of the folders
@@ -382,9 +383,8 @@ class ImapProvider(object):
     else:
       sync_items = cache_doc.get('infos')
 
-    self.writeLocationInfos(folder_name, folder_delim, sync_items)
-
     todo = sync_items[:]
+    queued_keys = []
     while todo:
       # do later ones first and limit the batch size - larger batches means
       # fewer couch queries, but the queue appears to 'stall' for longer.
@@ -393,8 +393,11 @@ class ImapProvider(object):
           mi = todo.pop()
           if self.shouldFetchMessage(mi):
               batch.insert(0, mi)
+              queued_keys.append(get_rdkey_for_email(mi['ENVELOPE'][-1]))
+
       logger.log(1, 'queueing check of %d items in %r', len(batch), folder_name)
       self.maybe_queue_fetch_items(folder_name, batch)
+    self.writeLocationInfos(folder_name, folder_delim, sync_items, queued_keys)
 
   def _syncFolderCache(self, conn, folder_path, server_info, cache_doc):
     # Queries the server for the current state of a folder.  Returns True if
@@ -501,17 +504,19 @@ class ImapProvider(object):
       dirty = True
     return dirty
 
-  def writeLocationInfos(self, folder_name, folder_delim, sync_items):
+  def writeLocationInfos(self, folder_name, folder_delim, sync_items, queued_keys):
     # fetch folder info location info and write it out.  As each rd_key gets
     # one record with all locations, there is the possibility a conflict will
     # happen as another folder tries to update itself too - so we loop
     # handling conflicts and retrying the read/update of the location record.
     for i in range(5):
       loc_updates = self._makeLocationInfos(folder_name, folder_delim,
-                                            sync_items)
+                                            sync_items, queued_keys)
       if loc_updates:
         try:
-          self.write_items(loc_updates)
+          # We use update_documents as create_schema_items has issues
+          # regarding conflict detection.
+          self.doc_model.update_documents(loc_updates)
         except DocumentSaveError, exc:
           # Could optimize this by only retrying the ones which failed, but
           # the retry will not re-provide the ones that did worked (although
@@ -520,14 +525,15 @@ class ImapProvider(object):
             if info['error']!='conflict':
               raise
           # and retry
-          logger.info('found conflict updating location document - will retry')
+          logger.info('found conflict updating location document for %r - will retry',
+                      folder_name)
           continue
       break
     else:
       # every retry failed
       logger.error("failed to recover from conflicts writing msg locations")
 
-  def _makeLocationInfos(self, folder_name, delim, results):
+  def _makeLocationInfos(self, folder_name, delim, results, queued_keys):
     # The general process is:
     # * Query location records for all items which say they are in this location.
     # * Find the set of messages no longer in this location and remove them from
@@ -535,34 +541,48 @@ class ImapProvider(object):
     # This function returns the 2 maps - the caller does the delete/update...
     logger.debug("checking what we know about items in folder %r", folder_name)
     acct_id = self.account.details.get('id')
-    # Build a map keyed by the rd_key of all items we know are currently in
-    # the folder
-    current = {}
+    # Build a map keyed by the rd_key of all items we know are currently on
+    # the IMAP server.
+    current_imap = {}
     for result in results:
-      msg_id = result['ENVELOPE'][-1]
-      rdkey = get_rdkey_for_email(msg_id)
-      current[tuple(rdkey)] = result['UID']
+      if '\\deleted' not in (f.lower() for f in result['FLAGS']):
+        msg_id = result['ENVELOPE'][-1]
+        rdkey = get_rdkey_for_email(msg_id)
+        current_imap[tuple(rdkey)] = result['UID']
 
-    # fetch all things in couch which (a) are currently tagged with this
-    # location and (b) was tagged by this mapi account.  We do (a) via the
-    # key param, and filter (b) here...
+    # fetch all things in couch which are currently tagged with this location
     this_location = [acct_id, folder_name]
     existing = self.doc_model.open_view(viewId='msg_location_by_source',
                                         key=this_location)
     to_nuke = []
-    scouch = set()
+    current_couch_locs = set()
     for row in existing['rows']:
       rdkey = tuple(row['value']['rd_key'])
-      if rdkey not in current:
+      if rdkey not in current_imap:
         to_nuke.append(row['id'])
-      scouch.add(rdkey)
+      current_couch_locs.add(rdkey)
 
-    # Finally find the new ones we need to add
+    # Find the new ones we need to add.  This is the set of all items
+    # on the IMAP server minus the ones which already have location records,
+    # minus the ones which don't have rfc822 schemas in the couch (ie, those
+    # we excluded due to --max-age or similar)
+    missing_locs = set(current_imap) - current_couch_locs
+    have_schemas = set(queued_keys)
+    # check the difference between what is missing and what we know does exist.
+    keys = list(missing_locs-have_schemas)
+    look = [(k, 'rd.msg.rfc822') for k in keys]
+    schemas = self.doc_model.open_schemas(look, include_docs=False)
+    for sch, k in zip(schemas, keys):
+      if sch is not None:
+        have_schemas.add(k)
+    # the records we need to add are the intersection of missing and have
+    to_add_keys = missing_locs.intersection(have_schemas)
+
     to_add = []
     to_add_extra = []
-    for rdkey in set(current) - scouch:
+    for rdkey in to_add_keys:
       # Item in the folder but couch doesn't know it is there.
-      uid = current[rdkey]
+      uid = current_imap[rdkey]
       si = {'rd_key': rdkey,
             'rd_schema_id': 'rd.msg.imap-locations'}
       did = self.doc_model.get_doc_id_for_schema_item(si)
@@ -570,7 +590,7 @@ class ImapProvider(object):
       to_add_extra.append((rdkey, uid))
 
     # Open the documents we care about and update them in memory ready to
-    # be written back
+    # be written back.
     to_up = []
     docs = iter(self.doc_model.open_documents_by_id(to_nuke+to_add))
     for did in to_nuke:
@@ -589,7 +609,9 @@ class ImapProvider(object):
                        this_location, did)
         else:
           doc['locations'] = new_locs
-          to_up.append(self.doc_model.doc_to_schema_item(doc))
+          logger.debug("update for %r removed a location from rev %s - now %s",
+                       folder_name, doc['_rev'], new_locs)
+          to_up.append(doc)
     # and the ones to add.
     for did, (rdkey, uid) in zip(to_add, to_add_extra):
       doc = next(docs)
@@ -600,19 +622,27 @@ class ImapProvider(object):
              }
       if doc is None:
         # need to create one.
-        si = {
+        doc = {
           'rd_key': rdkey,
           'rd_schema_id': 'rd.msg.imap-locations',
-          'rd_ext_id': self.rd_extension_id,
-          'items': {
-            'locations' : [loc]
-          }
+          'rd_schema_items': {
+            self.rd_extension_id: {
+              'rd_source': None,
+              'schema': None
+            },
+          },
+          'rd_schema_provider': self.rd_extension_id,
+          'locations' : [loc],
         }
-        to_up.append(si)
+        doc['_id'] = did
+        logger.debug("update for %r creating new doc", folder_name)
+        to_up.append(doc)
       else:
         # doc exists - just need to add ours.
+        logger.debug("update for %r updating doc rev %r (%s)", folder_name, doc['_rev'], doc['locations'])
         doc['locations'].append(loc)
-        to_up.append(self.doc_model.doc_to_schema_item(doc))
+        to_up.append(doc)
+    logger.debug('finished making %d location infos for %r', len(to_up), folder_name)
     return to_up
 
   def _findMissingItems(self, folder_name, results):

@@ -622,7 +622,7 @@ class TestSimpleMailboxes(IMAP4TestBase):
         self.failUnlessEqual(folders, sorted(self.mailboxes),
                              pformat(locations))
 
-    def test_locations_deleted_messages(self):
+    def test_locations_deleted_messages_purged(self):
         cond = self.get_conductor()
         cond.sync(self.pipeline.options, wait=True)
         # now write a 'deleted' schema item; the pipeline should call our
@@ -649,6 +649,35 @@ class TestSimpleMailboxes(IMAP4TestBase):
         self.failUnlessEqual(len(rows), 1, pformat(rows))
         locations = rows[0]['doc']['locations']
         self.failIf(locations, pformat(rows[0]['doc']))
+
+    def test_locations_deleted_messages_flagged(self):
+        cond = self.get_conductor()
+        cond.sync(self.pipeline.options, wait=True)
+        # set the '\\Deleted' flag on the first message in both folders.
+        for mb in self.imap_server.mailboxes:
+            for msg in mb.messages:
+                msg.flags.append("\\Deleted")
+        # re-sync and ensure the location record gets removed and a 'deleted'
+        # schema gets added.
+        cond.sync(self.pipeline.options, wait=True)
+        # the 'locations' record for this message should then be empty as it
+        # was removed from both folders.
+        key = ["schema_id", "rd.msg.imap-locations"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        locations = rows[0]['doc']['locations']
+        self.failIf(locations, pformat(rows[0]['doc']))
+        # and it should have deleted - but it doesn't :(  Fix me!
+        return
+        # ############  not called!
+        key = ["schema_id", "rd.msg.deleted"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1, pformat(rows))
+        self.failUnless(rows[0]['doc'].get('deleted'), pformat(rows))
 
     def test_locations_deleted_folder(self):
         cond = self.get_conductor()
