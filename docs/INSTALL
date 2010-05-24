@@ -27,14 +27,6 @@ up-to-date installation documentation.
 Late Breaking News/Known Problems
 =================================
 
-* Integration with twisted logging is poor.
-
-* You may see errors like:
-    WARNING:raindrop.proto.imap:ignoring mismatched quoting error: "=?ISO-8859-1?...
-  This appears to be a bug in the IMAP protocol we are using, and the end
-  result is that such warnings will cause the entire folder containing the
-  message to be skipped.
-
 * You may see warnings regarding timeout or "too many connection" errors from
   your IMAP server.  These errors can generally be ignored as raindrop should
   recover correctly from such errors.
@@ -46,7 +38,7 @@ Installation Steps
 couchdb
 -------
 
-Install couchdb, version 0.10 or later.  0.9 will not work.  See:
+Install couchdb, version 0.11 or later.  0.10 and earlier will not work.  See:
   http://couchdb.apache.org/downloads.html for most platforms.
   http://wiki.apache.org/couchdb/Windows_binary_installer for Windows.
   http://janl.github.com/couchdbx for a pre-built binary for Macs.
@@ -73,15 +65,8 @@ If you are less brave, run it without the --configure option, then manually
 resolve any dependency or configuration issues it reports, then repeat until
 no problems are found.
 
-A summary of the dependencies are: setuptools, twisted, PyOpenSSL, Skype4Py, 
-python-twitter, simplejson, feedparser and paisley.
-
-Notes
------
-
-Note for mac users: doing easy_install PyOpenSSL after May 1st, may install
-some badly. It may be a PyOppenSSL 0.9 issue. 0.8 is known to work. Try
-the latest code, but if that does not work, switch to 0.8.
+A summary of the dependencies are: setuptools, Skype4Py, twitter, simplejson 
+and feedparser.
 
 Running Raindrop
 ================
@@ -142,10 +127,15 @@ configure raindrop:
         username=username
         password=topsecret
 
-Note the use of passwords in this file and that we recognize this is evil;
-please see http://wiki.mozilla.org/Raindrop/Security for our current thoughts
-on this.  Also note that although most account information is written to the
-couchdb, the passwords in this file never are included.
+Note the use of passwords in this file and that we recognize this is evil; we
+now support OAuth for services which support it - currently twitter and 
+gmail IMAP - but the problem remains for most IMAP servers out there.  
+Raindrop only stores this information on the file-system and it is never 
+exposed via couchdb, so even if people can get to your couchdb installation 
+via HTTP, they should be unable to obtain your credentials.
+
+Please see http://wiki.mozilla.org/Raindrop/Security for our current thoughts
+on this.
 
 Once you are done with .raindrop, then go to the command line, to the
 raindrop/server/python directory and run the following command:
@@ -172,7 +162,7 @@ Note that the raindrop back-end must be running for 'outgoing' actions (such
 as sending an SMTP message, adjusting the 'seen' state of an IMAP message) to
 be operated on.  If you execute:
 
-  % run-raindrop.py process-incoming
+  % run-raindrop.py process --continuous
 
 The back-end will sit there waiting for new items to be written to the
 database and process them, including requests to send SMTP etc.  You must
@@ -211,7 +201,7 @@ To delete all the intermediate messages in the DB, execute:
 
   % run-raindrop.py unprocess
 
-The next time you execute a 'process-backlog' command, all your messages will
+The next time you execute a 'process' command, all your messages will
 be reprocessed.
 
 Error handling:
