@@ -109,7 +109,6 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
                         } else {
                             options.containerNode.innerHTML = '';
                             node.appendTo(options.containerNode);
-                            console.log("SET THE CONTENT FOR", options.containerNode);
                         }
                         if (options.onTemplateDone) {
                             options.onTemplateDone(html);
@@ -176,9 +175,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
         //Traverse the object looking for identities.
         var found = {}, needed = [], i, id, doc, row;
         findIdentities(json, found, needed);
-console.log("gid1");
         if (!needed.length) {
-console.log("gid2");
             callback();
         } else {
             //Build out the full key
