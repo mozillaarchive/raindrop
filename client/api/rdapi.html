@@ -28,25 +28,28 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <link type="text/css" rel="stylesheet" href="rdapi.css">
 
-    <script src="../lib/jquery-1.4.js" charset="utf-8"></script>
-    <script src="rdapi.jquery.js" charset="utf-8"></script>
+    <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
-        var fetchedConvo = false;
-        $(document).bind('rdapi-done', function (evt, node) {
-            console.log('Got rdapi-done: ', node);
-            
-            if (!fetchedConvo) {
-                var conversationId = ["conv", ["email", "D1B832D9-BE11-43A3-8DAA-2447C5AB27F9@aol.com"]];
-                rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(conversationId)) + '&schemas=%5B%22*%22%5D', {
-                    templateId: 'fullConversation',
-                    containerNode: document.getElementById('convoDisplay')
-                });
-                fetchedConvo = true;
-            }
+        require(["rdapi"], function (rdapi) {
+            /*
+            var fetchedConvo = false;
+            $(document).bind('rdapi-done', function (evt, node) {
+                console.log('Got rdapi-done: ', node);
+                
+                if (!fetchedConvo) {
+                    var conversationId = ["conv", ["email", "D1B832D9-BE11-43A3-8DAA-2447C5AB27F9@aol.com"]];
+                    rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(conversationId)) + '&schemas=%5B%22*%22%5D', {
+                        templateId: 'fullConversation',
+                        containerNode: document.getElementById('convoDisplay')
+                    });
+                    fetchedConvo = true;
+                }
+            });
+            */
         });
     </script>
-</head>
-<body class="templateRemove">
+<</head>
+<body>
 
   <div id="header">
 
@@ -64,18 +67,10 @@
     </div>
   </div>
 
-
-    <!-- div class="convo template" data-api="conversations/personal">
-        <span>{subject}</span>
-        <div class="message template" data-prop="messages">
-            <span>{schemas['rd.msg.body'].from_display}</span>
-        </div>
-    </div -->
-
   <div class="inflow templateContainer">
     <div class="row template" data-api="conversations/personal">
-      {! first messages[0].schemas['rd.msg.body']}
-      {! from rdapi.identity(first.from)}
+      {. first messages[0].schemas['rd.msg.body']}
+      {. from rdapi.identity(first.from)}
       <div class="c3">
         <span class="date">{first.timestamp}</span>
 
@@ -97,12 +92,14 @@
         </div>
       </div>
       <div class="replies">
-        <div class="c3 reply template" data-prop="messages[1:]">
-        <div class="arrow"></div>
-          {! body schemas['rd.msg.body']}
-          <div class="messageReply noArrow">
-            <span class="name">{body.from_display}</span> {body.body_preview}</div>
-        </div>
+        {messages[1:] [}
+            <div class="c3 reply">
+            <div class="arrow"></div>
+              {. body schemas['rd.msg.body']}
+              <div class="messageReply noArrow">
+                <span class="name">{body.from_display}</span> {body.body_preview}</div>
+            </div>
+        {]}
       </div> 
       <div class="c3">
         <div class="more"><a href="#">view all replies ({messages[1:].length})</a></div>
