@@ -113,7 +113,7 @@ $.fn.fancyZoom = function(options){
       opacity : "show",
       width   : width,
       height  : height
-    }, 500, null, function() {
+    }, 100, null, function() {
       if (options.scaleImg != true) {
     		zoom_content.html(content_div.html());
   		}
@@ -139,7 +139,7 @@ $.fn.fancyZoom = function(options){
       opacity : "hide",
       width   : '1px',
       height  : '1px'
-    }, 500, null, function() {
+    }, 100, null, function() {
       if (zoom_close.attr('scaleImg') == 'true') {
     		zoom_content.html('');
   		}

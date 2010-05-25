@@ -216,14 +216,10 @@ body {
   width: 24px;
   height: 24px;
   display: inline-block;
-  background-color: #FF8C8C;
+  background-color: #FF5959;
   background-image: url("i/face.png");
   background-position: center center;
   background-repeat: no-repeat;
-}
-
-.inflow .row:nth-child(2n) .avatar {
-  background-color: #ff5959;
 }
 
 .row .name {
@@ -322,7 +318,6 @@ body {
 .inflow .row .twitterActions li {
   display: inline;
   margin: 0 5px 0 0;
-  font-weight: bold;
   color: #666;
   font-size: 11px;
 }
@@ -470,4 +465,13 @@ body {
 
 .name:empty:after {
   content: 'unknown';
+}
+
+#header li.account {
+  padding: 2px 10px;
+  background-color: #ff5959;
+  color: #fff;
+  font-weight: bold;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
 }
