@@ -212,6 +212,10 @@ body {
   text-decoration: underline;
 }
 
+.totalReplies:empty:after {
+  content: "0";
+}
+
 .inflow .row .avatar {
   width: 24px;
   height: 24px;
@@ -474,4 +478,8 @@ body {
   font-weight: bold;
   -moz-border-radius: 10px;
   -webkit-border-radius: 10px;
+}
+
+.template {
+  visibility: hidden;
 }
