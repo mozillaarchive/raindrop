@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peeps</title>
+    <link type="text/css" rel="stylesheet" href="peeps.css">
+    <script src="../api/scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
+    <script>
+        "use strict";
+        /*global require: false, window: false, console: false */
+        //http://people.mozilla.com/~mhanson/contacts/
+
+        require(["jquery", "rdapi"], function ($, rdapi) {
+
+            function onPeople(people) {
+                //Only care about people who have an email, phone number or an URL.
+                var useful = people.filter(function (person) {
+                    return !!(person.emails || person.phoneNumbers || person.urls || person.addresses);
+                });
+
+                console.log(useful);
+            }
+
+            function onPeopleError(err) {
+                console.log(err);
+                if (err.message.indexOf('permission denied') !== -1) {
+                    $('permissionDenied').removeClass('hidden');
+                }
+            }
+
+            function importContacts() {
+                navigator.people.find(
+                    {},
+                    ["displayName", "emails", "phoneNumbers", "urls", "photos", "addresses"],
+                    onPeople,
+                    onPeopleError
+                );
+            }
+
+            $(function () {
+                if (window.navigator.people) {
+                    $('#import').removeClass('hidden');
+                    $('.importAction').click(function (evt) {
+                        importContacts();
+                        evt.preventDefault();
+                    });
+                } else {
+                    $('#install').removeClass('hidden');
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Peeps</h1>
+    <div id="actions">
+        <a id="install" class="hidden" href="http://mozillalabs.com/contacts">Please install the Contacts Add-on for Firefox, then come back here.</a>
+        <div id="import">
+            <p>Have you told the Contacts Add-on about your contacts? If not, use the <b>Tools, Contacts</b> menu option to do so now.</p>
+            <a class="importAction" href="#import">Yes, I am ready to import contacts to Raindrop</a>
+        </div>
+        <div id="permissionDenied" class="hidden">
+            Pretty please with sugar on top? <a class="importAction" href="#import">Try again</a>
+        </div>
+    </div>
+</body>
+</html>
