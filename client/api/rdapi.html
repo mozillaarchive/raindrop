@@ -30,22 +30,23 @@
 
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
-        require(["rdapi"], function (rdapi) {
-            /*
-            var fetchedConvo = false;
-            $(document).bind('rdapi-done', function (evt, node) {
-                console.log('Got rdapi-done: ', node);
-                
-                if (!fetchedConvo) {
-                    var conversationId = ["conv", ["email", "D1B832D9-BE11-43A3-8DAA-2447C5AB27F9@aol.com"]];
-                    rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(conversationId)) + '&schemas=%5B%22*%22%5D', {
+        require(["jquery", "rdapi"], function ($, rdapi) {
+            $(function () {
+                $('body')
+                .delegate('.list.subject', 'click', function (evt) {
+                    var data = rdapi.data($(evt.target).parents('[data-blade-motif]').first().attr('data-blade-motif'));
+                    console.log(data);
+                    rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
                         templateId: 'fullConversation',
-                        containerNode: document.getElementById('convoDisplay')
+                        containerNode: document.getElementById('convDisplay')
                     });
-                    fetchedConvo = true;
-                }
+                    evt.preventDefault();
+                })
+                .delegate('.fullConvClose', 'click', function (evt) {
+                    $('#convDisplay').html('');
+                    evt.preventDefault();
+                });
             });
-            */
         });
     </script>
 </head>
@@ -87,7 +88,7 @@
         </div>
       </div>
       <div class="c2">
-        <div class="subject"><a class="subject" href="#">{subject}</a></div>
+        <div class="subject"><a class="list subject" href="#">{subject}</a></div>
         <div class="messageBody">{first.body_preview}
         </div>
       </div>
@@ -149,12 +150,18 @@
     </div>
   </div>
 
+  <div class="conversation template" data-id="fullConversation">
+    <div class="subject">{subject}</div>
+    <a class="fullConvClose" href="#close">Close</a>
+    {messages [}
+        <div class="message">
+          <div class="from">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
+          <div class="body">{schemas['rd.msg.body'].body}</div>
+        </div>
+    {]}
+  </div>
 
-
-<div class="fullConversation template" data-id="fullConversation">
-        {subject}
-</div>
-<div id="convoDisplay"></div>
+<div id="convDisplay"></div>
 </body>
 </html>
 
