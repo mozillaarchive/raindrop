@@ -73,7 +73,7 @@
       {. first messages[0].schemas['rd.msg.body']}
       {. from rdapi.identity(first.from)}
       <div class="c3">
-        <span class="date">{first.timestamp}</span>
+        <span class="date">{first.timestamp} - via email</span>
 
         <span class="actions">hide delete</span>
       </div>
@@ -103,7 +103,7 @@
         {]}
       </div> 
       <div class="c3">
-        <div class="more"><a href="#">view all replies ({messages[1:].length})</a></div>
+        <div class="more"><a href="#">view all replies (<span class="totalReplies">{messages[1:].length}</span>)</a></div>
       </div>
     </div>
   </div>
