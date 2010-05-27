@@ -16,7 +16,7 @@
 
 body {
   width: 960px;
-  margin: 100px auto 0 auto;
+  margin: 45px auto 0 auto;
   font-family: "Helvetica Neue", Helvetica, Arial, Sans-serif;
   font-size: 12px;
   line-height: 24px;
@@ -163,10 +163,11 @@ body {
 }
 
 .inflow {
-  width: 480px;
+  width: 481px;
   background: #fff;
   margin-bottom: 100px;
   float: left;
+  border-right: 1px solid #ccc;
 }
 
 .inflow .row {
@@ -177,6 +178,7 @@ body {
 
 .inflow .row:first-child {
   border-top: none;
+  padding-top: 55px;
 }
 
 .inflow .row.highlight {
@@ -408,8 +410,7 @@ body {
   margin-right: 0;
   top: 0;
   right: 0;
-  width: 481px;
-  border-left: 1px solid #ccc;
+  width: 480px;
 }
 
 #convDisplay {
@@ -418,11 +419,9 @@ body {
   margin-right: 0;
   top: 0;
   right: 0;
-  width: 481px;
   border-left: 1px solid #ccc;
-  background: #fafafa;
-  -moz-border-radius: 0px 5px 5px 0px;
-  -webkit-border-radius: 0px 5px 5px 0px;
+  width: 480px;
+  background-color: #fff;
 }
 
 .widgets.fullMessage .row {
@@ -431,7 +430,7 @@ body {
 }
 
 .widgets.fullMessage .row:first-child {
-  margin: 0 0 20px 0;
+  margin: 56px 0 20px 0;
   padding: 0;
 }
 
