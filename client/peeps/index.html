@@ -30,7 +30,7 @@
             function importContacts() {
                 navigator.people.find(
                     {},
-                    ["displayName", "emails", "phoneNumbers", "urls", "photos", "addresses"],
+                    ["displayName", "accounts", "emails", "phoneNumbers", "urls", "photos", "addresses"],
                     onPeople,
                     onPeopleError
                 );
