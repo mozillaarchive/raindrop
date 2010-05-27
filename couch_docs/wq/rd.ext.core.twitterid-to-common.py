@@ -43,5 +43,5 @@ def handler(doc):
         if v:
             yield ('url', v.rstrip('/')), 'homepage'
 
-    def_contact_props = {'name': doc['twitter_name'] or doc['twitter_screen_name']}
+    def_contact_props = {'displayName': doc['twitter_name'] or doc['twitter_screen_name']}
     emit_related_identities(gen_em(), def_contact_props)

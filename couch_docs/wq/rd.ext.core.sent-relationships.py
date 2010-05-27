@@ -34,4 +34,4 @@ def handler(doc):
         for idid, name in zip(all_to, all_display):
             # emit a sequence of (identity_id, relationship) tuples - where
             # all we know about this relationship is it is an email addy...
-            emit_related_identities([(idid, 'email')], {'name': name})
+            emit_related_identities([(idid, 'email')], {'displayName': name})

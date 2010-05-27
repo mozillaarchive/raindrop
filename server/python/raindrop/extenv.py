@@ -219,7 +219,6 @@ def get_ext_env(doc_model, context, src_doc, ext):
     return new_globs
 
 
-# NOTE: called from a background thread by extensions, so we can block :)
 def items_from_related_identities(doc_model, idrels, def_contact_props, ext_id):
     idrels = list(idrels) # likely a generator...
     assert idrels, "don't give me an empty list - just don't emit!!"
@@ -264,22 +263,28 @@ def items_from_related_identities(doc_model, idrels, def_contact_props, ext_id):
                 logger.debug("Found existing contact %r", contact_id)
                 break
     else: # for loop not broken...
-        # allocate a new contact-id; we can't use a 'natural key' for a
-        # contact....
-        contact_id = str(uuid.uuid4())
-        # just choose any of the ID's details (although first is likely
-        # to be 'best')
-        cdoc = {}
-        # We expect a 'name' field at least...
-        assert 'name' in def_contact_props, def_contact_props
-        cdoc.update(def_contact_props)
-        logger.debug("Will create new contact %r", contact_id)
-        yield {'rd_key' : ['contact', contact_id],
-               'rd_schema_id' : 'rd.contact',
-               # ext_id might be wrong here - maybe it should be 'us'?
-               'rd_ext_id' : ext_id,
-               'items' : cdoc,
-        }
+        # We expect a 'displayName' field at least...
+        assert 'displayName' in def_contact_props, def_contact_props
+        # See if we can match the 'displayName' for a contact.
+        result = doc_model.open_view(viewId="contact_name",
+                                     key=def_contact_props['displayName'])
+        if result['rows']:
+            contact_id = result['rows'][0]['value']['rd_key']
+        else:
+            # allocate a new contact-id; we can't use a 'natural key' for a
+            # contact....
+            contact_id = str(uuid.uuid4())
+            # just choose any of the ID's details (although first is likely
+            # to be 'best')
+            cdoc = {}
+            cdoc.update(def_contact_props)
+            logger.debug("Will create new contact %r", contact_id)
+            yield {'rd_key' : ['contact', contact_id],
+                   'rd_schema_id' : 'rd.contact',
+                   # ext_id might be wrong here - maybe it should be 'us'?
+                   'rd_ext_id' : ext_id,
+                   'items' : cdoc,
+            }
 
     # We know the contact to use and the list of identities
     # which we know exist. We've also got the 'contacts' schemas for

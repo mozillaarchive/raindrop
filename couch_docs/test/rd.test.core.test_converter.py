@@ -84,4 +84,7 @@ def handler(src):
         ]
         if test_proto.test_emit_common_identities:
             items.append((['test_identity', 'common'], 'public'))
-        emit_related_identities(items, {'name':'test protocol'})
+            name = "test protocol 2"
+        else:
+            name = "test protocol"
+        emit_related_identities(items, {'displayName':name})

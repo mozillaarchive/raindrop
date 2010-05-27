@@ -54,6 +54,6 @@ def handler(doc):
             yield ('phone', props['skype_handle']), 'home'
 
     def_contact_props = {
-        'name': doc['skype_displayname'] or doc['skype_fullname'],
+        'displayName': doc['skype_displayname'] or doc['skype_fullname'],
     }
     emit_related_identities(_gen_em(doc), def_contact_props)
