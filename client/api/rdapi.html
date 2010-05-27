@@ -32,17 +32,55 @@
     <script>
         require(["jquery", "rdapi"], function ($, rdapi) {
             $(function () {
+                var parent, scrollY, targetTop,
+                    inflow = $('.inflow'),
+                    widgets = $('.widgets'),
+                    convDisplay = $('#convDisplay'),
+                    top = inflow[0].getBoundingClientRect().top;
+
                 $('body')
                 .delegate('.list.subject', 'click', function (evt) {
-                    var data = rdapi.data($(evt.target).parents('[data-blade-motif]').first().attr('data-blade-motif'));
+                    //Clean up old selection
+                    if (parent) {
+                        parent.removeClass('highlight');
+                    }
+
+                    //Get data for current selected conversation, highlight it.
+                    parent = $(evt.target).parents('[data-blade-motif]').first();
+                    parent.addClass('highlight');
+
+                    //Load the conversation data
+                    var data = rdapi.data(parent.attr('data-blade-motif'));
                     rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
                         templateId: 'fullConversation',
                         containerNode: document.getElementById('convDisplay')
                     });
+
+                    //Hide widgets area and fix the conversations.
+                    widgets.addClass('hidden');
+                    convDisplay.html('');
+
+                    //Remove the fixed stuff so we can get an accurate position.
+                    inflow.removeClass('fixed').css({
+                        top: '0px'
+                    });
+                    window.scrollTo(0, 0);
+
+                    //Find the top of the conversation box
+                    targetTop = parent[0].getBoundingClientRect().top;
+
+                    inflow.addClass('fixed').css({
+                        top: ((2*top) - targetTop) + 'px'
+                    })
                     evt.preventDefault();
                 })
                 .delegate('.fullConvClose', 'click', function (evt) {
-                    $('#convDisplay').html('');
+                    convDisplay.html('');
+                    widgets.removeClass('hidden');
+                    inflow.removeClass('fixed');
+                    window.scrollTo(window.scrollX, targetTop - top);
+                    parent.removeClass('highlight');
+                    parent = null;
                     evt.preventDefault();
                 });
             });

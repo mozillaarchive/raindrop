@@ -40,6 +40,14 @@ body {
   color: #888;
 }
 
+.hidden {
+    display: none;
+}
+
+.fixed {
+    position: fixed;
+}
+
 /* grid */
 
 .row {
