@@ -37,7 +37,69 @@
                     widgets = $('.widgets'),
                     convDisplay = $('#convDisplay'),
                     top = inflow[0].getBoundingClientRect().top,
-                    inflowPaddingTop = parseInt(window.getComputedStyle(inflow[0], null).paddingTop, 10);
+                    inflowPaddingTop = parseInt(window.getComputedStyle(inflow[0], null).paddingTop, 10),
+                    showingConversation = false;
+
+
+                $('html').live('keyup', function (evt) {
+                    //Keyboard nav for selecting different conversations
+                    var keyCode = evt.keyCode, highlighted, newHighlight,
+                        rect, isMessageNav = false;
+                    if (keyCode === 74) {
+                        //j
+                        highlighted = $('.inflow > .highlight');
+                        if (highlighted.length) {
+                            newHighlight = highlighted.next();
+                        } else {
+                            newHighlight = $('.inflow > .row').first();
+                        }
+                    } else if (keyCode === 75) {
+                        //k
+                        highlighted = $('.inflow > .highlight');
+                        if (highlighted.length) {
+                            newHighlight = highlighted.prev();
+                        } else {
+                            newHighlight = $('.inflow > .row').last();
+                        }
+                    } else if (showingConversation && keyCode === 78) {
+                        //n
+                        isMessageNav = true;
+                        highlighted = $('#convDisplay .fullReply.highlight');
+                        if (highlighted.length) {
+                            newHighlight = highlighted.next();
+                        } else {
+                            newHighlight = $('#convDisplay .fullReply').first();
+                        }
+                    } else if (showingConversation && keyCode === 80) {
+                        //p
+                        isMessageNav = true;
+                        highlighted = $('#convDisplay .fullReply.highlight');
+                        if (highlighted.length) {
+                            newHighlight = highlighted.prev();
+                            if (!newHighlight.hasClass('fullReply')) {
+                                newHighlight = null;
+                            }
+                        } else {
+                            newHighlight = $('#convDisplay .fullReply').first();
+                        }
+                    }
+
+                    //If here is a newHeighlight, make it the new focus
+                    if (newHighlight && newHighlight.length) {
+                        if (isMessageNav) {
+                            newHighlight.click();
+                            //Make sure message can be seen.
+                            rect = newHighlight[0].getBoundingClientRect();
+                            if (rect.top + rect.height > window.innerHeight) {
+                                window.scrollTo(window.scrollX, rect.top - top);
+                            } else if (rect.top < top) {
+                                window.scrollTo(window.scrollX, top);
+                            }
+                        } else {
+                            newHighlight.find('.subject').click();
+                        }
+                    }
+                })
 
                 $('body')
                 .delegate('.list.subject', 'click', function (evt) {
@@ -54,7 +116,10 @@
                     var data = rdapi.data(parent.attr('data-blade-motif'));
                     rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
                         templateId: 'fullConversation',
-                        containerNode: document.getElementById('convDisplay')
+                        containerNode: document.getElementById('convDisplay'),
+                        onTemplateDone: function () {
+                            showingConversation = true;
+                        }
                     });
 
                     //Hide widgets area and fix the conversations.
@@ -77,13 +142,18 @@
                 })
                 .delegate('.fullConvClose', 'click', function (evt) {
                     convDisplay.html('');
+                    showingConversation = false;
                     widgets.removeClass('hidden');
                     inflow.removeClass('fixed');
                     window.scrollTo(window.scrollX, targetTop - inflowPaddingTop - top);
                     parent.removeClass('highlight');
                     parent = null;
                     evt.preventDefault();
-                });
+                })
+                .delegate('#convDisplay .row', 'click', function (evt) {
+                    convDisplay.find('.highlight').removeClass('highlight');
+                    $(evt.target).addClass('highlight');
+                })
             });
         });
     </script>
@@ -139,9 +209,12 @@
             </div>
         {]}
       </div> 
+      {. extraCount messages[1:].length}
+      {extraCount [}
       <div class="c3">
-        <div class="more"><a href="#">view all replies (<span class="totalReplies">{messages[1:].length}</span>)</a></div>
+        <div class="more"><a href="#">view all replies (<span class="totalReplies">{}</span>)</a></div>
       </div>
+      {]}
     </div>
   </div>
 

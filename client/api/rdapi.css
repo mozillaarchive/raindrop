@@ -432,6 +432,10 @@ body {
   background-color: #fff;
 }
 
+#convDisplay .row.highlight {
+  background-color:#F2F2F2;
+}
+
 .widgets.fullMessage .row {
   margin: 0;
   padding: 10px 0;
