@@ -421,6 +421,8 @@ body {
   width: 481px;
   border-left: 1px solid #ccc;
   background: #fafafa;
+  -moz-border-radius: 0px 5px 5px 0px;
+  -webkit-border-radius: 0px 5px 5px 0px;
 }
 
 .widgets.fullMessage .row {
