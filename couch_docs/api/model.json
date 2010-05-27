@@ -1,0 +1,14 @@
+{
+  "rd_key" : ["api", "model"],
+  "schemas" : {
+    "rd.ext.api" : {
+        "code" : "RDFILE: *.py",
+        "content_type" : "application/x-python",
+        "endpoints" : [
+                       ["model", "contacts"],
+                       ["model", "schemas"]
+                      ],
+        "info": "Exposes the back-end document model REST API"
+    }
+  }
+}
