@@ -6,6 +6,7 @@
     <script src="../api/scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
         "use strict";
+        /*jslint plusplus: false */
         /*global require: false, window: false, console: false */
         //http://people.mozilla.com/~mhanson/contacts/
 
@@ -13,11 +14,47 @@
 
             function onPeople(people) {
                 //Only care about people who have an email, phone number or an URL.
-                var useful = people.filter(function (person) {
-                    return !!(person.emails || person.phoneNumbers || person.urls || person.addresses);
-                });
+                var contact, identities, type, i, item,
+                    props = {
+                        'emails': 'email',
+                        'urls': 'url',
+                        'phoneNumbers': 'phoneNumber'
+                    };
 
-                console.log(useful);
+                people.forEach(function (person) {
+                    if (person.accounts) {
+                        console.log(person);
+                    }
+                    var prop;
+                    contact = {
+                        displayName: person.displayName
+                    };
+                    identities = [];
+
+                    //Pull out possible identity info.
+                    for (prop in props) {
+                        if (props.hasOwnProperty(prop)) {
+                            type = props[prop];
+                            if (person[prop]) {
+                                for (i = 0; (item = person[prop][i]); i++) {
+                                    identities.push([[type, item.value], type]);
+                                }
+                            }
+                        }
+                    }
+
+                    //If there are new identities to send, do that now for this contact.
+                    if (identities.length) {
+                        rdapi('model/contacts/create_identity_relationships', {
+                            type: 'POST',
+                            processData: false,
+                            data: JSON.stringify({
+                                contact_properties: contact,
+                                relationships: identities
+                            })
+                        });
+                    }
+                });
             }
 
             function onPeopleError(err) {
@@ -30,7 +67,7 @@
             function importContacts() {
                 navigator.people.find(
                     {},
-                    ["displayName", "accounts", "emails", "phoneNumbers", "urls", "photos", "addresses"],
+                    ["displayName", "emails", "phoneNumbers", "accounts", "urls", "photos", "addresses"],
                     onPeople,
                     onPeopleError
                 );

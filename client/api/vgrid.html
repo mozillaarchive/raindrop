@@ -44,7 +44,7 @@
                   $("#zoomTarget").fancyZoom({ width:600, height:300 });
                   $(".subject").click(function() {
                       var data = rdapi.data($(this.parentNode).attr('data-blade-motif'));
-                      rdapi('conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
+                      rdapi('inflow/conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
                           templateId: 'fullConversation',
                           containerNode: document.getElementById('convoDisplay'),
                           onTemplateDone: function () {
@@ -67,7 +67,7 @@
 
   <div id="grid-content" class="inflow templateContainer">
 
-    <div class="row template" data-api="conversations/personal">
+    <div class="row template" data-api="inflow/conversations/personal">
       <a class="subject" href="#convoDisplay">{subject}</a>
       <div class="date">sent on {messages[0].schemas['rd.msg.body'].timestamp}</div>
       <div class="name">{from_display[0]}</div>
