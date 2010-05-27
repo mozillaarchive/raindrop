@@ -80,10 +80,9 @@
         <div class="avatar"><!--{from.url}--></div>
         <div class="name">{from_display[0]}</div>
         <div class="twitterActions">
-        <li>reply</li> 
-        <li>forward</li>
-        <li>&#x2605;</li>
-
+          <li>reply</li> 
+          <li>forward</li>
+          <li>&#x2605;</li>
         </div>
       </div>
       <div class="c2">
@@ -112,7 +111,12 @@
       <div class="c3 accounts">
         <li><span class="selected">Inflow</span></li>
         <li>Gmail</li>
-        <li>Twitter</li>
+        <li><span class="placeholder">Twitter</span></li>
+          <li class="twitterOptions">@_andychung</li>
+          <li class="twitterOptions">Direct Messages</li>
+          <li class="twitterOptions">Favorites</li>
+          <li class="twitterOptions">Retweets</li>
+          <li class="twitterOptions">Lists</li>
       </div>
     </div>
     
@@ -149,15 +153,35 @@
     </div>
   </div>
 
-  <div class="conversation template" data-id="fullConversation">
-    <div class="subject">{subject}</div>
-    <a class="fullConvClose" href="#close">Close</a>
+  <div class="conversation template widgets fullMessage" data-id="fullConversation">
+    <div class="row">
+      <div class="c3">
+        <div class="actions"><a class="fullConvClose" href="#close">Close</a></div>
+      </div>
+      <div class="c3">
+        <span class="subject">{subject}</span>
+      </div>
+    </div>
     {messages [}
+      <div class="row fullReply">
         <div class="message">
-          <div class="from">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
-          <div class="body">{schemas['rd.msg.body'].body}</div>
+          <div class="c2">
+            <div class="avatar"></div>
+            <div class="from name">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
+          </div>
+          <div class="c1">
+            <div class="actions"><a class="fullConvClose" href="#close">Close</a></div>
+          </div>
         </div>
-    {]}
+        <div class="c3"> 
+          <div class="messageBody">{schemas['rd.msg.body'].body}</div>
+        </div>
+        <div class="c3">
+          <div class="actions">reply forward</div>
+        </div> 
+      </div>
+      {]}
+    </div>
   </div>
 
 <div id="convDisplay"></div>
