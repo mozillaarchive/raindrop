@@ -216,7 +216,7 @@ body {
   content: "0";
 }
 
-.inflow .row .avatar {
+.row .avatar {
   width: 24px;
   height: 24px;
   display: inline-block;
@@ -412,6 +412,19 @@ body {
   border-left: 1px solid #ccc;
 }
 
+#convDisplay {
+  position: absolute;
+  float: right;
+  margin-right: 0;
+  top: 0;
+  right: 0;
+  width: 481px;
+  border-left: 1px solid #ccc;
+  background: #fafafa;
+  -moz-border-radius: 0px 5px 5px 0px;
+  -webkit-border-radius: 0px 5px 5px 0px;
+}
+
 .widgets.fullMessage .row {
   margin: 0;
   padding: 10px 0;
@@ -431,7 +444,7 @@ body {
   background-color: #f2f2f2;
 }*/
 
-.row.fullReply .messageBody {
+.widgets.fullMessage .messageBody {
   color: #666;
 }
 
@@ -447,6 +460,7 @@ body {
 .date {
   font-size: 11px;
   color: #888;
+  font-weight: normal;
 }
 
 .inflow .date {
@@ -456,6 +470,7 @@ body {
 .actions a {
   color: #888;
   text-decoration: none;
+  font-size: 11px;
 }
 
 .subject:empty:after {
@@ -482,4 +497,10 @@ body {
 
 .template {
   visibility: hidden;
+}
+
+li.twitterOptions {
+  font-size: 12px;
+  margin: 0 0 0 14px;
+  color: #666;
 }
