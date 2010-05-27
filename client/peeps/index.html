@@ -22,9 +22,6 @@
                     };
 
                 people.forEach(function (person) {
-                    if (person.accounts) {
-                        console.log(person);
-                    }
                     var prop;
                     contact = {
                         displayName: person.displayName
@@ -41,6 +38,14 @@
                                 }
                             }
                         }
+                    }
+
+                    //Save accounts a bit differently
+                    if (person.accounts) {
+                        //console.log(person);
+                        person.accounts.forEach(function (account) {
+                            identities.push([['identity', [account.domain, account.userid]], 'account']);
+                        });
                     }
 
                     //If there are new identities to send, do that now for this contact.
