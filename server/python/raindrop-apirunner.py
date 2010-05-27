@@ -148,8 +148,8 @@ class API:
         # kinda like abspath, but makes a URL absolute based on our raindrop
         # location and port name.
         # this is very very hacky...
-        host = db.connection.host
-        port = db.connection.port or 80
+        host = db.doc_model.db.host
+        port = db.doc_model.db.port or 80
         return ("http://%s:%s" % (host, port)) + db.uri + path
 
 api_globals['API'] = API
