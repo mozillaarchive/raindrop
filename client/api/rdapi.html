@@ -36,7 +36,8 @@
                     inflow = $('.inflow'),
                     widgets = $('.widgets'),
                     convDisplay = $('#convDisplay'),
-                    top = inflow[0].getBoundingClientRect().top;
+                    top = inflow[0].getBoundingClientRect().top,
+                    inflowPaddingTop = parseInt(window.getComputedStyle(inflow[0], null).paddingTop, 10);
 
                 $('body')
                 .delegate('.list.subject', 'click', function (evt) {
@@ -70,7 +71,7 @@
                     targetTop = parent[0].getBoundingClientRect().top;
 
                     inflow.addClass('fixed').css({
-                        top: ((2*top) - targetTop) + 'px'
+                        top: ((2*top) + inflowPaddingTop - targetTop) + 'px'
                     })
                     evt.preventDefault();
                 })
@@ -78,7 +79,7 @@
                     convDisplay.html('');
                     widgets.removeClass('hidden');
                     inflow.removeClass('fixed');
-                    window.scrollTo(window.scrollX, targetTop - top);
+                    window.scrollTo(window.scrollX, targetTop - inflowPaddingTop - top);
                     parent.removeClass('highlight');
                     parent = null;
                     evt.preventDefault();
