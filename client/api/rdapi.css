@@ -185,14 +185,11 @@ body {
   margin: 0;
 }
 
-.inflow .row:first-child {
-  border-top: none;
-}
-
 .inflow .row.highlight {
-  background-color: #f2f2f2;
+  background-color: #ffffd9;
 }
 
+/*
 .inflow .row.highlight .subject {
   background-image: url("i/arrow-right.png");
   background-repeat: none;
@@ -200,6 +197,7 @@ body {
   margin-left: -10px;
   padding-left: 10px;
 }
+*/
 
 .inflow .row .actions,
 .inflow .row .more,
@@ -251,6 +249,8 @@ body {
 .inflow .row .subject {
   font-size: 14px;
   font-weight: bold;
+  max-height: 24px;
+  overflow: hidden;
 }
 
 .inflow .row .subject a {
@@ -442,8 +442,9 @@ body {
 }
 
 .widgets.fullMessage .row:first-child {
-  margin: 56px 0 20px 0;
+  margin: 55px 0 10px 0;
   padding: 0;
+  border-top: 1px solid #ccc;
 }
 
 .widgets.fullMessage .subject {
@@ -460,7 +461,7 @@ body {
 }
 
 .widgets.fullMessage .row.fullReply {
-  border-top: 1px dotted #ccc;
+  border-bottom: 1px dotted #ccc;
 }
 
 .widgets.fullMessage .row.fullReply .actions {
