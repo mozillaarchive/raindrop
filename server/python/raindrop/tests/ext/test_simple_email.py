@@ -217,9 +217,6 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         key = ["schema_id", "rd.msg.grouping-tag"]
         result = self.doc_model.open_view(key=key, reduce=False,
                                           include_docs=True)
-        result = self.doc_model.open_view(key=key, reduce=False,
-                                          include_docs=True)
-
         # Make sure we got one result with type twitter
         rows = result['rows']
         self.failUnlessEqual(len(rows), 1)
