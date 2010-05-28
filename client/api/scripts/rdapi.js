@@ -9,7 +9,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
         templateRegistry = {},
         idRegistry = {},
         config = {
-            baseUrl: '/raindrop/',
+            baseUrl: '../',
             apiPath: '_api/',
             saveTemplateData: true
         };
