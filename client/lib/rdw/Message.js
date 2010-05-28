@@ -127,17 +127,18 @@ require.def("rdw/Message",
                 // want the union of all schemas for all attachments, and the
                 // "handled" schemas
                 var wantedSchemasSet = {};
-                for each (var lh in allHandlers) {
-                    for each (var sid in lh.schemas) {
+                rd.iter(allHandlers, function (lh) {
+                    rd.iter(lh.schemas, function (sid) {
                         if (!wantedSchemasSet[sid]) {
-                            for each (var attach in attachments) {
+                            rd.iter(attachments, function (attach) {
                                 if (attach.schemas.hasOwnProperty(sid)) {
                                     wantedSchemasSet[sid] = true;
                                 }
-                            }
+                            });
                         }
-                    }
-                }
+                    });
+                });
+
                 // turn it back into an array of unique items
                 var wantedSchemas = [];
                 for (var sid in wantedSchemasSet) {
@@ -148,9 +149,9 @@ require.def("rdw/Message",
                 if (wantedSchemas.length) {
                     // the ids of all attachments
                     var all_ids = [];
-                    for each (var attach in attachments) {
+                    rd.iter(attachments, function (attach) {
                         all_ids.push(attach.id);
-                    }
+                    });
                     api({
                         url: 'inflow/attachments/by_id',
                         keys: all_ids,
@@ -237,9 +238,9 @@ require.def("rdw/Message",
          * be called after fetching any file attachment metadata.
          */
         showAttachments: function (handlers, attachments) {
-            for each (var attach in attachments) {
+            rd.iter(attachments, dojo.hitch(this, function (attach) {
                 var handled = false;
-                for each (handler in handlers) {
+                rd.iter(handlers, dojo.hitch(this, function (handler) {
                     // We only check the first schema ID for the handler; the
                     // other schemas are 'supplementary' schemas.
                     for (var sid in attach.schemas) {
@@ -249,10 +250,11 @@ require.def("rdw/Message",
                         }
                     }
                     if (handled) {
-                        break;
+                        return false;
                     }
-                }
-            }
+                    return true;
+                }))
+            }));
             //Render attachments, if they exist.
             if (this.attachments) {
                 this.attachments.display();

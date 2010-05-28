@@ -8,6 +8,12 @@
 
 "use strict";
 
+if (!String.prototype.trim) {
+    String.prototype.trim = function () {
+        return this.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+    };
+}
+
 require.def("blade/motif", ["blade/object"], function (object) {
 
     //Add comment command
@@ -378,10 +384,10 @@ require.def("blade/motif", ["blade/object"], function (object) {
     motif.fromTemplateCache = function (id, options) {
         var cached = templateCache[id];
         if (options && options.templates && options.templates[id]) {
-            cached = options.templates[id]
+            cached = options.templates[id];
         }
         return cached;
-    }
+    };
 
     return motif;
 });

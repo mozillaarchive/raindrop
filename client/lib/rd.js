@@ -142,6 +142,25 @@ function (require, dojo, dijit, dojox) {
         },
 
         /**
+         * Simulates "for each" for object property iteration. DOES NOT handle
+         * array iteration. Use dojo.forEach for that.
+         * @param {Object} obj the object to iterate over the properties.
+         * @param {Function} callback, the function to call for each property
+         * value. The function is called with two args, first on is the value
+         * of the object's property, and the second is the property name.
+         */
+        iter: function (obj, callback) {
+            var prop;
+            for (prop in obj) {
+                if (!(prop in empty)) {
+                    if (callback(obj[prop], prop) === false) {
+                        break;
+                    }
+                }
+            }
+        },
+
+        /**
          * applies a binary function to an array from left
          * to right using a seed value as a starting point; returns the final
          * value. (Taken from dojox.lang.functional.fold.foldl)

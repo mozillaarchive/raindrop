@@ -30,7 +30,7 @@
 
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
-        require(["jquery", "rdapi"], function ($, rdapi) {
+        require(["jquery", "rdapi", "json2"], function ($, rdapi) {
             $(function () {
                 var parent, scrollY, targetTop,
                     inflow = $('.inflow'),
@@ -298,8 +298,7 @@
           <div class="actions">reply forward</div>
         </div> 
       </div>
-      {]}
-    </div>
+    {]}
   </div>
 
 <div id="convDisplay"></div>
