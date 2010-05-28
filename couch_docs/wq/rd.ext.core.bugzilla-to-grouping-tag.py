@@ -22,15 +22,7 @@
 #   David Ascher
 
 # This the extension version of handling bugzilla messages
-# We look for the list-id header or the list-unsubscribe header to identify that
-# a message was sent from a mailing list using proper headers
-
-# Eventually we should be looking at mailing-list types to see if the from
-# address matches that such that we aren't relying on mailing lists always
-# sending the correct headers like a number of newsletters seem to do.  Gmail
-# for one only requires that the list-unsubscribe header be sent every so often
-# and this causes us to miss detecting that those newsletters are still part
-# of the same scheme
+# We look for a bugzilla specific header.
 
 def handler(schema):
     if not 'headers' in schema or not 'from' in schema['headers']:
