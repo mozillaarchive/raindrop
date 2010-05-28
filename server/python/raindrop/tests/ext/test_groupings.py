@@ -141,6 +141,20 @@ class TestSimpleCorpus(TestCaseWithCorpus):
         ex_grouping_key = ['display-group', 'inflow']
         self.check_groupings(ex_tag, ex_grouping_key)
 
+    def test_bugzilla(self):
+        ndocs = self.load_corpus("hand-rolled", "bugzilla")
+        self.failUnlessEqual(ndocs, 1) # failed to load any corpus docs???
+        self.ensure_pipeline_complete()
+
+        # load the rd.msg.grouping-tag document and compare the results.
+        key = ["schema_id", "rd.msg.grouping-tag"]
+        result = self.doc_model.open_view(key=key, reduce=False,
+                                          include_docs=True)
+
+        # Make sure we got one result with type twitter
+        rows = result['rows']
+        self.failUnlessEqual(len(rows), 1)
+        self.failUnlessEqual(rows[0]['doc']['tag'], "bugzilla-message");
 
 class TestCustom(TestCaseWithTestDB):
     msg_template = """\

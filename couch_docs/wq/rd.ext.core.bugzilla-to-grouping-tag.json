@@ -1,0 +1,11 @@
+{
+  "schemas" : {
+    "rd.ext.workqueue" : {
+        "source_schemas" : ["rd.msg.email"],
+        "code" : "RDFILE: *.py",
+        "content_type" : "application/x-python",
+        "confidence": 10,
+        "info": "Creates new 'rd.msg.grouping-tag' schemas with broadcast value for bugzilla messages"
+    }
+  }
+}

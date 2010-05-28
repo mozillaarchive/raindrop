@@ -1,0 +1,65 @@
+Delivered-To: david.ascher@gmail.com
+Received: by 10.114.150.9 with SMTP id x9cs176wad;
+        Wed, 3 Feb 2010 14:09:40 -0800 (PST)
+Received: by 10.141.12.12 with SMTP id p12mr124912rvi.269.1265234819466;
+        Wed, 03 Feb 2010 14:06:59 -0800 (PST)
+Return-Path: <bugzilla-daemon@mozilla.org>
+Received: from bugs01.sj.mozilla.org (bugs01.sj.mozilla.com [63.245.208.220])
+        by mx.google.com with ESMTP id 8si29943399pzk.116.2010.02.03.14.06.29;
+        Wed, 03 Feb 2010 14:06:59 -0800 (PST)
+Received-SPF: neutral (google.com: 63.245.208.220 is neither permitted nor denied by best guess record for domain of bugzilla-daemon@mozilla.org) client-ip=63.245.208.220;
+Authentication-Results: mx.google.com; spf=neutral (google.com: 63.245.208.220 is neither permitted nor denied by best guess record for domain of bugzilla-daemon@mozilla.org) smtp.mail=bugzilla-daemon@mozilla.org
+Received: from webapp-out.mozilla.org (pm-app-bugs02.mozilla.org [10.2.82.52])
+	by bugs01.sj.mozilla.org (Postfix) with ESMTP id 0612757825D
+	for <david.ascher@gmail.com>; Mon,  1 Feb 2010 21:06:27 -0800 (PST)
+Received: from pm-app-bugs02.mozilla.org (localhost.localdomain [127.0.0.1])
+	by webapp-out.mozilla.org (8.13.8/8.13.8) with ESMTP id o13M6Tp5032305
+	for <david.ascher@gmail.com>; Wed, 3 Feb 2010 14:06:29 -0800
+Received: (from root@localhost)
+	by pm-app-bugs02.mozilla.org (8.13.8/8.13.8/Submit) id o13M6SDE032300;
+	Wed, 3 Feb 2010 14:06:28 -0800
+Date: Wed, 3 Feb 2010 14:06:28 -0800
+Message-Id: <201002032206.o13M6SDE032300@pm-app-bugs02.mozilla.org>
+From: bugzilla-daemon@mozilla.org
+To: doesnotexist@example.com
+Subject: [Bug 544079] mail.check_all_imap_folders_for_new should be exposed
+ in preferences or account settings
+X-Bugzilla-Reason: CC
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: CC bienvenu@nventure.com clarkbw@gnome.org
+X-Bugzilla-Classification: Client Software
+X-Bugzilla-Product: Thunderbird
+X-Bugzilla-Component: Preferences
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: bienvenu@nventure.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Priority: --
+X-Bugzilla-Assigned-To: nobody@mozilla.org
+X-Bugzilla-Target-Milestone: ---
+X-Bugzilla-Changed-Fields: 
+In-Reply-To: <bug-544079-288265@https.bugzilla.mozilla.org/>
+References: <bug-544079-288265@https.bugzilla.mozilla.org/>
+X-Bugzilla-URL: https://bugzilla.mozilla.org/
+Auto-Submitted: auto-generated
+Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+
+Do not reply to this email.  You can add comments to this bug at
+https://bugzilla.mozilla.org/show_bug.cgi?id=544079
+
+--- Comment #1 from David :Bienvenu <bienvenu@nventure.com> 2010-02-03 14:06:22 PST ---
+This is more of a question for Bryan. I believe there's a patch out there that
+does add this to the options UI, iirc.
+
+An other possibility is to add a picker similar to the download for offline use
+that would allow you to quickly select some or all imap folders for check for
+new mail, instead of or in addition to directly exposing this pref. Though we'd
+need to know what to do for newly created folders.
+
+-- 
+Configure bugmail: https://bugzilla.mozilla.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are on the CC list for the bug.
+You are watching someone on the CC list of the bug.
+

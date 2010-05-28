@@ -1,0 +1,9 @@
+{
+  "schemas" : {
+    "rd.grouping.info" : {
+        "title" : "Bugzilla messages",
+        "grouping_tags": ["bugzilla-message"]
+    }
+  },
+  "rd_key": ["display-group", "bugzilla"]
+}
