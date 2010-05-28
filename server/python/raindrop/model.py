@@ -435,11 +435,11 @@ class DocumentModel(object):
         if item.get('rd_source') is None and 'rd_schema_provider' not in item:
             item['rd_schema_provider'] = item['rd_ext_id']
         if 'rd_schema_provider' in item:
-            if 'rd_schema_provider' in doc and item.get('items') and \
-               doc['rd_schema_provider'] != item['rd_schema_provider']:
-                logger.warn('we seem to have multiple providers for %r: %r and %r',
-                            item['rd_schema_id'], doc['rd_schema_provider'],
-                            item['rd_schema_provider'])
+            #if 'rd_schema_provider' in doc and item.get('items') and \
+            #   doc['rd_schema_provider'] != item['rd_schema_provider']:
+            #    logger.warn('we seem to have multiple providers for %r: %r and %r',
+            #                item['rd_schema_id'], doc['rd_schema_provider'],
+            #                item['rd_schema_provider'])
             doc['rd_schema_provider'] = item['rd_schema_provider']
         if 'rd_deps' in item:
             si[ext_id]['rd_deps'] = item['rd_deps']
