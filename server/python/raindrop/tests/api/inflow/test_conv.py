@@ -34,15 +34,14 @@ class TestConvoSimple(APITestCaseWithCorpus):
     def sanity_check_convo(self, convo):
         # all messages in a convo must have the same conversation ID.
         messages = convo['messages']
-        keys = [['key-schema_id', [msg['id'], 'rd.msg.conversation']]
-                for msg in messages]
-        result = self.doc_model.open_view(keys=keys, reduce=False,
-                                          include_docs=True)
-        for row in result['rows']:
+        items = [[msg['id'], 'rd.msg.conversation']
+                 for msg in messages]
+        schemas = self.call_api("model/schemas/open", items=items)
+        for schema in schemas:
             exp = convo['id']
-            got = row['doc']['conversation_id']
+            got = schema['conversation_id']
             self.failUnlessEqual(exp, got,
-                                 "wanted %r - got %r: %s" % (exp, got, pformat(row)))
+                                 "wanted %r - got %r: %s" % (exp, got, pformat(schema)))
 
         # No message should appear twice.
         seen_keys = set([tuple(msg['id']) for msg in messages])
@@ -175,18 +174,17 @@ class TestConvoSimple(APITestCaseWithCorpus):
     def test_by_id(self):
         known_msgs = self.get_known_msgs_to_identities()
         # find the conv IDs
-        keys = [['key-schema_id', [mid, 'rd.msg.conversation']]
-                for mid in known_msgs]
-        result = self.doc_model.open_view(keys=keys, reduce=False,
-                                          include_docs=True)
+        items = [[mid, 'rd.msg.conversation']
+                 for mid in known_msgs]
+        schemas = self.call_api("model/schemas/open", items=items)
         # should be 1 convo
-        self.failUnlessEqual(len(result['rows']), len(keys))
+        self.failUnlessEqual(len(schemas), len(items))
         conv_id = None
-        for row in result['rows']:
+        for schema in schemas:
             if conv_id is None:
-                conv_id = row['doc']['conversation_id']
+                conv_id = schema['conversation_id']
             else:
-                self.failUnlessEqual(conv_id, row['doc']['conversation_id'])
+                self.failUnlessEqual(conv_id, schema['conversation_id'])
 
         result = self.call_api("inflow/conversations/by_id", key=conv_id)
         self.sanity_check_convo(result)
@@ -235,7 +233,7 @@ Hello
         for i in range(1, 10):
             items.append(self.get_message_schema_item("%d@something.com" % i,
                                                       ["0@something.com"]))
-        self.doc_model.create_schema_items(items)
+        self.call_api("model/schemas/create", items=items)
         self.ensure_pipeline_complete()
         # should be 1 convo.
         key = ['schema_id', 'rd.conv.summary']

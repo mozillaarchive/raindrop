@@ -14,11 +14,17 @@ class ContactsAPI(API):
 
 
 class SchemasAPI(API):
-    def create_items(self, items):
+    def create(self, req):
         self.requires_get_or_post(req)
         args = self.get_args(req, 'items')
         db = RDCouchDB(req)
         return db.doc_model.create_schema_items(args['items'])
+
+    def open(self, req):
+        self.requires_get_or_post(req)
+        args = self.get_args(req, 'items')
+        db = RDCouchDB(req)
+        return db.doc_model.open_schemas(args['items'])
 
 
 # A mapping of the 'classes' we expose.  Each value is a class instance, and
