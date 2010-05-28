@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contact Listing</title>
+    <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
+    <script>
+        require(["jquery", "rdapi", "json2"], function ($, rdapi) {
+
+        });
+    </script>
+</head>
+<body>
+    <ul class="contacts templateContainer">
+        <li class="template" data-api="inflow/contacts/by_name"><a href="#{id[1]}">{displayName}</a></li>
+    </ul>
+</body>
+</html>

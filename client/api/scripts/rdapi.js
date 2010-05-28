@@ -2,7 +2,7 @@
 /*global require: false, document: false, console: false */
 "use strict";
 
-require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, object, motif) {
+require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, object, jig) {
 
     var rdapi,
         idCounter = 0,
@@ -22,7 +22,8 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
         //Put node in temp node to get the innerHTML so node's element
         //html is in the output.
         temp.appendChild(node);
-        html = temp.innerHTML;
+        //decode braces when may get URL encoded as part of hyperlinks
+        html = temp.innerHTML.replace(/%7B/g, '{').replace(/%7D/g, '}');
 
         //move the node back.
         if (parent) {
@@ -92,15 +93,15 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
                 rdapi._getIdentities(json, function () {
                     if (options.containerNode && template) {
                         if (options.prop) {
-                            json = motif.getObject(options.prop, json);
+                            json = jig.getObject(options.prop, json);
                         }
 
                         if ($.isArray(json)) {
                             json.forEach(function (item) {
-                                html += motif(template, item, options);
+                                html += jig(template, item, options);
                             });
                         } else {
-                            html += motif(template, json, options);
+                            html += jig(template, json, options);
                         }
 
                         node = $(html);
@@ -216,7 +217,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/motif'], function ($, obj
     };
 
     rdapi.data = function (id) {
-        return motif.data(id);
+        return jig.data(id);
     };
 
     rdapi.identity = function (id) {

@@ -43,7 +43,7 @@
 
                   $("#zoomTarget").fancyZoom({ width:600, height:300 });
                   $(".subject").click(function() {
-                      var data = rdapi.data($(this.parentNode).attr('data-blade-motif'));
+                      var data = rdapi.data($(this.parentNode).attr('data-blade-jig'));
                       rdapi('inflow/conversations/by_id?key=' + encodeURIComponent(JSON.stringify(data.id)) + '&schemas=%5B%22*%22%5D', {
                           templateId: 'fullConversation',
                           containerNode: document.getElementById('convoDisplay'),
