@@ -26,8 +26,8 @@
 "use strict";
 
 require.def("rd/contact",
-["rd", "dojo", "dojo/DeferredList", "couch", "rd/_api", "rd/api", "rd/api/identity"],
-function (rd, dojo, DeferredList, couch, _api, api, identity) {
+["require", "rd", "dojo", "dojo/DeferredList", "couch", "rd/_api", "rd/api", "rd/api/identity"],
+function (req, rd, dojo, DeferredList, couch, _api, api, identity) {
     //Derives from rd/_api
     var contact = dojo.delegate(_api);
     
@@ -166,7 +166,7 @@ function (rd, dojo, DeferredList, couch, _api, api, identity) {
             } else if (contact.name) {
                 //Create the contact record first. Dynamically load the uuid stuff we need
                 //for the contacts.
-                require(["dojox", "dojox/uuid/generateRandomUuid", "dojox/uuid/Uuid"],
+                req(["dojox", "dojox/uuid/generateRandomUuid", "dojox/uuid/Uuid"],
                     dojo.hitch(this, function (dojox) {
                     var uuid = dojox.uuid, uid, apiInst, contactSI;
                     uuid.Uuid.setGenerator(uuid.generateRandomUuid);
