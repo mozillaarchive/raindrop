@@ -261,10 +261,13 @@ class ConversationAPI(API):
         self.requires_get(req)
         args = self.get_args(req, "id", message_limit=None, limit=None, schemas=None, skip=0)
         cid = args['id']
-
+        if cid[0] != "contact":
+            raise APIErrorResponse(400, "invalid contact ID: %s" % (cid,))
         db = RDCouchDB(req)
-        capi = ContactAPI()
+        capi = ContactsAPI()
         idids = capi._fetch_identies_for_contact(db, cid)
+        if not idids:
+            return []
         return self._identities(db, idids, args)
 
     # Fetch all conversations which include a message from the specified contact
@@ -288,7 +291,6 @@ class ConversationAPI(API):
         return self._identities(db, ids, args)
 
     def _identities(self, db, idids, args):
-
         result = db.view('raindrop!content!all/conv_summary_by_identity',
                          keys=idids, limit=args['limit'], skip=args['skip'])
         conv_doc_ids = set(r['id'] for r in result['rows'])
@@ -343,12 +345,48 @@ class ConversationAPI(API):
         return self.in_groups(req)
 
 
-class ContactAPI(API):
+class ContactsAPI(API):
+    def by_name(self, req):
+        self.requires_get(req)
+        args = self.get_args(req, startname=None, endname=None, skip=0, limit=None)
+        view_args = {}
+        if args['startname'] is not None:
+            view_args['startkey'] = args['startname']
+        if args['endname'] is not None:
+            view_args['endkey'] = args['endname']
+        if args['skip'] is not None:
+            view_args['skip'] = args['skip']
+
+        db = RDCouchDB(req)
+        result = db.view('raindrop!content!all/contact_name', **view_args)
+        ret = []
+        for row in result['rows']:
+            this = {'id': row['value']['rd_key'],
+                    'displayName': row['key'],
+                    }
+            ret.append(this)
+        return ret
+        
+    def with_identity(self, req):
+        self.requires_get(req)
+        args = self.get_args(req, 'id')
+        db = RDCouchDB(req)
+        result = db.view('raindrop!content!all/contacts_by_identity', key=args['id'])
+        ret = []
+        for row in result['rows']:
+            this = {}
+            this['id'] = ["contact", row['value'][0]]
+            this['relationship'] = row['value'][1]
+            ret.append(this)
+        return ret
+
     def _fetch_identies_for_contact(self, db, cid):
         # find all identity-ids for the contact
-        startkey = ['rd.identity.contacts', 'contacts', [cid]]
-        endkey = ['rd.identity.contacts', 'contacts', [cid, {}]]
-        result = db.megaview(startkey=startkey, endkey=endkey, reduce=False)
+        # This view only has the uuid portion of the contact ID.
+        startkey = [cid[1]]
+        endkey = [cid[1], {}]
+        result = db.view('raindrop!content!all/identities_by_contact',
+                         startkey=startkey, endkey=endkey)
         ret = []
         for row in result['rows']:
             # the rd_key should be ['identity', idid]
@@ -464,6 +502,7 @@ class AccountAPI(API):
 # all 'public' methods (ie, those without leading underscores) on the instance
 # are able to be called.
 dispatch = {
+    'contacts': ContactsAPI(),
     'conversations': ConversationAPI(),
     'attachments': AttachmentAPI(),
     'grouping' : GroupingAPI(),
@@ -474,5 +513,3 @@ dispatch = {
 # exposing the REST API end-point) - so many points!
 def handler(request):
     return api_handle(request, dispatch)
-
-

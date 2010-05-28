@@ -269,7 +269,9 @@ def items_from_related_identities(doc_model, idrels, def_contact_props, ext_id):
         result = doc_model.open_view(viewId="contact_name",
                                      key=def_contact_props['displayName'])
         if result['rows']:
-            contact_id = result['rows'][0]['value']['rd_key']
+            rdkey = result['rows'][0]['value']['rd_key']
+            assert rdkey[0]=="contact", rdkey # not a contact?
+            contact_id = rdkey[1]
         else:
             # allocate a new contact-id; we can't use a 'natural key' for a
             # contact....
