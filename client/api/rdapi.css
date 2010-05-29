@@ -21,6 +21,7 @@ body {
   font-size: 12px;
   line-height: 24px;
   position: relative; 
+  overflow-y: scroll;
 }
 
 #header {
@@ -30,7 +31,7 @@ body {
   left: 50%;
   margin-left: -480px;
   background-color: #fff;
-  z-index: 1;
+  z-index: 2;
   border-bottom: 1px solid #ccc;
 }
 
@@ -173,16 +174,21 @@ body {
 .inflow {
   width: 481px;
   background: #fff;
-  margin-bottom: 100px;
+  padding-bottom: 55px;
   padding-top: 55px;
   float: left;
   border-right: 1px solid #ccc;
+  z-index: 1;
 }
 
 .inflow .row {
   border-top: 1px solid #ccc;
   padding: 0 0 10px 0;
   margin: 0;
+}
+
+.inflow .row:last-child {
+  border-bottom: 1px solid #ccc;
 }
 
 .inflow .row.highlight {
@@ -267,7 +273,7 @@ body {
 .inflow .row .messageReply,
 .inflow .row .messageAttachments {
   color: #666;
-  margin: 10px 0px 0px 160px;
+  margin: 10px 0px 0px 0;
   padding: 5px;
   background-color: rgba(204, 204, 204, 0.35);
   font-size: 11px;
@@ -277,6 +283,8 @@ body {
 
 .inflow .row .messageReply.noArrow {
   margin-top: 2px;
+  width: 300px;
+  overflow: hidden;
 }
 
 .inflow .replies > .reply:nth-child(n+3) {
@@ -290,7 +298,7 @@ body {
 .replies > .reply:nth-child(1) > .arrow {
   display: block;
   position: absolute;
-  left: 180px;
+  left: 20px;
   top: -14px;
 }
 
@@ -300,8 +308,16 @@ body {
   position: relative;
 }
 
-.inflow .row.read > .replies {
+.inflow .row .replies:empty {
   display: none;
+}
+
+.inflow .row.read .replies {
+  display: none;
+}
+
+.inflow .row.read .subject {
+  color: #666;
 }
 
 .inflow .row .messageAttachments {
@@ -430,6 +446,7 @@ body {
   border-left: 1px solid #ccc;
   width: 480px;
   background-color: #fff;
+  z-index: 0;
 }
 
 #convDisplay .row.highlight {
@@ -458,6 +475,7 @@ body {
 
 .widgets.fullMessage .messageBody {
   color: #666;
+  overflow: hidden;
 }
 
 .widgets.fullMessage .row.fullReply {
