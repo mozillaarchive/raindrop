@@ -2,16 +2,75 @@
 <html>
 <head>
     <title>Contact Listing</title>
+    <style type="text/css">
+        #contactList,
+        #identityDisplay {
+            float: left;
+        }
+        
+        #identityDisplay {
+            border: 1px solid black;
+        }
+    </style>
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
-        require(["jquery", "rdapi", "json2"], function ($, rdapi) {
+        "use strict";
+        /*global require: false, console: false */
+        require(["jquery", "rdapi", "blade/jig", "json2"], function ($, rdapi, jig) {
+            $('body').delegate('a.person', 'click', function (evt) {
+                evt.preventDefault();
+                var data = rdapi.data(evt.target.parentNode.getAttribute('data-blade-jig'));
+                rdapi('_design/raindrop!content!all/_view/identities_by_contact', {
+                    data: {
+                        startkey: JSON.stringify([data.id[1]]),
+                        endkey: JSON.stringify([data.id[1], {}])
+                    },
+                    success: function (json) {
+                        var idKeys = [];
+                        if (json.rows) {
+                            json.rows.forEach(function (row) {
+                                idKeys.push(['key-schema_id', [row.value.rd_key, 'rd.identity']]);
+                            });
+                        }
 
+                        console.log(json);
+                        rdapi('_design/raindrop!content!all/_view/megaview?reduce=false&include_docs=true', {
+                            data: JSON.stringify({
+                                keys: idKeys
+                            }),
+                            processData: false,
+                            type: 'POST',
+                            success: function (json) {
+                                var identities = [], html = '', options = rdapi.normalizeOptions({
+                                    templateId: 'identities'
+                                });
+                                if (json.rows) {
+                                    json.rows.forEach(function (row) {
+                                        identities.push(row.doc);
+                                    });
+                                }
+                                if (identities.length) {
+                                    html = jig(options.template, identities, options);
+                                }
+                                $('#identityDisplay').html(html);
+                            }
+                        });
+                    }
+                });
+            });
         });
     </script>
 </head>
 <body>
-    <ul class="contacts templateContainer">
-        <li class="template" data-api="inflow/contacts/by_name"><a href="#{id[1]}">{displayName}</a></li>
+    <ul id="contactList" class="contacts templateContainer">
+        <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
     </ul>
+    <div id="identityDisplay">
+    </div>
+
+    <div class="template" data-id="identities">
+        {name}
+    </div>
+
 </body>
 </html>

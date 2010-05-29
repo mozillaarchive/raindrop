@@ -224,6 +224,8 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
         return idRegistry[id.toString()] || {};
     };
 
+    rdapi.normalizeOptions = normalize;
+
     $(function () {
         var prop, tmpl;
 
