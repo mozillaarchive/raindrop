@@ -22,7 +22,8 @@ html {
 
 body {
   width: 962px;
-  margin: 45px auto 0 -481px;
+  margin: 0 auto 0 -481px;
+  padding-top: 45px;
   left: 50%;
   float: left;
   font-family: "Helvetica Neue", Helvetica, Arial, Sans-serif;
@@ -33,7 +34,7 @@ body {
   border-left: 1px solid #ccc;
   border-right: 1px solid #ccc;
   min-height: 100%;
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 #header {
@@ -42,7 +43,7 @@ body {
   top: 0;
   left: 50%;
   margin-left: -481px;
-  background-color: #fff;
+  background-color: #fafafa;
   z-index: 2;
   border: 1px solid #ccc;
   border-top: none;
@@ -186,18 +187,20 @@ body {
 
 .inflow {
   width: 481px;
-  background: #fff;
+  background: #fafafa;
   padding-bottom: 55px;
   padding-top: 55px;
   float: left;
   border-right: 1px solid #ccc;
   z-index: 1;
+  /*-moz-box-shadow: 2px -4px 4px #ddd;*/ 
 }
 
 .inflow .row {
   border-top: 1px solid #ccc;
   padding: 0 0 10px 0;
   margin: 0;
+  background-color: #fff;
 }
 
 .inflow .row:last-child {
@@ -253,7 +256,7 @@ body {
   width: 24px;
   height: 24px;
   display: inline-block;
-  background-color: lightBlue;
+  background-color: #000;
   background-image: url("i/face.png");
   background-position: center center;
   background-repeat: no-repeat;
@@ -464,12 +467,16 @@ body {
   top: 0;
   right: 0;
   width: 480px;
-  background-color: #fff;
+  background-color: #fafafa;
   z-index: 0;
 }
 
+#convDisplay .row {
+  background-color: #fff;
+}
+
 #convDisplay .row.highlight {
-  background-color:#F2F2F2;
+  background-color: #ffffd9;
 }
 
 .widgets.fullMessage .row {
@@ -478,7 +485,7 @@ body {
 }
 
 .widgets.fullMessage .row:first-child {
-  margin: 55px 0 10px 0;
+  margin: 55px 0 0 0;
   padding: 0;
   border-top: 1px solid #ccc;
 }
