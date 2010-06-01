@@ -193,7 +193,7 @@ body {
   float: left;
   border-right: 1px solid #ccc;
   z-index: 1;
-  /*-moz-box-shadow: 2px -4px 4px #ddd;*/ 
+  /*-moz-box-shadow: 2px -4px 4px #ddd;*/
 }
 
 .inflow .row {
@@ -287,7 +287,7 @@ body {
 }
 
 .inflow .row .messageBody {
-  color: #666;
+  color: #333;
   line-height: 18px;
   overflow: hidden;
 }
@@ -500,7 +500,7 @@ body {
 }*/
 
 .widgets.fullMessage .messageBody {
-  color: #666;
+  color: #333;
   overflow: hidden;
 }
 
@@ -517,6 +517,20 @@ body {
   font-size: 11px;
   color: #888;
   font-weight: normal;
+}
+
+.date.button {
+  -moz-border-radius:0 0 3px 3px;
+  background-color: #Fafafa;
+  border: 1px solid #ccc;
+  border-top: none;
+  display: table-cell;
+  padding:0 10px;
+}
+
+.date.button:hover {
+  color: #000;
+  cursor: pointer;
 }
 
 .inflow .date {
