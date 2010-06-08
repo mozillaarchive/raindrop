@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Contact Listing</title>
     <link type="text/css" rel="stylesheet" href="contacts.css">
+
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
         "use strict";
@@ -83,7 +84,14 @@
     </script>
 </head>
 <body>
-    <div id="header"><a id="back" href="#contacts">Back</a><span id="headerText"></span></div>
+    <div id="header">
+        <div id="back">
+            <div class="mblArrowButtonHead"></div>
+            <div class="mblArrowButtonBody mblArrowButtonText">Back</div>
+            <div class="mblArrowButtonNeck"></div>
+        </div>
+        <span id="headerText"></span>
+    </div>
 
     <div id="display">
         <div id="cards">
