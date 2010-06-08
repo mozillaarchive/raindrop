@@ -1,4 +1,4 @@
-/*jslint */
+/*jslint plusplus: false, nomen: false*/
 /*global require: false, document: false, console: false */
 "use strict";
 
@@ -61,8 +61,11 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
             //TODO: make the date thing better.
             'prettyDate': function (seconds) {
                 return (new Date(seconds * 1000)).toString();
+            },
+            htmlBody: function (text) {
+                return jig.htmlEscape(text).replace(/\n/g, '<br>');
             }
-        })
+        });
         return options;
     }
 
@@ -236,8 +239,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
                 id = sNode.attr('data-id') || ('id' + (idCounter++)),
                 api = sNode.attr('data-api'),
                 parentNode = node.parentNode,
-                textContent = '{+ ' + id + ' ' + dataProp + '}',
-                textNode, jParentNode;
+                jParentNode;
 
             //Remove templating stuff from the node
             sNode.removeClass('template')

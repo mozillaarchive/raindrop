@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Contact Listing</title>
-    <style type="text/css">
-        #contactList,
-        #identityDisplay {
-            float: left;
-        }
-        
-        #identityDisplay {
-            border: 1px solid black;
-        }
-    </style>
+    <link type="text/css" rel="stylesheet" href="contacts.css">
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
         "use strict";
         /*global require: false, console: false */
-        require(["jquery", "rdapi", "blade/jig", "json2"], function ($, rdapi, jig) {
+        require(["jquery", "rdapi", "blade/jig", "json2", "iscroll-min"], function ($, rdapi, jig) {
+            var scroller;
+            $(function () {
+                //setup for the iscroll thing
+                document.addEventListener('touchmove', function(e){ e.preventDefault(); });
+                scroller = new iScroll('contactList');
+
+                //Set the title based on the first card.
+                var title = $('.card')[0].getAttribute('title');
+                $('#headerText').html(title);
+            });
+
             $('body').delegate('a.person', 'click', function (evt) {
                 evt.preventDefault();
-                var data = rdapi.data(evt.target.parentNode.getAttribute('data-blade-jig'));
+                var contact = rdapi.data(evt.target.parentNode.getAttribute('data-blade-jig'));
                 rdapi('_design/raindrop!content!all/_view/identities_by_contact', {
                     data: {
-                        startkey: JSON.stringify([data.id[1]]),
-                        endkey: JSON.stringify([data.id[1], {}])
+                        startkey: JSON.stringify([contact.id[1]]),
+                        endkey: JSON.stringify([contact.id[1], {}])
                     },
                     success: function (json) {
                         var idKeys = [];
@@ -39,10 +44,11 @@
                                 keys: idKeys
                             }),
                             processData: false,
+                            contentTypeString: 'application/json',
                             type: 'POST',
                             success: function (json) {
                                 var identities = [], html = '', options = rdapi.normalizeOptions({
-                                    templateId: 'identities'
+                                    templateId: 'contactDetail'
                                 });
                                 if (json.rows) {
                                     json.rows.forEach(function (row) {
@@ -50,26 +56,62 @@
                                     });
                                 }
                                 if (identities.length) {
-                                    html = jig(options.template, identities, options);
+                                    contact.identities = identities;
                                 }
+                                html = jig(options.template, contact, options);
+
                                 $('#identityDisplay').html(html);
+
+                                //Scroll the cards.
+                                $('#cards').css({
+                                    left: '-320px'
+                                });
+                                $('#back').css('display', 'block');
                             }
                         });
                     }
                 });
             });
+            
+            $('#back').click(function (evt) {
+                $('#cards').css({
+                    left: '0px'
+                });
+                $('#back').css('display', 'none');
+            });
         });
     </script>
 </head>
 <body>
-    <ul id="contactList" class="contacts templateContainer">
-        <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
-    </ul>
-    <div id="identityDisplay">
+    <div id="header"><a id="back" href="#contacts">Back</a><span id="headerText"></span></div>
+
+    <div id="display">
+        <div id="cards">
+            <div id="contactsCard" class="card" title="Contacts">
+                <ul id="contactList" class="contacts templateContainer">
+                    <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
+                </ul>
+            </div>
+            <div id="identityDisplay" class="card card2" title="">
+            </div>
+        </div>
     </div>
 
-    <div class="template" data-id="identities">
-        {name}
+    <div class="template" data-id="contactDetail">
+        {displayName}
+        <ul>
+            {identities [}
+                <li>
+                    {image [}
+                        <img src="{}">
+                    {]}
+                    {name}
+                    <ul>
+                        {nickname [} <li>Nickname: {}</li> {]}
+                    </ul>
+                </li>
+            {]}
+        </ul>
     </div>
 
 </body>

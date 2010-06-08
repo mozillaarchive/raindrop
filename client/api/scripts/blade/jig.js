@@ -8,6 +8,12 @@
 
 "use strict";
 
+if (!String.prototype.trim) {
+    String.prototype.trim = function () {
+        return this.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+    };
+}
+
 require.def("blade/jig", ["blade/object"], function (object) {
 
     //Add comment command
@@ -76,6 +82,11 @@ require.def("blade/jig", ["blade/object"], function (object) {
             }
 
             obj = getProp(pre.split('.'), parent);
+
+            if (!obj && prop) {
+                throw new Error('blade/jig: No property "' + prop + '" on ' + obj);
+            }
+
             if (prop.indexOf(":") !== -1) {
                 //An array slice action
                 indices = prop.split(':');
@@ -380,10 +391,10 @@ require.def("blade/jig", ["blade/object"], function (object) {
     jig.fromTemplateCache = function (id, options) {
         var cached = templateCache[id];
         if (options && options.templates && options.templates[id]) {
-            cached = options.templates[id]
+            cached = options.templates[id];
         }
         return cached;
-    }
+    };
 
     return jig;
 });

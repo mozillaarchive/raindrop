@@ -1,0 +1,107 @@
+body {
+    font-size:12px;
+    -webkit-user-select:none;
+    -webkit-text-size-adjust:none;
+    font-family:helvetica;
+}
+
+body,ul,li {
+    padding:0;
+    margin:0;
+}
+
+.template {
+    display: none;
+}
+
+#header {
+    width:100%;
+    height:45px;
+    line-height:45px;
+    background-image:-webkit-gradient(linear, 0 0, 0 100%, color-stop(0, #fe96c9), color-stop(0.05, #d51875), color-stop(1, #7b0a2e));
+    padding:0;
+    color:#eee;
+    font-size:20px;
+    text-align:center;
+}
+
+#back {
+    position: absolute;
+    display: none;
+    top: 0px;
+    left: 10px;
+}
+
+#display {
+    position: relative;
+    width: 320px;
+    height: 310px;
+    overflow: hidden;
+}
+
+#cards {
+    position: absolute;
+    left: 0;
+    width: 640px;
+    -webkit-transition: left 0.3s ease-out;
+}
+
+.card {
+    float: left;
+    width: 320px;
+    height: 310px;
+}
+
+.card.card2 {
+    z-index: 1;
+}
+
+#contactsCard {
+    position: relative;
+    z-index: 1;
+    overflow: scroll;
+}
+
+#contactList {
+    width: 100%;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#contactList li {
+    width: 100%;
+    height: 40px;
+    line-height: 40px;
+    font-size: 20px;
+    border-bottom: 1px solid gray;
+}
+
+#contactList li a {
+    width: 100%;
+    text-decoration: none;
+    color: black;
+}
+
+#identityDisplay ul {
+    list-style: none;
+}
+
+.scrollbar {
+    position: absolute;
+    z-index: 10;
+    width: 1px;
+    height: 1px;
+    border-width: 3px;
+    -webkit-border-image: url(i/scrollbar.png) 3;
+}
+
+.scrollbar.horizontal {
+    bottom: 1px;
+    left: 1px;
+}
+
+.scrollbar.vertical {
+    top: 1px;
+    right: 1px;
+}

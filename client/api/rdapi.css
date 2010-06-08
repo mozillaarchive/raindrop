@@ -513,6 +513,14 @@ body {
   color: #000;
 }
 
+.widgets.fullMessage .quoteContent.quote {
+    display: none;
+}
+
+.widgets.fullMessage .quoteContent.quote.expanded {
+    display: block;
+}
+
 .date {
   font-size: 11px;
   color: #888;

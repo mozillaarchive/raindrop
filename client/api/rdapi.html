@@ -154,7 +154,22 @@
                 .delegate('#convDisplay .row', 'click', function (evt) {
                     convDisplay.find('.highlight').removeClass('highlight');
                     $(evt.target).addClass('highlight');
-                })
+                });
+
+                $('#convDisplay').delegate('.quoteToggle', 'click', function (evt) {
+                    var target = $(evt.target),
+                        content = target.next('.quote');
+
+                    if (content.hasClass('expanded')) {
+                        content.removeClass('expanded');
+                        target.html('Show Quote');
+                    } else {
+                        content.addClass('expanded');
+                        target.html('Hide Quote');
+                    }
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                });
             });
         });
     </script>
@@ -282,7 +297,14 @@
           </div>
         </div>
         <div class="c3"> 
-          <div class="messageBody">{schemas['rd.msg.body'].body}</div>
+          <div class="messageBody">
+            {schemas['rd.msg.body.quoted'].parts [}
+                {type [}
+                    <a class="quoteToggle" href="#quoteToggle">Show Quote</a>
+                {]}
+                <div class="quoteContent {type}">{^htmlBody(text)}</div>
+            {]}
+          </div>
         </div>
         <div class="c3">
           <div class="actions">reply forward</div>
