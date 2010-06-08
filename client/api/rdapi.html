@@ -150,10 +150,16 @@
                     parent.addClass('read');
                     parent = null;
                     evt.preventDefault();
+                    //Andys clueless js
+                    convDisplay.removeClass('visible'); 
                 })
                 .delegate('#convDisplay .row', 'click', function (evt) {
                     convDisplay.find('.highlight').removeClass('highlight');
                     $(evt.target).addClass('highlight');
+                })
+                //Andys clueless js
+                .delegate('.list.subject', 'click', function (evt) {
+                    convDisplay.addClass('visible');              
                 });
 
                 $('#convDisplay').delegate('.quoteToggle', 'click', function (evt) {
@@ -173,6 +179,7 @@
             });
         });
     </script>
+    
 </head>
 <body>
 
@@ -205,9 +212,7 @@
         <div class="avatar"><!--{from.url}--></div>
         <div class="name">{from_display[0]}</div>
         <div class="twitterActions">
-          <li>reply</li> 
-          <li>forward</li>
-          <li>&#x2605;</li>
+          <li>reply</li><li>forward</li><li>&#x2605;</li>
         </div>
       </div>
       <div class="c2">
@@ -279,7 +284,7 @@
         <span class="date button">move conversation &#9660;</span>
       </div>
       <div class="c1">
-        <div class="actions"><a class="fullConvClose" href="#close">close</a></div>
+        <div class="actions"><a href="#">hide delete</a></div>
       </div>
       <div class="c3">
         <span class="subject">{subject}</span>

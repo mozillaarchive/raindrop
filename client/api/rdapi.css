@@ -469,6 +469,15 @@ body {
   width: 480px;
   background-color: #fafafa;
   z-index: 0;
+  background-image: url("i/ajax-loader.gif");
+  background-repeat: no-repeat;
+  background-position: 10px 65px;
+  min-height: 81px;
+  display: none;
+}
+
+#convDisplay.visible {
+  display: block;
 }
 
 #convDisplay .row {
@@ -532,8 +541,8 @@ body {
   background-color: #Fafafa;
   border: 1px solid #ccc;
   border-top: none;
-  display: table-cell;
-  padding:0 10px;
+  display: inline;
+  padding: 6px 10px 3px;
 }
 
 .date.button:hover {
