@@ -459,6 +459,7 @@ body {
   right: 0;
   width: 480px;
   min-height: 100%;
+  padding-bottom: 55px;
 }
 
 #convDisplay {
@@ -503,18 +504,25 @@ body {
   font-size: 14px;
   font-weight: bold;
 }
-/*
-.row.fullReply:nth-child(odd){
-  background-color: #f2f2f2;
-}*/
 
 .widgets.fullMessage .messageBody {
   color: #333;
   overflow: hidden;
+  line-height: 18px;
 }
 
 .widgets.fullMessage .row.fullReply {
-  border-bottom: 1px dotted #ccc;
+  border-top: 1px dotted #ccc;
+}
+
+.widgets.fullMessage .row.fullReply:last-child {
+  border-bottom: 1px solid #ccc;
+}
+
+.widgets.fullMessage a.quoteToggle {
+  text-decoration: none;
+  font-size: 11px;
+  color: #888;
 }
 
 .widgets.fullMessage .row.fullReply .actions {
@@ -523,7 +531,11 @@ body {
 }
 
 .widgets.fullMessage .quoteContent.quote {
-    display: none;
+  display: none;
+  color: #666;
+  font-size: 11px;
+  background-color: #f2f2f2;
+  padding: 5px;
 }
 
 .widgets.fullMessage .quoteContent.quote.expanded {
