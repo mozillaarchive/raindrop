@@ -16,6 +16,8 @@ if (!String.prototype.trim) {
 
 require.def("blade/jig", ["blade/object"], function (object) {
 
+    //Use _ to indicate current data value.
+    //Need to allow scope lookup for vars
     //Add comment command
     //Fix unit test: something is wrong with it, says it passes, but
     //with attachData change, the string is actually different now.

@@ -100,26 +100,24 @@ body,ul,li {
 }
 
 
-
-
-
 #display {
     position: relative;
-    width: 320px;
-    height: 310px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
 #cards {
     position: absolute;
     left: 0;
-    width: 640px;
+    width: 100%;
+    height: 100%;
     -webkit-transition: left 0.3s ease-out;
 }
 
 .card {
     float: left;
-    width: 320px;
+    width: 100%;
     height: 310px;
 }
 
@@ -142,18 +140,21 @@ body,ul,li {
 }
 
 #contactList li {
-    list-style-type: none;
+    position: relative;
     width: 100%;
     height: 43px;
+    padding-left: 8px;
+    list-style-type: none;
     border-bottom: 1px solid #ADAAAD;
     line-height: 43px;
     font-weight: bold;
-    position: relative;
     color: black;
 }
 
 #contactList li a {
+    display: block;
     width: 100%;
+    height: 100%;
     text-decoration: none;
     color: black;
 }

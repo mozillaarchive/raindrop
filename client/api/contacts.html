@@ -11,17 +11,67 @@
     <script>
         "use strict";
         /*global require: false, console: false */
+
+        /*
+         To detect orientation changes in Android:
+         http://stackoverflow.com/questions/1649086/detect-rotation-of-android-phone-in-the-browser-with-javascript
+        */
+
         require(["jquery", "rdapi", "blade/jig", "json2", "iscroll-min"], function ($, rdapi, jig) {
-            var scroller;
+            var scroller, display, cards, cardList, back, header;
+
+            function adjustCardSizes() {
+                var cardWidth = display.outerWidth(),
+                    cardList = $('.card'),
+                    totalWidth = cardWidth * cardList.length,
+                    height = window.innerHeight - header.outerHeight();
+
+                //Set height
+                display.css('height', height + 'px');
+
+                //Set widths and heights of cards. Need to set the heights
+                //explicitly so any card using iscroll will get updated correctly.
+                cards.css({
+                    width: totalWidth + 'px',
+                    height: height + 'px'
+                });
+
+                cardList.css({
+                    width: cardWidth + 'px',
+                    height: height + 'px'
+                });
+            }
+
             $(function () {
                 //setup for the iscroll thing
-                document.addEventListener('touchmove', function(e){ e.preventDefault(); });
-                scroller = new iScroll('contactList');
+                if ('ontouchmove' in document) {
+                    document.addEventListener('touchmove', function(e){ e.preventDefault(); }, false);
+                    scroller = new iScroll('contactList');
+                }
+                display = $('#display');
+                cards = $('#cards');
+                back = $('#back');
+                header = $('#header');
+
+                adjustCardSizes();
 
                 //Set the title based on the first card.
                 var title = $('.card')[0].getAttribute('title');
                 $('#headerText').html(title);
+
+                back.click(function (evt) {
+                    cards.css({
+                        left: '0px'
+                    });
+                    back.css('display', 'none');
+                });
             });
+
+            //Detect orientation changes and size the card container size accordingly.
+            if ('onorientationchange' in window) {
+                window.addEventListener('orientationchange', adjustCardSizes, false);
+            }
+            window.addEventListener('resize', adjustCardSizes, false);
 
             $('body').delegate('a.person', 'click', function (evt) {
                 evt.preventDefault();
@@ -64,21 +114,14 @@
                                 $('#identityDisplay').html(html);
 
                                 //Scroll the cards.
-                                $('#cards').css({
-                                    left: '-320px'
+                                cards.css({
+                                    left: '-' + display.outerWidth() + 'px'
                                 });
-                                $('#back').css('display', 'block');
+                                back.css('display', 'block');
                             }
                         });
                     }
                 });
-            });
-            
-            $('#back').click(function (evt) {
-                $('#cards').css({
-                    left: '0px'
-                });
-                $('#back').css('display', 'none');
             });
         });
     </script>
