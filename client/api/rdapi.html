@@ -151,7 +151,7 @@
                     parent = null;
                     evt.preventDefault();
                     //Andys clueless js
-                    convDisplay.removeClass('visible'); 
+                    convDisplay.removeClass('visible');
                 })
                 .delegate('#convDisplay .row', 'click', function (evt) {
                     convDisplay.find('.highlight').removeClass('highlight');
@@ -159,8 +159,8 @@
                 })
                 //Andys clueless js
                 .delegate('.list.subject', 'click', function (evt) {
-                    convDisplay.addClass('visible');              
-                });
+                    convDisplay.addClass('visible');            
+                })      
 
                 $('#convDisplay').delegate('.quoteToggle', 'click', function (evt) {
                     var target = $(evt.target),

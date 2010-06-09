@@ -32,14 +32,14 @@
   box-sizing: border-box;
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
-  border: 1px solid #e6e6e6;
+  border: 1px solid #ddd;
   background-color: #fff;
-  background-image: url("../i/rd_message_bg.png");
-  background-repeat: repeat-x;
+  /*background-image: url("../i/rd_message_bg.png");
+  background-repeat: repeat-x;*/
 }
 
 .rdwConversation.active {
-  border: 1px solid #ccc;
+  border: 1px solid #666;
 }
 
 /*### IMPERSONAL ###*/
@@ -73,7 +73,11 @@
 
 .rdwConversation.read {
   background-image: none;
-  background-color: #f6f6f6;
+  background-color: #f4f4f4;
+}
+
+.rdwConversation.read .rdwAttachments {
+  display: none;
 }
 
 .rdwConversationFullConversation.read {
@@ -83,7 +87,7 @@
 }
 
 .rdwConversation.read > .header > .subject {
-  opacity: 0.5;
+  /*opacity: 0.5;*/
 }
 
 .rdwConversationFullConversation.read > .header > .subject {
@@ -91,7 +95,7 @@
 }
 
 .rdwConversation.read > .messages .message > .header > .author {
-  opacity: 0.5;
+  /*opacity: 0.5;*/
 }
 
 .rdwConversationFullConversation.read > .messages .message > .header > .author {
@@ -107,7 +111,7 @@
 }
 
 .rdwConversation.read > .messages .message > .content {
-  opacity: 0.5;
+  /*opacity: 0.5;*/
   margin-right: 10px;
   white-space: nowrap;
   overflow: hidden;
