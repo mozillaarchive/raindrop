@@ -12,6 +12,10 @@ body,ul,li {
     margin:0;
 }
 
+ul {
+    list-style: none;
+}
+
 .template {
     display: none;
 }

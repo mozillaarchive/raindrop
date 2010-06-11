@@ -55,6 +55,10 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
             options.template = templateRegistry[options.templateId].template;
         }
 
+        if (options.emptyTemplateId) {
+            options.emptyTemplate = templateRegistry[options.emptyTemplateId].template;
+        }
+
         //Add in functions to use in templating
         var funcs = options.funcs || (options.funcs = object.create(jigFunctions));
         object.mixin(funcs, {
@@ -85,12 +89,27 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
         $.ajax(options);
     }
 
+    function finishApiTemplating(html, options) {
+        var jqNode = $(html);
+        if (options.node) {
+            $(options.node).replaceWith(jqNode);
+        } else {
+            options.containerNode.innerHTML = '';
+            jqNode.appendTo(options.containerNode);
+        }
+        if (options.onTemplateDone) {
+            options.onTemplateDone(html);
+        }
+        $(document).trigger('rdapi-done', options.containerNode);
+    }
+
     rdapi = function (url, options) {
         options = normalize(options);
 
         object.mixin(options, {
             success: function (json) {
                 var template = options.template,
+                    emptyTemplate = options.emptyTemplate,
                     html = '', node;
                     
                 //Get the identity info for any identities in the JSON
@@ -101,26 +120,28 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
                         }
 
                         if ($.isArray(json)) {
-                            json.forEach(function (item) {
-                                html += jig(template, item, options);
-                            });
+                            if (!json.length) {
+                                html += jig(emptyTemplate, json, options);
+                            } else {
+                                json.forEach(function (item) {
+                                    html += jig(template, item, options);
+                                });
+                            }
                         } else {
-                            html += jig(template, json, options);
+                            html += jig(!json ? emptyTemplate : template, json, options);
                         }
 
-                        node = $(html);
-                        if (options.node) {
-                            $(options.node).replaceWith(node);
-                        } else {
-                            options.containerNode.innerHTML = '';
-                            node.appendTo(options.containerNode);
-                        }
-                        if (options.onTemplateDone) {
-                            options.onTemplateDone(html);
-                        }
-                        $(document).trigger('rdapi-done', options.containerNode);
+                        finishApiTemplating(html, options);
                     }
                 });
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                if (options.emptyTemplate) {
+                    var html = jig(options.emptyTemplate, errorThrown, options);
+                    finishApiTemplating(html, options);
+                } else {
+                    throw errorThrown;
+                }
             }
         });
 
@@ -246,10 +267,6 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
                 parentNode = node.parentNode,
                 jParentNode;
 
-            //Remove templating stuff from the node
-            sNode.removeClass('template')
-                 .removeAttr('data-id').removeAttr('data-api');
-
             templateRegistry[id] = {
                 prop: dataProp,
                 node: node,
@@ -263,6 +280,10 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
             } else {
                 parentNode.removeChild(node);
             }
+
+            //Remove templating stuff from the node
+            sNode.removeClass('template')
+                 .removeAttr('data-id').removeAttr('data-api');
         });
 
         //After all template nodes have been replaced with text nodes for
