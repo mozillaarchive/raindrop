@@ -76,10 +76,14 @@
                 $('#headerText').html(title);
 
                 back.click(function (evt) {
+                    var left = parseInt(cards.css('left'), 10) + display.outerWidth();
+
                     cards.css({
-                        left: '0px'
+                        left: left + 'px'
                     });
-                    back.css('display', 'none');
+                    if (!left) {
+                        back.css('display', 'none');
+                    }
                 });
             });
 
@@ -89,7 +93,8 @@
             }
             window.addEventListener('resize', adjustCardSizes, false);
 
-            $('body').delegate('a.person', 'click', function (evt) {
+            $('body')
+            .delegate('a.person', 'click', function (evt) {
                 evt.preventDefault();
                 var contact = rdapi.data(evt.target.parentNode.getAttribute('data-blade-jig'));
                 rdapi('_design/raindrop!content!all/_view/identities_by_contact', {
@@ -138,6 +143,12 @@
                         });
                     }
                 });
+            })
+            .delegate('.contactDetail .identity', 'click', function (evt) {
+
+                cards.css({
+                    left: '-' + (2 * display.outerWidth()) + 'px'
+                });
             });
         });
     </script>
@@ -159,7 +170,10 @@
                     <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
                 </ul>
             </div>
-            <div id="identityDisplay" class="card card2" title="">
+            <div id="identityDisplay" class="card card2" title="Info">
+            </div>
+            <div id="conversations" class="card card3" title="Conversations">
+                CONVERSATIONS HERE
             </div>
         </div>
     </div>
@@ -172,7 +186,7 @@
                     <ul class="mblRoundRectList">
                         {. type rd_key[1][0]}
                         {. value rd_key[1][1]}
-                        <li class="mblListItem hbox"><span class="idType boxFlex">{type}</span><span class="idValue boxFlex">{value}</span></li>
+                        <li class="mblListItem identity hbox"><span class="idType boxFlex">{type}</span><span class="idValue boxFlex">{value}</span></li>
                     </ul>
                 </li>
             {]}
