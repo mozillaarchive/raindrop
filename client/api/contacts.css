@@ -163,6 +163,37 @@ body,ul,li {
     list-style: none;
 }
 
+.contactDetail {
+    padding: 10px;
+}
+
+.contactPhoto {
+    width: 60px;
+    height: 60px;
+    vertical-align: middle;
+    margin-right: 10px;
+    border: 1px solid #ADAAAD;
+}
+
+.contactDetail .name {
+    font-weight: bold;
+}
+
+.contactDetail .mblListItem {
+    width: 100%;
+}
+
+.contactDetail .idType {
+    text-align: right;
+    padding: 0 5px;
+    color: #0B5199;
+    font-size: smaller;
+}
+
+.contactDetail .idValue {
+    padding: 0 5px;
+}
+
 .scrollbar {
     position: absolute;
     z-index: 10;
@@ -181,3 +212,156 @@ body,ul,li {
     top: 1px;
     right: 1px;
 }
+
+
+.mblRoundRectList {
+    margin: 7px 0 16px;
+    padding: 0px;
+    border: 1px solid #ADAAAD;
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    background-color: white;
+}
+
+.mblListItem {
+    list-style-type: none;
+    height: 43px;
+    border-bottom: 1px solid #ADAAAD;
+    line-height: 43px;
+    font-weight: bold;
+    position: relative;
+    color: black;
+}
+
+.mblListItem.mblVariableHeight {
+    line-height: normal;
+    height: auto;
+    padding: 11px 6px 10px 6px;
+}
+
+.mblItemSelected {
+    background-color: #048BF4;
+    background: -webkit-gradient(linear, left top, left bottom, from(#048BF4), to(#005CE5));
+}
+
+.mblRoundRectList .mblListItem:first-child {
+    -webkit-border-top-left-radius: 8px;
+    -webkit-border-top-right-radius: 8px;
+    -moz-border-radius-topleft: 8px;
+    -moz-border-radius-topright: 8px;
+}
+
+.mblRoundRectList .mblListItem:last-child {
+    border-bottom-width: 0px;
+    -webkit-border-bottom-left-radius: 8px;
+    -webkit-border-bottom-right-radius: 8px;
+    -moz-border-radius-bottomleft: 8px;
+    -moz-border-radius-bottomright: 8px;
+}
+
+
+/* START hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */
+/* hbox and vbox classes */
+ 
+.hbox {
+	display: -webkit-box;
+	-webkit-box-orient: horizontal;
+	-webkit-box-align: stretch;
+ 
+	display: -moz-box;
+	-moz-box-orient: horizontal;
+	-moz-box-align: stretch;
+ 
+	display: box;
+	box-orient: horizontal;
+	box-align: stretch;
+}
+ 
+.hbox > * {
+	-webkit-box-flex: 0;
+	-moz-box-flex: 0;
+	box-flex: 0;
+	display: block;
+}
+ 
+.vbox {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-box-align: stretch;
+ 
+	display: -moz-box;
+	-moz-box-orient: vertical;
+	-moz-box-align: stretch;
+ 
+	display: box;
+	box-orient: vertical;
+	box-align: stretch;
+}
+ 
+.vbox > * {
+	-webkit-box-flex: 0;
+	-moz-box-flex: 0;
+	box-flex: 0;
+	display: block;
+}
+ 
+.spacer {
+	-webkit-box-flex: 1;
+	-moz-box-flex: 1;
+	box-flex: 1;
+}
+ 
+.reverse {
+	-webkit-box-direction: reverse;
+	-moz-box-direction: reverse;
+	box-direction: reverse;
+}
+ 
+.boxFlex0 {
+	-webkit-box-flex: 0;
+	-moz-box-flex: 0;
+	box-flex: 0;
+}
+ 
+.boxFlex1, .boxFlex {
+	-webkit-box-flex: 1;
+	-moz-box-flex: 1;
+	box-flex: 1;
+}
+ 
+.boxFlex2 {
+	-webkit-box-flex: 2;
+	-moz-box-flex: 2;
+	box-flex: 2;
+}
+ 
+.boxGroup1 {
+	-webkit-box-flex-group: 1;
+	-moz-box-flex-group: 1;
+	box-flex-group: 1;
+}
+ 
+.boxGroup2 {
+	-webkit-box-flex-group: 2;
+	-moz-box-flex-group: 2;
+	box-flex-group: 2;
+}
+ 
+.start {
+	-webkit-box-pack: start;
+	-moz-box-pack: start;
+	box-pack: start;
+}
+ 
+.end {
+	-webkit-box-pack: end;
+	-moz-box-pack: end;
+	box-pack: end;
+}
+ 
+.center {
+	-webkit-box-pack: center;
+	-moz-box-pack: center;
+	box-pack: center;
+}
+/* END hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */

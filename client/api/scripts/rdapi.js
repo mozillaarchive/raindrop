@@ -8,6 +8,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
         idCounter = 0,
         templateRegistry = {},
         idRegistry = {},
+        jigFunctions = {},
         config = {
             baseUrl: '../',
             apiPath: '_api/',
@@ -55,7 +56,7 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
         }
 
         //Add in functions to use in templating
-        var funcs = options.funcs || (options.funcs = {});
+        var funcs = options.funcs || (options.funcs = object.create(jigFunctions));
         object.mixin(funcs, {
             'rdapi.identity': rdapi.identity,
             //TODO: make the date thing better.
@@ -217,6 +218,10 @@ require.def('rdapi', ['jquery', 'blade/object', 'blade/jig'], function ($, objec
 
     rdapi.config = function (cfg) {
         object.mixin(config, cfg, true);
+    };
+
+    rdapi.addJigFunctions = function (obj) {
+        object.mixin(jigFunctions, obj);
     };
 
     rdapi.data = function (id) {

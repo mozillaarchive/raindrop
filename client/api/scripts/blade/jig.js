@@ -27,6 +27,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
     var jig, commands,
         ostring = Object.prototype.toString,
+        decode = typeof decodeURIComponent === "undefined" ? function () {} : decodeURIComponent,
         startToken = '{',
         endToken = '}',
         rawHtmlToken = '^',
@@ -36,6 +37,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
         //or an array indice indicator, [, or the HTML raw output
         //indicator, ^.
         propertyRegExp = /[_\[\^\w]/,
+        defaultArg = '_',
         startTagRegExp = /<\s*\w+/,
         templateCache = {},
         defaultFuncs = {},
@@ -64,12 +66,21 @@ require.def("blade/jig", ["blade/object"], function (object) {
             part = name,
             parent = data,
             match, pre, prop, obj, startIndex, endIndex, indices, result,
-            parenStart, parenEnd, func;
+            parenStart, parenEnd, func, funcName;
+
+        //If asking for the default arg it means giving back the current data.
+        if (name === defaultArg) {
+            return data;
+        }
 
         //First check for function call. Function must be globally visible.
         if ((parenStart = name.indexOf('(')) !== -1) {
             parenEnd = name.lastIndexOf(')');
-            func = options.funcs[name.substring(0, parenStart)];
+            funcName = name.substring(0, parenStart);
+            func = options.funcs[funcName];
+            if (!func) {
+                throw new Error('Cannot find function named: ' + funcName + ' for ' + name);
+            }
             return func(getObject(name.substring(parenStart + 1, parenEnd), data, options));
         }
 
@@ -207,6 +218,10 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
                 //Pull out the command
                 tag = text.substring(index + options.startToken.length, index + match[0].length - options.endToken.length).trim();
+
+                //decode in case the value was in an URL field, like an  href or an img src attribute
+                tag = decode(tag);
+
                 command = tag.charAt(0);
 
                 if (command && !options.propertyRegExp.test(command)) {
@@ -245,10 +260,11 @@ require.def("blade/jig", ["blade/object"], function (object) {
                     return compiled;
                 }
 
-                //If this defines a template, save it off
+                //If this defines a template, save it off,
+                //if a comment (starts with /), then ignore it.
                 if (command === '+') {
                     options.templates[args[0]] = children;
-                } else {
+                } else if (command !== '/') {
                     compiled.push({
                         action: options.commands[command].action,
                         useRawHtml: useRawHtml,

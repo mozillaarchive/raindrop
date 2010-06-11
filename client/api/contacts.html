@@ -20,6 +20,22 @@
         require(["jquery", "rdapi", "blade/jig", "json2", "iscroll-min"], function ($, rdapi, jig) {
             var scroller, display, cards, cardList, back, header;
 
+            //Set up extra template functions.
+            rdapi.addJigFunctions({
+                getPhotoUrl: function (contact) {
+                    var i, identity, url = 'i/face.png';
+                    if (contact.identities) {
+                        for (i = 0; (identity = contact.identities[i]); i++) {
+                            if (identity.image) {
+                                url = identity.image;
+                                break;
+                            }
+                        }
+                    }
+                    return url;
+                }
+            });
+
             function adjustCardSizes() {
                 var cardWidth = display.outerWidth(),
                     cardList = $('.card'),
@@ -148,17 +164,15 @@
         </div>
     </div>
 
-    <div class="template" data-id="contactDetail">
-        {displayName}
+    <div class="template contactDetail" data-id="contactDetail">
+        <img class="contactPhoto" src="{getPhotoUrl(_)}"> <span class="name">{displayName}</span>
         <ul>
             {identities [}
                 <li>
-                    {image [}
-                        <img src="{}">
-                    {]}
-                    {name}
-                    <ul>
-                        {nickname [} <li>Nickname: {}</li> {]}
+                    <ul class="mblRoundRectList">
+                        {. type rd_key[1][0]}
+                        {. value rd_key[1][1]}
+                        <li class="mblListItem hbox"><span class="idType boxFlex">{type}</span><span class="idValue boxFlex">{value}</span></li>
                     </ul>
                 </li>
             {]}
