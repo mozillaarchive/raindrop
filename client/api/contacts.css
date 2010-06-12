@@ -179,7 +179,12 @@ ul {
     border: 1px solid #ADAAAD;
 }
 
-.contactDetail .name {
+#header .contactPhoto {
+    width: 30px;
+    height: 30px;
+}
+
+.contactDisplayName {
     font-weight: bold;
 }
 
@@ -196,6 +201,10 @@ ul {
 
 .contactDetail .idValue {
     padding: 0 5px;
+}
+
+#contactConversations {
+    margin: 10px;
 }
 
 .scrollbar {
@@ -230,6 +239,7 @@ ul {
 .mblListItem {
     list-style-type: none;
     height: 43px;
+    padding: 0 10px;
     border-bottom: 1px solid #ADAAAD;
     line-height: 43px;
     font-weight: bold;

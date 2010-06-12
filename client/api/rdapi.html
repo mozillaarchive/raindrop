@@ -103,7 +103,7 @@
                 $('body')
                 .delegate('.convSummary', 'click', function (evt) {
                     var target = $(evt.target),
-                    current = target.parents('[data-blade-jig]').first(),
+                        current = target.parents('[data-blade-jig]').first(),
                         data;
 
                     if (!current.length) {

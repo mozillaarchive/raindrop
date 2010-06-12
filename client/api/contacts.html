@@ -110,7 +110,6 @@
                             });
                         }
 
-                        console.log(json);
                         rdapi('_design/raindrop!content!all/_view/megaview?reduce=false&include_docs=true', {
                             data: JSON.stringify({
                                 keys: idKeys
@@ -144,7 +143,7 @@
                     }
                 });
             })
-            .delegate('.contactDetail .conversationButton', 'click', function (evt) {
+            .delegate('.conversationButton', 'click', function (evt) {
                 var contact = rdapi.data($(evt.target).parents('.contactDetail')[0].getAttribute('data-blade-jig'));
                 rdapi('inflow/conversations/contact', {
                     data: {
@@ -157,9 +156,14 @@
                     emptyTemplateId: 'conversationsEmpty',
                     containerNode: document.getElementById('contactConversations'),
                     onTemplateDone: function () {
+                        //Move the conversation card into view.
                         cards.css({
                             left: '-' + (2 * display.outerWidth()) + 'px'
                         });
+
+                        setTimeout(function () {
+                            $('#headerText').html(document.getElementById('contactInfo').innerHTML);
+                        }, 300);
                     }
                 });
             });
@@ -186,13 +190,15 @@
             <div id="identityDisplay" class="card card2" title="Info">
             </div>
             <div id="conversations" class="card card3" title="Conversations">
-                <ul id="contactConversations"></ul>
+                <ul id="contactConversations" class="mblRoundRectList"></ul>
             </div>
         </div>
     </div>
 
     <div class="template contactDetail" data-id="contactDetail">
-        <img class="contactPhoto" src="{getPhotoUrl(_)}"> <span class="name">{displayName}</span>
+        <div id="contactInfo">
+            <img class="contactPhoto" src="{getPhotoUrl(_)}"> <span class="contactDisplayName">{displayName}</span>
+        </div>
         <ul>
             {identities [}
                 <li>
@@ -205,14 +211,16 @@
             {]}
         </ul>
         <ul class="mblRoundRectList">
-            <li class="mblListItem conversationButton">Show Recent Conversations</li>
+            <!-- Interesting, for the delegate on this li to work in Mobile Safari,
+                 need to put an onclick on here. -->
+            <li class="mblListItem conversationButton" onclick="return;">Show Recent Conversations</li>
         </ul>
     </div>
 
-    <li class="template conversation" data-id="conversations">
-        {subject}<br>
-        {messages [}
-            {schemas['rd.msg.body'].body_preview}
+    <li class="template conversation mblListItem" data-id="conversations">
+        {subject [} {} {]}
+        {!subject [}
+            {messages[0].schemas['rd.msg.body'].body_preview}
         {]}
     </li>
 
