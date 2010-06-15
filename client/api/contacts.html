@@ -5,11 +5,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Contact Listing</title>
+    <link REL="SHORTCUT ICON" HREF="i/favicon.ico">
     <link type="text/css" rel="stylesheet" href="contacts.css">
 
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
     <script>
-        "use strict";
+        'use strict';
         /*global require: false, console: false */
 
         /*
@@ -17,8 +18,13 @@
          http://stackoverflow.com/questions/1649086/detect-rotation-of-android-phone-in-the-browser-with-javascript
         */
 
-        require(["jquery", "rdapi", "blade/jig", "json2", "iscroll-min"], function ($, rdapi, jig) {
-            var scroller, display, cards, cardList, back, header;
+        require(['jquery', 'rdapi', 'cards', 'blade/jig', 'json2', 'iscroll-min'],
+        function ($,        rdapi,   cards,   jig) {
+
+            var scroller, display, cardList, back, header;
+
+            //Initialize the card setup
+            cards('#display');
 
             //Set up extra template functions.
             rdapi.addJigFunctions({
@@ -36,62 +42,13 @@
                 }
             });
 
-            function adjustCardSizes() {
-                var cardWidth = display.outerWidth(),
-                    cardList = $('.card'),
-                    totalWidth = cardWidth * cardList.length,
-                    height = window.innerHeight - header.outerHeight();
-
-                //Set height
-                display.css('height', height + 'px');
-
-                //Set widths and heights of cards. Need to set the heights
-                //explicitly so any card using iscroll will get updated correctly.
-                cards.css({
-                    width: totalWidth + 'px',
-                    height: height + 'px'
-                });
-
-                cardList.css({
-                    width: cardWidth + 'px',
-                    height: height + 'px'
-                });
-            }
-
             $(function () {
                 //setup for the iscroll thing
                 if ('ontouchmove' in document) {
                     document.addEventListener('touchmove', function(e){ e.preventDefault(); }, false);
                     scroller = new iScroll('contactList');
                 }
-                display = $('#display');
-                cards = $('#cards');
-                back = $('#back');
-                header = $('#header');
-
-                adjustCardSizes();
-
-                //Set the title based on the first card.
-                var title = $('.card')[0].getAttribute('title');
-                $('#headerText').html(title);
-
-                back.click(function (evt) {
-                    var left = parseInt(cards.css('left'), 10) + display.outerWidth();
-
-                    cards.css({
-                        left: left + 'px'
-                    });
-                    if (!left) {
-                        back.css('display', 'none');
-                    }
-                });
             });
-
-            //Detect orientation changes and size the card container size accordingly.
-            if ('onorientationchange' in window) {
-                window.addEventListener('orientationchange', adjustCardSizes, false);
-            }
-            window.addEventListener('resize', adjustCardSizes, false);
 
             $('body')
             .delegate('a.person', 'click', function (evt) {
@@ -134,10 +91,7 @@
                                 $('#identityDisplay').html(html);
 
                                 //Scroll the cards.
-                                cards.css({
-                                    left: '-' + display.outerWidth() + 'px'
-                                });
-                                back.css('display', 'block');
+                                cards.forward();
                             }
                         });
                     }
@@ -157,13 +111,7 @@
                     containerNode: document.getElementById('contactConversations'),
                     onTemplateDone: function () {
                         //Move the conversation card into view.
-                        cards.css({
-                            left: '-' + (2 * display.outerWidth()) + 'px'
-                        });
-
-                        setTimeout(function () {
-                            $('#headerText').html(document.getElementById('contactInfo').innerHTML);
-                        }, 300);
+                        cards.forward(document.getElementById('contactInfo').innerHTML);
                     }
                 });
             });
@@ -171,30 +119,24 @@
     </script>
 </head>
 <body>
-    <div id="header">
-        <div id="back">
-            <div class="mblArrowButtonHead"></div>
-            <div class="mblArrowButtonBody mblArrowButtonText">Back</div>
-            <div class="mblArrowButtonNeck"></div>
-        </div>
-        <span id="headerText"></span>
-    </div>
-
+    <!-- UI Cards, some structure mandated by cards.js -->
     <div id="display">
         <div id="cards">
             <div id="contactsCard" class="card" title="Contacts">
-                <ul id="contactList" class="contacts templateContainer">
+                <ul id="contactList" class="contacts maxWidthList templateContainer">
+                    <!-- Template that loads all contacts ans shows a list of the by name -->
                     <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
                 </ul>
             </div>
             <div id="identityDisplay" class="card card2" title="Info">
             </div>
-            <div id="conversations" class="card card3" title="Conversations">
-                <ul id="contactConversations" class="mblRoundRectList"></ul>
+            <div id="conversations" class="card card3">
+                <ul id="contactConversations" class="maxWidthList"></ul>
             </div>
         </div>
     </div>
 
+    <!-- Template for showing contact details -->
     <div class="template contactDetail" data-id="contactDetail">
         <div id="contactInfo">
             <img class="contactPhoto" src="{getPhotoUrl(_)}"> <span class="contactDisplayName">{displayName}</span>
@@ -213,19 +155,21 @@
         <ul class="mblRoundRectList">
             <!-- Interesting, for the delegate on this li to work in Mobile Safari,
                  need to put an onclick on here. -->
-            <li class="mblListItem conversationButton" onclick="return;">Show Recent Conversations</li>
+            <li class="mblListItem conversationButton" onclick="return;">Show Recent Conversations<div class="mblArrow"></div></li>
         </ul>
     </div>
 
-    <li class="template conversation mblListItem" data-id="conversations">
-        {subject [} {} {]}
-        {!subject [}
-            {messages[0].schemas['rd.msg.body'].body_preview}
-        {]}
+    <!-- Template for showing conversation summaries -->
+    <li class="template summary {id[0]}" data-id="conversations">
+        <span class="subject">{subject}</span>
+        <span class="bodyPreview">{messages[0].schemas['rd.msg.body'].body_preview}</span>
+        <div class="mblArrow"></div>
     </li>
 
+    <!-- Template for when contact has no conversations available. -->
     <li class="template conversation" data-id="conversationsEmpty">
         No conversations for this contact.
     </li>
+
 </body>
 </html>

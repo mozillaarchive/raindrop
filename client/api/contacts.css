@@ -44,7 +44,6 @@ ul {
 
 #back {
     position: absolute;
-    display: none;
     top: 0px;
     left: 0px;
 }
@@ -135,7 +134,7 @@ ul {
     overflow: scroll;
 }
 
-#contactList {
+.maxWidthList {
     width: 100%;
     list-style: none;
     padding: 0;
@@ -143,7 +142,7 @@ ul {
     background-color: white;
 }
 
-#contactList li {
+.maxWidthList li {
     position: relative;
     width: 100%;
     height: 43px;
@@ -155,7 +154,7 @@ ul {
     color: black;
 }
 
-#contactList li a {
+.maxWidthList li a {
     display: block;
     width: 100%;
     height: 100%;
@@ -201,10 +200,6 @@ ul {
 
 .contactDetail .idValue {
     padding: 0 5px;
-}
-
-#contactConversations {
-    margin: 10px;
 }
 
 .scrollbar {
@@ -273,6 +268,39 @@ ul {
     -moz-border-radius-bottomright: 8px;
 }
 
+.maxWidthList li.conv {
+    line-height: normal;
+    padding: 8px 0 0 20px;
+    background: transparent url(i/mailIcon.png) center left no-repeat;
+}
+
+.maxWidthList li.twitter {
+    background: transparent url(i/twitterIcon.png) center left no-repeat;
+    padding-left: 20px;
+}
+
+.maxWidthList li.conv .summary {
+    height: auto;
+}
+
+.maxWidthList li .bodyPreview {
+    display: block;
+    font-weight: normal;
+    font-size: smaller;
+}
+
+li .mblArrow {
+    position: absolute;
+    top: 16px;
+    right: 30px;
+    width: 9px;
+    height: 13px;
+    font-size: 1px;
+    border-width: 3px 3px 0px 0px;
+    border-color: #808080;
+    border-style: none;
+    background-image: url(i/gray-arrow.png);
+}
 
 /* START hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */
 /* hbox and vbox classes */
