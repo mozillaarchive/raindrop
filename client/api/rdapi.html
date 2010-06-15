@@ -81,6 +81,10 @@
                         } else {
                             newHighlight = $('#convDisplay .fullReply').first();
                         }
+                    } else if (showingConversation && keyCode === 67) {
+                        //c
+                        $('.fullConvClose').click();
+                        return;
                     }
 
                     //If here is a newHeighlight, make it the new focus
@@ -215,7 +219,7 @@
       {. first messages[0].schemas['rd.msg.body']}
       {. from rdapi.identity(first.from)}
       <div class="c3">
-        <span class="date">{first.timestamp} - via email</span>
+        <span class="date">{first.timestamp} - via source</span>
 
         <span class="actions">hide delete</span>
       </div>
@@ -259,7 +263,9 @@
     <div class="row">
       <div class="c3 folders">
         <div class="title">folders &mdash; show all &mdash; new folder</div>
-          <li>Sent</li>
+          <li class="pinned">Sent</li>
+          <li class="pinned">Archived</li>
+          <li class="pinned">Trash</li>
           <li>Travel</li>
           <li>Shopping</li>
           <li>Family</li>
