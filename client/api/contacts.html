@@ -21,8 +21,6 @@
         require(['jquery', 'rdapi', 'cards', 'blade/jig', 'json2', 'iscroll-min'],
         function ($,        rdapi,   cards,   jig) {
 
-            var scroller, display, cardList, back, header;
-
             //Initialize the card setup
             cards('#display');
 
@@ -46,7 +44,10 @@
                 //setup for the iscroll thing
                 if ('ontouchmove' in document) {
                     document.addEventListener('touchmove', function(e){ e.preventDefault(); }, false);
-                    scroller = new iScroll('contactList');
+                    new iScroll('contactList');
+                    //new iScroll('identityCard');
+                    new iScroll('contactConversations');
+                    new iScroll('fullConvScroll');
                 }
             });
 
@@ -88,7 +89,7 @@
                                 }
                                 html = jig(options.template, contact, options);
 
-                                $('#identityDisplay').html(html);
+                                $('#identityCard').html(html);
 
                                 //Scroll the cards.
                                 cards.forward();
@@ -115,6 +116,39 @@
                     }
                 });
             });
+
+            $('#contactConversations').delegate('li.summary', 'click', function (evt) {
+                var convId = rdapi.data(evt.target.getAttribute('data-blade-jig')).id;
+                rdapi('inflow/conversations/by_id', {
+                    data: {
+                        key: JSON.stringify(convId),
+                        schemas: JSON.stringify(['*'])
+                    },
+                    contentType: '',
+                    templateId: 'fullConv',
+                    containerNode: document.getElementById('fullConvScroll'),
+                    onTemplateDone: function () {
+                        cards.forward();
+                    }
+                })
+            });
+
+
+            $('#fullConvCard').delegate('.quoteToggle', 'click', function (evt) {
+                var target = $(evt.target),
+                    content = target.next('.quote');
+
+                if (content.hasClass('expanded')) {
+                    content.removeClass('expanded');
+                    target.html('Show Quote');
+                } else {
+                    content.addClass('expanded');
+                    target.html('Hide Quote');
+                }
+                evt.stopPropagation();
+                evt.preventDefault();
+            });
+
         });
     </script>
 </head>
@@ -128,11 +162,15 @@
                     <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
                 </ul>
             </div>
-            <div id="identityDisplay" class="card card2" title="Info">
+            <div id="identityCard" class="card card2" title="Info">
             </div>
-            <div id="conversations" class="card card3">
+            <div id="conversationsCard" class="card card3">
                 <ul id="contactConversations" class="maxWidthList"></ul>
             </div>
+            <div id="fullConvCard" class="card card4" title="Conversation">
+                <div id="fullConvScroll"></div>
+            </div>
+
         </div>
     </div>
 
@@ -171,5 +209,24 @@
         No conversations for this contact.
     </li>
 
+    <!-- Template for showing all messages in a conversation -->
+    <div class="template message {id[0]}" data-id="fullConv">
+        <div class="subject">{subject}</div>
+        <ul class="maxWidthList">
+            {messages [}
+                <li class="message">
+                    <div class="from name">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
+                    <div class="messageBody">
+                        {schemas['rd.msg.body.quoted'].parts [}
+                            {type [}
+                                <a class="quoteToggle" href="#quoteToggle">Show Quote</a>
+                            {]}
+                            <div class="quoteContent {type}">{^htmlBody(text)}</div>
+                        {]}
+                    </div>
+                </li>
+            {]}
+        </ul>
+    </div>
 </body>
 </html>

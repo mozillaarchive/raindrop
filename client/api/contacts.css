@@ -154,6 +154,13 @@ ul {
     color: black;
 }
 
+.maxWidthList li.message {
+    height: auto;
+    font-weight: normal;
+    line-height: normal;
+    padding: 8px;
+}
+
 .maxWidthList li a {
     display: block;
     width: 100%;
@@ -162,7 +169,7 @@ ul {
     color: black;
 }
 
-#identityDisplay ul {
+#identityCard ul {
     list-style: none;
 }
 
@@ -283,10 +290,22 @@ ul {
     height: auto;
 }
 
+.maxWidthList li .subject {
+    display: block;
+    margin-right: 45px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 .maxWidthList li .bodyPreview {
     display: block;
+    margin-right: 45px;
     font-weight: normal;
     font-size: smaller;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 li .mblArrow {
@@ -300,6 +319,38 @@ li .mblArrow {
     border-color: #808080;
     border-style: none;
     background-image: url(i/gray-arrow.png);
+}
+
+
+.message .subject {
+    padding: 8px;
+    font-weight: bold;
+    font-size: larger;
+}
+
+.message .from {
+    font-weight: bold;
+}
+
+.message .from .date {
+    font-weight: normal;
+    color: gray;
+}
+
+.messageBody a.quoteToggle {
+  text-decoration: none;
+  color: #888;
+}
+
+.messageBody .quoteContent.quote {
+    display: none;
+    color: #666;
+    background-color: #f2f2f2;
+    padding: 5px;
+}
+
+.messageBody .quoteContent.quote.expanded {
+    display: block;
 }
 
 /* START hbox/vbox normalization from http://alex.dojotoolkit.org/2009/08/css-3-progress/ */
