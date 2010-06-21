@@ -130,7 +130,7 @@ ul {
 #contactsCard {
     position: relative;
     z-index: 1;
-    overflow: scroll;
+    overflow-y: scroll;
 }
 
 .maxWidthList {
@@ -151,6 +151,8 @@ ul {
     line-height: 43px;
     font-weight: bold;
     color: black;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
 }
 
 .maxWidthList li.message {
@@ -181,7 +183,6 @@ ul {
     height: 60px;
     vertical-align: middle;
     margin-right: 10px;
-    border: 1px solid #ADAAAD;
 }
 
 #header .contactPhoto {
@@ -246,6 +247,8 @@ ul {
     font-weight: bold;
     position: relative;
     color: black;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
 }
 
 .mblListItem.mblVariableHeight {
@@ -276,13 +279,16 @@ ul {
 
 .maxWidthList li.conv {
     line-height: normal;
-    padding: 8px 0 0 20px;
-    background: transparent url(i/mailIcon.png) center left no-repeat;
+    padding: 8px 0 0 25px;
+    background: transparent url(i/mailIcon.png) 5px 8px no-repeat;
+    height: 52px;
 }
 
 .maxWidthList li.twitter {
-    background: transparent url(i/twitterIcon.png) center left no-repeat;
-    padding-left: 20px;
+    background: transparent url(i/twitterIcon.png) 5px 12px no-repeat;
+    padding-left: 25px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
 }
 
 .maxWidthList li.conv .summary {
@@ -291,6 +297,7 @@ ul {
 
 .maxWidthList li .subject {
     display: block;
+    margin-left: 5px;
     margin-right: 45px;
     overflow: hidden;
     white-space: nowrap;
@@ -299,6 +306,7 @@ ul {
 
 .maxWidthList li .bodyPreview {
     display: block;
+    margin-left: 5px;
     margin-right: 45px;
     font-weight: normal;
     font-size: smaller;
@@ -310,7 +318,7 @@ ul {
 li .mblArrow {
     position: absolute;
     top: 16px;
-    right: 30px;
+    right: 10px;
     width: 9px;
     height: 13px;
     font-size: 1px;
@@ -320,11 +328,18 @@ li .mblArrow {
     background-image: url(i/gray-arrow.png);
 }
 
+.message .subject:empty {
+    display: none;
+}
 
 .message .subject {
     padding: 8px;
     font-weight: bold;
     font-size: larger;
+    border-bottom: 1px solid #ADAAAD;
+    background-color: #f2f2f2;
+    background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0.0, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(0, 0, 0, 0.025)), color-stop(1, rgba(0, 0, 0, 0.025)));
+    text-shadow:0 1px 0 #FFFFFF;
 }
 
 .message .from {
