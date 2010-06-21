@@ -82,10 +82,21 @@ require.def('cards', ['jquery', 'text!templates/cardsHeader.html'], function ($,
 
         var left = display.outerWidth() * cardPosition;
 
+        nlCards.animate(
+            {
+                left: '-' + left + 'px'
+            }, {
+                duration: 300,
+                easing: 'linear'
+            }
+        );
+
+/*
+        Was used for CSS -webkit-transition
         nlCards.css({
             left: '-' + left + 'px'
         });
-
+*/
         //Hide/Show back button as appropriate
         back.css('display', !cardPosition ? 'none' : '');
     };

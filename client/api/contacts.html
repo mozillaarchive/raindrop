@@ -117,6 +117,20 @@
                 });
             });
 
+            $('#categories').delegate('li', 'click', function (evt) {
+                var type = evt.target.getAttribute('data-type');
+
+                //TODO: right now do not do anything with type.
+                rdapi('inflow/contacts/by_name', {
+                    contentType: '',
+                    templateId: 'personList',
+                    containerNode: document.getElementById('contactList'),
+                    onTemplateDone: function () {
+                        cards.forward();
+                    }
+                });
+            });
+
             $('#contactConversations').delegate('li.summary', 'click', function (evt) {
                 var convId = rdapi.data(evt.target.getAttribute('data-blade-jig')).id;
                 rdapi('inflow/conversations/by_id', {
@@ -156,23 +170,30 @@
     <!-- UI Cards, some structure mandated by cards.js -->
     <div id="display">
         <div id="cards">
-            <div id="contactsCard" class="card" title="Contacts">
-                <ul id="contactList" class="contacts maxWidthList templateContainer">
-                    <!-- Template that loads all contacts ans shows a list of the by name -->
-                    <li class="template" data-api="inflow/contacts/by_name"><a class="person" href="#{id[1]}">{displayName}</a></li>
+            <div id="categories" class="card" title="Contact Types">
+                <ul class="maxWidthList">
+                    <li data-type="notorius">Notorious</li>
+                    <li data-type="starred">Starred</li>
+                    <li data-type="all">All</li>
                 </ul>
             </div>
-            <div id="identityCard" class="card card2" title="Info">
+            <div id="contactsCard" class="card" title="Contacts">
+                <ul id="contactList" class="contacts maxWidthList templateContainer">
+                </ul>
             </div>
-            <div id="conversationsCard" class="card card3">
+            <div id="identityCard" class="card" title="Info">
+            </div>
+            <div id="conversationsCard" class="card">
                 <ul id="contactConversations" class="maxWidthList"></ul>
             </div>
-            <div id="fullConvCard" class="card card4" title="Conversation">
+            <div id="fullConvCard" class="card" title="Conversation">
                 <div id="fullConvScroll"></div>
             </div>
-
         </div>
     </div>
+
+    <!-- Template that loads all contacts and shows a list of the by name -->
+    <li class="template" data-id="personList"><a class="person" href="#{id[1]}">{displayName}</a></li>
 
     <!-- Template for showing contact details -->
     <div class="template contactDetail" data-id="contactDetail">

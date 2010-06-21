@@ -115,17 +115,16 @@ ul {
     left: 0;
     width: 100%;
     height: 100%;
+    /*
+     Transition is choppy. Doing the JS DOM scroll instead.
     -webkit-transition: left 0.3s ease-out;
+    */
 }
 
 .card {
     float: left;
     width: 100%;
     height: 310px;
-}
-
-.card.card2 {
-    z-index: 1;
 }
 
 #contactsCard {
