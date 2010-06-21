@@ -18,8 +18,8 @@
          http://stackoverflow.com/questions/1649086/detect-rotation-of-android-phone-in-the-browser-with-javascript
         */
 
-        require(['jquery', 'rdapi', 'cards', 'blade/jig', 'json2', 'iscroll-min'],
-        function ($,        rdapi,   cards,   jig) {
+        require(['jquery', 'rdapi', 'cards', 'blade/jig', 'friendly', 'json2', 'iscroll-min'],
+        function ($,        rdapi,   cards,   jig,         friendly) {
 
             //Initialize the card setup
             cards('#display');
@@ -37,6 +37,9 @@
                         }
                     }
                     return url;
+                },
+                friendlyDate: function (timestamp) {
+                    return friendly.timestamp(timestamp).friendly;
                 }
             });
 
@@ -236,7 +239,7 @@
         <ul class="maxWidthList">
             {messages [}
                 <li class="message">
-                    <div class="from name">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
+                    <div class="from name">{schemas['rd.msg.body'].from_display} <span class="date">{friendlyDate(schemas['rd.msg.body'].timestamp)}</span></div>
                     <div class="messageBody">
                         {schemas['rd.msg.body.quoted'].parts [}
                             {type [}
