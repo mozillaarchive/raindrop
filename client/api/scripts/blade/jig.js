@@ -61,10 +61,20 @@ require.def("blade/jig", ["blade/object"], function (object) {
         return ostring.call(it) === "[object Array]";
     }
 
-    function getProp(parts, context) {
+    /**
+     * Gets a property from a context object. Allows for an alternative topContext
+     * object that can be used for the first part property lookup if it is not
+     * found in context first.
+     * @param {Array} parts the list of nested properties to look up on a context.
+     * @param {Object} context the context to start the property lookup
+     * @param {Object} [topContext] an object to use as an alternate context
+     * for the very first part property to look up if it is not found in context.
+     * @returns {Object}
+     */
+    function getProp(parts, context, topContext) {
         var obj = context, i, p;
         for (i = 0; obj && (p = parts[i]); i++) {
-            obj = (p in obj ? obj[p] : undefined);
+            obj = (p in obj ? obj[p] : (topContext && i === 0 && p in topContext ? topContext[p] : undefined));
         }
         return obj; // mixed
     }
@@ -77,6 +87,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
         var brackRegExp = /\[([\w0-9\.'":]+)\]/,
             part = name,
             parent = data,
+            isTop = true,
             match, pre, prop, obj, startIndex, endIndex, indices, result,
             parenStart, parenEnd, func, funcName, arg, args, i;
 
@@ -99,7 +110,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
                 throw new Error('Cannot find function named: ' + funcName + ' for ' + name);
             }
             arg = name.substring(parenStart + 1, parenEnd);
-            if (arg.indexOf(',')) {
+            if (arg.indexOf(',') !== -1) {
                 args = arg.split(',');
                 for (i = args.length - 1; i >= 0; i--) {
                     args[i] = getObject(args[i], data, options);
@@ -110,9 +121,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
             }
             //If a function returns true, then use the current data as the
             //return object.
-            if (result === true) {
-                return data;
-            }
+            return result === true ? data : result;
         }
 
         //Now handle regular object references, which could have [] notation.
@@ -125,7 +134,8 @@ require.def("blade/jig", ["blade/object"], function (object) {
                 part = part.substring(1, part.length);
             }
 
-            obj = getProp(pre.split('.'), parent);
+            obj = getProp(pre.split('.'), parent, isTop ? options.context : null);
+            isTop = false;
 
             if (!obj && prop) {
                 throw new Error('blade/jig: No property "' + prop + '" on ' + obj);
@@ -151,7 +161,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
         if (!part) {
             result = parent;
         } else {
-            result = getProp(part.split("."), parent);
+            result = getProp(part.split("."), parent, isTop ? options.context : null);
         }
 
         return result;
@@ -226,7 +236,7 @@ require.def("blade/jig", ["blade/object"], function (object) {
         '.': {
             doc: 'Variable declaration',
             action: function (args, data, options, children, render) {
-                data[args[0]] = getObject(args[1], data, options);
+                options.context[args[0]] = getObject(args[1], data, options);
                 //TODO: allow definining a variable then doing a block with
                 //that variable.
                 return '';
@@ -430,6 +440,9 @@ require.def("blade/jig", ["blade/object"], function (object) {
         } else {
             options.funcs = defaultFuncs;
         }
+
+        //Mix in top level context object
+        options.context = options.context || object.create(data);
 
         return render(compiled, data, options);
     };
