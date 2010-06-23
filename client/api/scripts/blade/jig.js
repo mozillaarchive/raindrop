@@ -1,5 +1,5 @@
 /**
- * @license blade/jig Copyright (c) 2004-2010, The Dojo Foundation All Rights Reserved.
+ * @license blade/jig Copyright (c) 2010, The Dojo Foundation All Rights Reserved.
  * Available via the MIT, GPL or new BSD license.
  * see: http://github.com/jrburke/blade for details
  */
@@ -8,22 +8,13 @@
 
 "use strict";
 
-if (!String.prototype.trim) {
-    String.prototype.trim = function () {
-        return this.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
-    };
-}
-
 require.def("blade/jig", ["blade/object"], function (object) {
 
-    //Use _ to indicate current data value.
     //Need to allow scope lookup for vars
-    //Add comment command
     //Fix unit test: something is wrong with it, says it passes, but
     //with attachData change, the string is actually different now.
     //TODO: for attachData, only generate a new ID when the data value changes,
     //and similarly, only attach the data one time per data value.
-    //TODO: ALLOW && AND || in the getobject values?
 
     var jig, commands,
         ostring = Object.prototype.toString,
@@ -39,8 +30,29 @@ require.def("blade/jig", ["blade/object"], function (object) {
         propertyRegExp = /[_\[\^\w]/,
         defaultArg = '_',
         startTagRegExp = /<\s*\w+/,
+        wordRegExp = /^\d+$/,
+        badCommentRegExp = /\/(\/)?\s*\]/,
         templateCache = {},
-        defaultFuncs = {},
+        defaultFuncs = {
+            gt: function (a, b) {
+                return a > b;
+            },
+            gte: function (a, b) {
+                return a >= b;
+            },
+            lt: function (a, b) {
+                return a < b;
+            },
+            lte: function (a, b) {
+                return a <= b;
+            },
+            or: function (a, b) {
+                return !!(a || b);
+            },
+            and: function (a, b) {
+                return !!(a && b);
+            }
+        },
         attachData = true,
         dataIdCounter = 0,
         dataRegistry = {};
@@ -66,11 +78,16 @@ require.def("blade/jig", ["blade/object"], function (object) {
             part = name,
             parent = data,
             match, pre, prop, obj, startIndex, endIndex, indices, result,
-            parenStart, parenEnd, func, funcName;
+            parenStart, parenEnd, func, funcName, arg, args, i;
 
         //If asking for the default arg it means giving back the current data.
         if (name === defaultArg) {
             return data;
+        }
+
+        //If name is just an integer, just return it.
+        if (wordRegExp.test(name)) {
+            return strToInt(name);
         }
 
         //First check for function call. Function must be globally visible.
@@ -81,7 +98,21 @@ require.def("blade/jig", ["blade/object"], function (object) {
             if (!func) {
                 throw new Error('Cannot find function named: ' + funcName + ' for ' + name);
             }
-            return func(getObject(name.substring(parenStart + 1, parenEnd), data, options));
+            arg = name.substring(parenStart + 1, parenEnd);
+            if (arg.indexOf(',')) {
+                args = arg.split(',');
+                for (i = args.length - 1; i >= 0; i--) {
+                    args[i] = getObject(args[i], data, options);
+                }
+                result = func.apply(null, args);
+            } else {
+                result = func(getObject(arg, data, options));
+            }
+            //If a function returns true, then use the current data as the
+            //return object.
+            if (result === true) {
+                return data;
+            }
         }
 
         //Now handle regular object references, which could have [] notation.
@@ -131,8 +162,19 @@ require.def("blade/jig", ["blade/object"], function (object) {
             doc: 'Property reference',
             action: function (args, data, options, children, render) {
                 var value = args[0] ? getObject(args[0], data, options) : data,
+                    comparison = args[1] ? getObject(args[1], data, options) : undefined,
                     i, text = '';
-                if (value === null || value === undefined || (isArray(value) && !value.length)) {
+
+                //If comparing to some other value, then the value is the data,
+                //and need to compute if the values compare.
+                if (args[1]) {
+                    comparison = value === comparison;
+                    value = data;
+                } else {
+                    //Just use the value, so the value is used in the comparison.
+                    comparison = value;
+                }
+                if (comparison === null || comparison === undefined || (isArray(comparison) && !comparison.length)) {
                     return '';
                 } else if (children) {
                     if (isArray(value)) {
@@ -151,8 +193,20 @@ require.def("blade/jig", ["blade/object"], function (object) {
         '!': {
             doc: 'Not',
             action: function (args, data, options, children, render) {
-                var value = getObject(args[0], data, options);
-                if (children && !value) {
+                var value = getObject(args[0], data, options),
+                    comparison = args[1] ? getObject(args[1], data, options) : undefined;
+
+                //If comparing to some other value, then the value is the data,
+                //and need to compute if the values compare.
+                if (args[1]) {
+                    comparison = value === comparison;
+                    value = data;
+                } else {
+                    //Just use the value, so the value is used in the comparison.
+                    comparison = value;
+                }
+
+                if (children && !comparison) {
                     return render(children, data, options);
                 }
                 return '';
@@ -195,7 +249,8 @@ require.def("blade/jig", ["blade/object"], function (object) {
         var compiled = [],
             start = 0,
             useRawHtml = false,
-            segment, index, match, tag, command, args, lastArg, lastChar, children;
+            segment, index, match, tag, command, args, lastArg, lastChar,
+            children, i;
 
         while ((index = text.indexOf(options.startToken, start)) !== -1) {
             //Output any string that is before the template tag start
@@ -221,6 +276,12 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
                 //decode in case the value was in an URL field, like an  href or an img src attribute
                 tag = decode(tag);
+
+                //if the command is commented out end block call, that messes with stuff,
+                //just throw to let the user know, otherwise browser can lock up.
+                if (badCommentRegExp.test(tag)) {
+                    throw new Error('blade/jig: end block tags should not be commented: ' + tag);
+                }
 
                 command = tag.charAt(0);
 
@@ -265,6 +326,17 @@ require.def("blade/jig", ["blade/object"], function (object) {
                 if (command === '+') {
                     options.templates[args[0]] = children;
                 } else if (command !== '/') {
+                    //Adjust args if some end in commas, it means they are function
+                    //args.
+                    if (args.length > 1) {
+                        for (i = args.length - 1; i >= 0; i--) {
+                            if (args[i].charAt(args[i].length - 1) === ',') {
+                                args[i] = args[i] + args[i + 1];
+                                args.splice(i + 1, 1);
+                            }
+                        }
+                    }
+
                     compiled.push({
                         action: options.commands[command].action,
                         useRawHtml: useRawHtml,
@@ -349,9 +421,15 @@ require.def("blade/jig", ["blade/object"], function (object) {
         options = options || {};
         object.mixin(options, {
             templates: templateCache,
-            funcs: defaultFuncs,
             attachData: attachData
         });
+
+        //Mix in default funcs
+        if (options.funcs) {
+            object.mixin(options.funcs, defaultFuncs);
+        } else {
+            options.funcs = defaultFuncs;
+        }
 
         return render(compiled, data, options);
     };

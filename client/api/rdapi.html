@@ -236,9 +236,9 @@
         <div class="replies">{messages[1:] [}<div class="reply"><div class="arrow"></div>{. body schemas['rd.msg.body']}<div class="messageReply noArrow"><span class="name">{body.from_display}</span> {body.body_preview}</div></div>{]}</div>
       </div> 
       {. extraCount messages[1:].length}
-      {extraCount [}
+      {!extraCount 0 [}
       <div class="c3">
-        <div class="more"><a href="#">view all replies (<span class="totalReplies">{}</span>)</a></div>
+        <div class="more"><a href="#">view all replies (<span class="totalReplies">{extraCount}</span>)</a></div>
       </div>
       {]}
     </div>
