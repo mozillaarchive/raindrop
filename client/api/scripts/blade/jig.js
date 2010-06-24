@@ -54,7 +54,8 @@ require.def("blade/jig", ["blade/object"], function (object) {
             }
         },
         attachData = true,
-        dataIdCounter = 0,
+        dataIdCounter = 1,
+        controlIdCounter = 1,
         dataRegistry = {};
 
     function isArray(it) {
@@ -184,7 +185,10 @@ require.def("blade/jig", ["blade/object"], function (object) {
                     //Just use the value, so the value is used in the comparison.
                     comparison = value;
                 }
-                if (comparison === null || comparison === undefined || (isArray(comparison) && !comparison.length)) {
+                //Want to allow returning 0 for values, so this next check is
+                //a bit verbose.
+                if (comparison === false || comparison === null ||
+                    comparison === undefined || (isArray(comparison) && !comparison.length)) {
                     return '';
                 } else if (children) {
                     if (isArray(value)) {
@@ -241,6 +245,15 @@ require.def("blade/jig", ["blade/object"], function (object) {
                 //that variable.
                 return '';
             }
+        },
+        '>': {
+            doc: 'Else',
+            action: function (args, data, options, children, render) {
+                if (children) {
+                    return render(children, data, options);
+                }
+                return '';
+            }
         }
     };
 
@@ -259,8 +272,9 @@ require.def("blade/jig", ["blade/object"], function (object) {
         var compiled = [],
             start = 0,
             useRawHtml = false,
+            controlId = 0,
             segment, index, match, tag, command, args, lastArg, lastChar,
-            children, i;
+            children, i, tempTag;
 
         while ((index = text.indexOf(options.startToken, start)) !== -1) {
             //Output any string that is before the template tag start
@@ -295,6 +309,19 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
                 command = tag.charAt(0);
 
+                if (command === ']' && controlId) {
+                    //In a control block, previous block was a related control block,
+                    //so parse it without the starting ] character.
+                    tempTag = tag.substring(1).trim();
+                    if (tempTag === '[') {
+                        command = '>';
+                    } else {
+                        command = tempTag.charAt(0);
+                        //Remove the starting ] so it is seen as a regular tag
+                        tag = tempTag;
+                    }
+                }
+
                 if (command && !options.propertyRegExp.test(command)) {
                     //Have a template command
                     tag = tag.substring(1).trim();
@@ -314,8 +341,33 @@ require.def("blade/jig", ["blade/object"], function (object) {
                 lastChar = lastArg.charAt(lastArg.length - 1);
                 children = null;
 
-                //If last arg ends with a [ it means a block element.
-                if (lastChar === '[') {
+                if (command === ']') {
+                    //If there are no other args, this is an end tag, to close
+                    //out a block and possibly a set of control blocks.
+                    if (lastChar !== '[') {
+                        //End of a block. End the recursion, let the parent know
+                        //the place where parsing stopped.
+                        compiled.templateEnd = start;
+
+                        //Also end of a control section, indicate it as such.
+                        compiled.endControl = true;
+                    } else {
+                        //End of a block. End the recursion, let the parent know
+                        //the place where parsing stopped, before this end tag,
+                        //so it can process it and match it to a control flow
+                        //from previous control tag.
+                        compiled.templateEnd = start - match[0].length;
+                    }
+
+                    return compiled;
+                } else if (lastChar === '[') {
+                    //If last arg ends with a [ it means a block element.
+
+                    //Assign a new control section ID if one is not in play already
+                    if (!controlId) {
+                        controlId = controlIdCounter++;
+                    }
+
                     //Adjust the last arg to not have the block character.
                     args[args.length - 1] = lastArg.substring(0, lastArg.length - 1);
 
@@ -324,11 +376,6 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
                     //Skip the part of the string that is part of the child compile.
                     start += children.templateEnd;
-                } else if (command === ']') {
-                    //End of a block. End this recursion, let the parent know
-                    //the place where parsing stopped.
-                    compiled.templateEnd = start;
-                    return compiled;
                 }
 
                 //If this defines a template, save it off,
@@ -351,8 +398,14 @@ require.def("blade/jig", ["blade/object"], function (object) {
                         action: options.commands[command].action,
                         useRawHtml: useRawHtml,
                         args: args,
+                        controlId: controlId,
                         children: children
                     });
+                }
+
+                //If the end of a block, clear the control ID
+                if (children && children.endControl) {
+                    controlId = 0;
                 }
             }
         }
@@ -379,16 +432,30 @@ require.def("blade/jig", ["blade/object"], function (object) {
 
         options.endRegExp = new RegExp('[^\\r\\n]*?' + endToken);
 
+        //Do some reset to avoid a number from getting too big.
+        controlIdCounter = 1;
+
         return compile(text, options);
     };
 
     function render(compiled, data, options) {
-        var text = '', i, dataId;
+        var text = '', i, dataId, controlId, currentControlId, currentValue, lastValue;
         if (typeof compiled === 'string') {
             text = compiled;
         } else if (isArray(compiled)) {
             for (i = 0; i < compiled.length; i++) {
-                text += render(compiled[i], data, options);
+                //Account for control blocks (if/elseif/else)
+                //control blocks all have the same control ID, so only call the next
+                //control block if the first one did not return a value.
+                currentControlId = compiled[i].controlId;
+                if (!currentControlId || currentControlId !== controlId || !lastValue) {
+                    currentValue = render(compiled[i], data, options);
+                    text += currentValue;
+                    if (currentControlId) {
+                        controlId = currentControlId;
+                        lastValue = currentValue;
+                    }
+                }
             }
         } else {
             //A template command to run.
