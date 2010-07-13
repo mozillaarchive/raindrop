@@ -104,6 +104,8 @@ row.subject {
 
 .conversation {
   max-width: 800px;
+  max-height: 400px;
+  overflow-y: scroll;
 }
 
 .conversation > .subject:empty:after {
@@ -120,6 +122,7 @@ row.subject {
   margin-bottom: 2em;
   padding-bottom: 2em;
   border-bottom: 1px solid #666;
+  color: #000;
 }
 
 .conversation .message:last-child {

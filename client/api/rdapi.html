@@ -29,6 +29,7 @@
     <link type="text/css" rel="stylesheet" href="rdapi.css">
 
     <script src="scripts/requireplugins-jquery-1.4.2.js" charset="utf-8"></script>
+    
     <script>
         require(["jquery", "rdapi", "json2"], function ($, rdapi) {
             $(function () {
@@ -172,6 +173,10 @@
                     //Andys clueless js
                     convDisplay.removeClass('visible');
                 })
+                .delegate('#background', 'click', function (evt) {
+                    $('.fullConvClose').click();
+                    return;
+                })
                 .delegate('#convDisplay .row', 'click', function (evt) {
                     convDisplay.find('.highlight').removeClass('highlight');
                     $(evt.target).addClass('highlight');
@@ -197,7 +202,8 @@
     
 </head>
 <body>
-
+<div id="background"></div>
+<div id="wrapper">
   <div id="header">
 
     <div class="row">
@@ -309,7 +315,7 @@
     </div>
     {messages [}
       <div class="row fullReply">
-        <div class="message">
+        <div class="message" onclick="$(this).next().toggleClass('show')">
           <div class="c2">
             <div class="avatar"></div>
             <div class="from name">{schemas['rd.msg.body'].from_display} <span class="date">on {schemas['rd.msg.body'].timestamp}</span></div>
@@ -326,16 +332,15 @@
                 {]}
                 <div class="quoteContent {type}">{^htmlBody(text)}</div>
             {]}
+            <div class="actions">reply forward</div>
           </div>
         </div>
-        <div class="c3">
-          <div class="actions">reply forward</div>
-        </div> 
       </div>
     {]}
   </div>
 
 <div id="convDisplay"></div>
+</div><!--wrapper-->
 </body>
 </html>
 
